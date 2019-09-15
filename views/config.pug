@@ -1,0 +1,40 @@
+html
+  head
+    title= title
+    link(rel='stylesheet', href='css/bootstrap.min.css')
+    link(rel='stylesheet', href='css/jquery-ui.min.css')
+    link(rel='stylesheet', href='css/jquery-ui.theme.min.css')
+    link(rel='icon', href='favicon.ico', type='image/x-icon')
+    link(rel='stylesheet', href='css/tabulator_bootstrap.min.css')
+    link(rel='stylesheet', href='css/style.css')
+  body
+    div.container
+      include nav.pug
+      div.jumbotron#profileJumbotron
+        h2 Profile
+        div#userProfile
+          div.myavatar
+            img(id="myavatar_" + profile.user_id, src="images/avatars/" + profile.user_id + ".png", style="margin-top: 5px").droppable.avatar
+          div#profile
+            div#profileName <b>Name:</b> #{profile.name}
+            div#profileUsername <b>Username:</b> #{profile.username}
+            div#profilePermissions <b>System Permissions:</b> #{profile.permissions}
+            form 
+              div.form-group.cp-form-group
+                label New Password:
+                input(type='password')#cpNew.form-control.cp-form-control
+              div.form-group.cp-form-group
+                label Confirm:
+                input(type='password')#cpConfirm.form-control.cp-form-control
+              button#changePassword.btn.btn-primary Change Password
+      div.jumbotron#usersJumbotron(style='display: none;')
+        h2 Users
+        table#usersTable
+        
+script var permissions = "#{permissions}".split(',');
+script(src='js/jquery-3.4.1.min.js')
+script(src='js/jquery-ui.min.js')
+script(src='js/bootstrap.min.js')
+script(src='js/bootbox.min.js')
+script(src='js/tabulator.min.js')
+script(src='js/config.js')

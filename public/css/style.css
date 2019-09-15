@@ -1,0 +1,768 @@
+@font-face {
+    font-family: lato;
+    src:
+        url('Lato-Regular.woff2') format('woff2'),
+        url('Lato-Regular.woff') format('woff');
+}
+
+body {
+    background-color: rgb(33,37,43);
+    font-family: lato;
+}
+
+button.pane-close {
+    float: none;
+    font-size: 14px;
+    margin-left: 4px;
+    -webkit-appearance: none;
+    padding: 0;
+    cursor: pointer;
+    background: 0 0;
+    border: 0;
+    font-weight: 700;
+    line-height: 1;
+    color: #000;
+    text-shadow: 0 1px 0 #fff;
+    opacity: .2;
+}
+
+canvas {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0px;
+    top: 0px;
+}
+
+h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+    margin-top: 10px
+}
+
+select {
+    width: 100%;
+}
+
+
+table {
+    width: 100%;
+    font-size: 14px;
+}
+
+table.table-bordered.dataTable tbody th, table.table-bordered.dataTable tbody td {
+    padding: 6px;
+}
+
+td a {
+    text-decoration: none;
+    border-bottom: 1px dashed #141414;
+}
+
+.avatar {
+    width: 48px;
+    height: 48px;
+}
+
+.canvas {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    float: left;
+}
+
+.center-text {
+    text-align: center;
+}
+
+.checkbox {
+    margin-bottom: 5px;
+}
+
+.clockBar {
+    width: 100%;
+    background: #000;
+    color: #fff;
+    height: 25px;
+    display: flex;
+    justify-content: space-between;
+}
+
+.container {
+    width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+.disabledDiv {
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.hide {
+    display: none;
+}
+
+.jumbotron {
+    border-radius: 0px;
+    overflow: hidden;
+    border: 1px solid #7f7f7f;
+    margin-bottom: 5px;
+    padding: 5px;
+    background-color: #d2d2d2;
+}
+
+.myavatar {
+    float: left;
+    margin-right: 10px;
+}
+
+
+.simplecolorpicker {
+    border: 1px solid #9d9d9d !important;
+    margin-right: 10px;
+}
+
+.message {
+    display: flex;
+}
+
+.messageAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+}
+
+.messageGutter {
+    width: 36px;
+    left: 0px;
+    margin-right: 5px;
+    float: left;
+}
+
+.messageInput {
+    border: 2px solid #a0a0a2;
+    border-radius: 5px !important;
+    width: 100%;
+}
+
+.messageSender {
+    font-weight: 900;
+    color: #2C2D30;
+    line-height: 18px;
+    margin-right: 4px;
+}
+
+.messageTime {
+    color: #9e9ea6;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.messageWrapper {
+    position: relative;
+    display: block;
+    margin-bottom: 3px;
+}
+
+
+
+#get-more-messages {
+    cursor: pointer;
+    text-align: center;
+    margin-bottom: 5px;
+    text-decoration: underline;
+}
+
+#progressbarContainer {
+  -webkit-box-sizing: border-box;
+     -moz-box-sizing: border-box;
+          box-sizing: border-box;
+    width: 100%;
+    position: absolute;
+    left: 0px;
+    bottom: 0px;
+    padding: 10px;
+}
+
+#progressbar {
+    width: 100%;
+    height: 25px;
+    text-align: center;
+}
+
+#globalSearchText {
+    height: 23px;
+}
+
+#usersPager, #rolesPager, #missionPager {
+    height: 35px;
+}
+
+#download {
+    display: none;
+}
+
+.navbar {
+    border-radius: 0px;
+    margin-bottom: 0px;
+    min-height:32px !important
+}
+
+.navbar-nav > li > a {
+    padding-top:5px !important; padding-bottom:5px !important;
+}
+
+
+
+#sizeObject {
+    margin-bottom: 5px;
+}
+
+#files, #notes {
+    height: 100%;
+    overflow-y: scroll;
+    overflow-x: hidden;
+}
+
+#tables {
+    height: 100%;
+    position: relative;
+    flex-grow: 1;
+}
+
+#chat, #settings {
+    padding: 5px;
+    height: 100%;
+    width: 100%;
+}
+
+#chat2 {
+    width: auto;
+    height: 100%;
+    overflow-y: scroll;
+    background: #ffffff;
+    padding-left: 15px;
+}
+
+.tablesPane {
+    width: 100%;
+    height: 100%;
+}
+
+.newMessage {
+    border-top: 1px solid #f2bdc3;
+}
+
+.newMessageLabel {
+    position: absolute;
+    right: 50px;
+    top: -9px;
+    color: #d72b3f;
+    line-height: 8px;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 0 2px rgba(0,0,0,.25);
+}
+
+#foundCount {
+    position: absolute;
+    left: 305px;
+    top: 8px;
+    background: #459fcc;
+    font-size: 10px;
+    border-radius: 15px;
+    padding: 1px 10px;
+    color: #ffffff;
+    line-height: 16px;
+    z-index: 5;
+    display: none;
+}
+
+.unread {
+    background: #dc5960;
+    font-size: 12px;
+    border-radius: 15px;
+    padding: 1px 10px;
+    color: #ffffff;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    line-height: 16px;
+}
+
+.channel {
+    display: flex;
+    justify-content: space-between;
+    height: 26px;
+    width: 100%;
+    color: #acb2b8;
+    padding: 0 12px 0 15px;
+    font-size: 16px;
+    text-decoration: none;
+    line-height: 26px;
+    vertical-align: middle;
+}
+
+.channelSelected {
+    background: #4C9689 !important;
+    color: #ffffff;
+}
+
+.channel:hover {
+    background: #4A5664;
+}
+
+#channel-panes {
+    width: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    background: #ffffff;
+}
+
+#channel-footer {
+    width: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    padding-bottom: 5px;
+}
+
+.channel-pane {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-top: 5px;
+    padding-left: 15px;
+}
+
+#channels {
+    background: #303E4D;
+    width: 220px;
+    height: 100%;
+    float: left;
+}
+
+#toolsForm {
+    overflow-y: scroll;
+}
+
+#toolsForm, #notesForm, #filesForm {
+    height: 100%;
+    padding: 10px;
+}
+
+#notesForm {
+    padding-bottom: 45px;
+}
+
+.canvas-container {
+    width: 100% !important;
+    height: 100% !important;;
+    position: absolute !important;;
+    left: 0px !important;
+    top: 0px !important;
+}
+
+.modal {
+    overflow: hidden;
+}
+
+.modal-header {
+    background-color: darkgray;
+}
+
+.modal-content {
+    background-color: lightgray;
+    display: flex;
+    flex-flow: column;
+}
+
+.modal-details {
+    height: 600px;
+}
+
+.modal-body {
+    padding: 0px;
+    margin: 15px;
+}
+
+.window-body {
+    margin: 0px;
+    display: flex;
+    flex-flow: column;
+    flex: 1;
+}
+
+.window-content {
+    height: 600px;
+    width: 600px;
+    border-radius: 0px;
+}
+
+.window-header {
+    padding: 5px;
+    border-radius: 0px;
+}
+
+.modal-footer {
+    background-color: darkgray;
+}
+
+.ql-editor {
+    width: 100%;
+}
+
+.ql-toolbar.ql-snow {
+    padding: 4px;
+}
+
+.login-logo {
+    display: block;
+    margin: auto;
+    width: 300px;
+}
+
+.ui-resizable-handle {
+    left: unset;
+}
+
+.object-details {
+    background-color: #ffffff;
+    font-family: courier;
+    display: flex;
+    flex-direction: column;
+}
+
+.wrapper {
+    margin-top: 80px;
+    margin-bottom: 80px;
+}
+
+.form-signin {
+    max-width: 400px;
+    padding: 15px 35px 45px;
+    margin: 0 auto;
+    background-color: lightgray;
+    border: 1px solid rgba(0,0,0,0.1);
+    .form-signin-heading {
+        margin-bottom: 30px;
+    }
+}
+
+.form-control {
+    position: relative;
+    font-size: 14px;
+    height: auto;
+    @include box-sizing(border-box);
+
+    &:focus {
+        z-index: 2;
+    }
+}
+
+#minimap {
+    position: absolute;
+    bottom: 30px;
+    left: 5px;
+    width: 100px;
+    height: 100px;
+    background-color: white;
+    border: solid 1px #7f7f7f;
+}
+
+#zoom-buttons {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+}
+
+#newObjectButton {
+    float: right;
+}
+
+.btn-login {
+    margin-top: 20px;
+    background-color: #080808;
+    color: white;
+}
+
+.cp-form-control {
+    width: 300px;
+}
+
+.cp-form-group {
+    margin-bottom: 5px;
+}
+
+.input-password {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+}
+
+.propButton {
+    margin-right: 10px;
+}
+
+#propObjectGroup {
+    height: 300px;
+    overflow-x: hidden;
+}
+
+.cancelLink {
+    position: relative;
+    left: 6px;
+    bottom: 0px;
+    display: none;
+}
+
+#objectSearchBar {
+    width: 300px;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+    display: none;
+}
+
+.zoomIn {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
+}
+
+.zoomOut {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
+}
+
+#message {
+    position: absolute;
+    left: 12px;
+    top: 4px;
+    width: 600px;
+    min-height: 30px;
+    background: #c1c1c1;
+    border: 1px solid #7f7f7f;
+    padding: 5px;
+    display: none;
+}
+
+.messageHeader {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.messageBody {
+    font-size: 16px;
+}
+
+.toolbarTitle {
+    font-size: 20px;
+    font-weight: bold;
+}
+
+
+
+.propColor {
+    display: inline;
+    height: 40px;
+    width: 40px;
+    margin-right: 5px;
+}
+
+#diagramJumbo {
+    padding: 0px !important;
+    border-radius: 0px;
+    min-height: 350px;
+    margin-bottom: 5px;
+}
+
+.vertNav {
+    height: 100%;
+    width: 36px;
+    top: 0px;
+    position: relative;
+    background: #9d9d9d;
+}
+
+.vertNavInsideRight {
+    
+}
+
+.vertNavOutsideLeft {
+    position: absolute;
+    left: -35px;
+}
+
+.vertTab {
+    padding-top: 2px;
+    padding-bottom: 2px;
+    width: 35;
+    height: 100px;
+    border-bottom: 2px solid #7f7f7f;
+    position: relative;
+    z-index: 4;
+}
+
+.horizTab {
+    pointer-events: all;
+    z-index: -1;
+    position: relative;
+    float: left;
+    height: 35px;
+    width: 100px;
+    background: #9d9d9d;
+    border-radius: 4px 4px 0px 0px;
+    border-top: 1px solid #7f7f7f;
+    border-left: 1px solid #7f7f7f;
+    border-right: 1px solid #7f7f7f;
+    -webkit-transform: perspective(75px) rotateX(30deg);
+    -moz-transform: perspective(75px) rotateX(30deg);
+}
+
+.tab span {
+    opacity: 0.0;
+}
+
+.tab-float {
+    background: none;
+    pointer-events: none;
+    z-index: 99;
+}
+
+#tabs-icon {
+    width:100%;
+    padding: 5px;
+}
+
+#bottomJumbo {
+    height: 450px;
+    min-height: 350px;
+    display: flex;
+    padding: 0px;
+}
+
+.click-through {
+    pointer-events: none;
+}
+
+.activeTab {
+    z-index: 40;
+    background-color: #efefef;
+    position: relative;
+}
+
+.active-horiz-tab {
+    z-index: 40;
+    background-color: #d2d2d2;
+}
+
+#toolsTabTag {
+    left: 20px;
+    top: 65px;
+}
+
+#notesTabTag {
+    left: 20px;
+    top: 162px;
+}
+
+#filesTabTag{
+    left: 20px;
+    top: 255px;
+}
+
+#chatTabTag {
+    left: 20px;
+    top: 60px;
+}
+
+#settingsTabTag {
+    left: 20px;
+    top: 174px;
+}
+
+.rotated {
+    position: absolute;
+    -webkit-transform: rotate(-90deg);
+    -webkit-transform-origin: left top;
+    -moz-transform: rotate(-90deg);
+    -moz-transform-origin: left top;
+    -ms-transform: rotate(-90deg);
+    -ms-transform-origin: left top;
+    -o-transform: rotate(-90deg);
+    -o-transform-origin: left top;
+    transform: rotate(-90deg);
+    transform-origin: left center;
+}
+
+
+#toolbar {
+    background-color: #fff;
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    height: 100%;
+}
+
+#toolbarBody[style]{
+  left:0 !important;
+}
+
+#toolbarBody {
+    width: 0px;
+    height: 100%;
+    background-color: #efefef;
+    overflow: hidden;
+}
+
+.toolbar-form {
+    min-width: 300px;
+}
+
+
+.thumbnail {
+    margin-bottom: 2px;
+    width: 40px;
+    height: 40px;
+    position: relative;
+}
+
+.image_picker_image {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    max-width:90%;
+    max-height:90%;
+    vertical-align: middle;
+}
+
+#windowPane {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: rgba(255, 255, 255, 0.7);
+    z-index: 999;
+}
+
+.windowPane .label {
+    cursor: pointer;
+    line-height: 2;
+    margin-left: 5px;
+    font-size: 14px;
+}
+
+.windowPane .label+.label {
+    margin-bottom: 0px;
+}
+
+

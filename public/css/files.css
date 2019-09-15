@@ -1,0 +1,12 @@
+h1{
+    margin-top:0px;
+}
+
+.jstree-custom-folder{
+    background-image: url('../images/folder.png') !important;
+    background-position: 0 !important;
+}
+.jstree-custom-file {
+    background-image: url('../images/file.png') !important;
+    background-position: 0 !important;
+}
