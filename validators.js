@@ -14,6 +14,13 @@ const insert_user = {
         username: { type: 'string', maxLength: 24, pattern: '^[a-zA-Z0-9_\.]{1,24}$' },
         name: { type: 'string', maxLength: 64 },
         password: { type: 'string',  maxLength: 64 },
+        permissions: { type: 'object', properties: {
+                manage_users: { type: 'boolean' },
+                manage_missions: { type: 'boolean' }
+            },
+            required: ['manage_users', 'manage_missions'],
+            additionalProperties: false
+        }
     },
     required: ['username', 'name', 'password'],
     additionalProperties: true
@@ -35,6 +42,33 @@ const delete_user = {
         user_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
     },
     required: ['user_id'],
+    additionalProperties: true
+}
+
+const insert_mission = {
+    type: 'object',
+    properties: {
+        name: { type: 'string', maxLength: 64 }
+    },
+    required: ['name'],
+    additionalProperties: true
+}
+
+const update_mission = {
+    type: 'object',
+    properties: {
+        name: { type: 'string', maxLength: 64 }
+    },
+    required: ['name'],
+    additionalProperties: true
+}
+
+const delete_mission = {
+    type: 'object',
+    properties: {
+        mission_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+    },
+    required: ['mission_id'],
     additionalProperties: true
 }
 
@@ -210,6 +244,9 @@ module.exports = {
     insert_user: insert_user,
     update_user: update_user,
     delete_user: delete_user,
+    insert_mission: insert_mission,
+    update_mission: update_mission,
+    delete_mission: delete_mission,
     insert_user_setting: insert_user_setting,
     update_user_setting: update_user_setting,
     insert_note: insert_note,

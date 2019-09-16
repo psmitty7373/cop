@@ -11,9 +11,10 @@ html
       include nav.pug
       div.jumbotron
         h2 Missions
+          button.propButton.btn.btn-primary#newMission(type='button', style="float: right; display: none;") New Mission
         table#missionsTable
 
-script var permissions = "#{permissions}".split(',');
+script var permissions = !{permissions};
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/jquery-ui-timepicker-addon.min.js')

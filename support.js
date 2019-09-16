@@ -1,4 +1,4 @@
-const bcrypt = require('bcrypt-nodejs');
+const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const MongoClient = require('mongodb').MongoClient;
 var mc;
@@ -36,9 +36,9 @@ async function create_user() {
     if (process.argv.length === 3) {
         var hash;
         try {
-            hash = bcrypt.hashSync(process.argv[2], null);
+            hash = await bcrypt.hash(process.argv[2], 10);
             var api = crypto.randomBytes(32).toString('hex');
-            var user = { username: 'admin', name: 'admin', password: hash, permissions: 'all', api: api, avatar: '', deleted: false };
+            var user = { username: 'admin', name: 'admin', password: hash, permissions: { manage_users: true, manage_missions: true}, api: api, avatar: '', deleted: false };
             var row = await mdb.collection('users').findOne({ username: 'admin' });
             if (!row) {
                 await mdb.collection('users').insertOne(user);

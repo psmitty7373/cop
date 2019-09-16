@@ -801,12 +801,12 @@ function addObjectToCanvas(o, selected, cb) {
                     left: o.x,
                     top: o.y,
                     locked: o.locked,
-                    hasControls: !(!diagram_rw ? true : o.locked),
-                    lockMovementX: !diagram_rw ? true : o.locked,
-                    lockMovementY: !diagram_rw ? true : o.locked,
-                    lockScalingX: !diagram_rw ? true : o.locked,
-                    lockScalingY: !diagram_rw ? true : o.locked,
-                    lockRotation: !diagram_rw ? true : o.locked
+                    hasControls: !(!permissions.modify_diagram ? true : o.locked),
+                    lockMovementX: !permissions.modify_diagram ? true : o.locked,
+                    lockMovementY: !permissions.modify_diagram ? true : o.locked,
+                    lockScalingX: !permissions.modify_diagram ? true : o.locked,
+                    lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                    lockRotation: !permissions.modify_diagram ? true : o.locked
                 });
                 if (shape._objects && !shape.image.includes('static')) {
                     for (var i = 0; i < shape._objects.length; i++) {
@@ -872,12 +872,12 @@ function addObjectToCanvas(o, selected, cb) {
                 left: o.x,
                 top: o.y,
                 locked: o.locked,
-                hasControls: !(!diagram_rw ? true : o.locked),
-                lockMovementX: !diagram_rw ? true : o.locked,
-                lockMovementY: !diagram_rw ? true : o.locked,
-                lockScalingX: !diagram_rw ? true : o.locked,
-                lockScalingY: !diagram_rw ? true : o.locked,
-                lockRotation: !diagram_rw ? true : o.locked
+                hasControls: !(!permissions.modify_diagram ? true : o.locked),
+                lockMovementX: !permissions.modify_diagram ? true : o.locked,
+                lockMovementY: !permissions.modify_diagram ? true : o.locked,
+                lockScalingX: !permissions.modify_diagram ? true : o.locked,
+                lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                lockRotation: !permissions.modify_diagram ? true : o.locked
             });
         } else if (shape === 'circle') {
             shape = new fabric.Ellipse({
@@ -897,12 +897,12 @@ function addObjectToCanvas(o, selected, cb) {
                 left: o.x,
                 top: o.y,
                 locked: o.locked,
-                hasControls: !(!diagram_rw ? true : o.locked),
-                lockMovementX: !diagram_rw ? true : o.locked,
-                lockMovementY: !diagram_rw ? true : o.locked,
-                lockScalingX: !diagram_rw ? true : o.locked,
-                lockScalingY: !diagram_rw ? true : o.locked,
-                lockRotation: !diagram_rw ? true : o.locked
+                hasControls: !(!permissions.modify_diagram ? true : o.locked),
+                lockMovementX: !permissions.modify_diagram ? true : o.locked,
+                lockMovementY: !permissions.modify_diagram ? true : o.locked,
+                lockScalingX: !permissions.modify_diagram ? true : o.locked,
+                lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                lockRotation: !permissions.modify_diagram ? true : o.locked
             });
         } else
             return;

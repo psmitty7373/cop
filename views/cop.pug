@@ -129,20 +129,17 @@ html
                 input(type="text", name="messageInput")#messageInput.messageInput
 
           div#settings(style="display: none;")
-            button.propButton.btn.btn-primary#insertRow(type='button') Insert
+            button.propButton.btn.btn-primary#addUser(type='button') Add User
             table#settingsTable.table.table-striped.table-bordered(style="width: 100%")
-              thead
-                tr
-                  th User ID
-                  th Username
-                  th Permissions
+            
         div#tableNav.vertNavInsideRight
           div.vertNav
-            div.vertTab#chatTab
+            div.vertTab.activeTab#chatTab
             div.vertTab#settingsTab
             div.vertNav.click-through(style='position: absolute;')
               div.tabText.tab-float.rotated#chatTabTag CHAT
               div.tabText.tab-float.rotated#settingsTabTag SETTINGS
+
     div#windowPane.windowPane
 
 script(type="template/text", id="details_template")
@@ -153,7 +150,7 @@ script(type="template/text", id="details_template")
       div.window-body.modal-body(style="height:100%;")
       div.window-footer.modal-footer
 
-script var permissions = "#{permissions}".split(','); var user_id = "#{user_id}"; var username = "#{username}";
+script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/jquery-ui-timepicker-addon.min.js')

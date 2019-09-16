@@ -3,7 +3,7 @@ var pendingMsg = [];
 var msgId = 0;
 
 if (!permissions)
-    permissions = [];
+    permissions = { manage_users: false, manage_missions: false };
 
 function showModal(title, body, footer) {
     $('#modal-title').text(title);
@@ -139,10 +139,6 @@ function newUser() {
     </div>
   </div>
   <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermAll">
-    <label class="form-check-label" for="nuPermAll">All Permissions</label>
-  </div>
-  <div class="form-check">
     <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
     <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
   </div>
@@ -161,7 +157,7 @@ function newUser() {
                     user.username = $('#nuUsername').val();
                     user.name = $('#nuName').val();
                     user.password = $('#nuPassword').val();
-                    user.permissions = [];
+                    user.permissions = { manage_users: $('#nuPermManageUsers').is(":checked"), manage_missions: $('#nuPermManageMissions').is(":checked") }
                     socket.send(JSON.stringify({ act:'insert_user', arg: user, msgId: msgHandler() }));
                 }
             },
@@ -178,11 +174,15 @@ $(document).ready(function() {
     document.body.addEventListener('dragover', f, false);
     document.body.addEventListener('drop', f, false);
     
-    var users_rw = false;
-    if (permissions.indexOf('all') !== -1 || permissions.indexOf('manage_users') !== -1) {
-        users_rw = true;
+    if (permissions.manage_users) {
         $('#usersJumbotron').show();
     }
+
+    // prevent bootbox from reloading on submit / enter
+    $(document).on("submit", ".bootbox form", function(e) {
+        e.preventDefault();
+        $(".bootbox .btn-primary").click();
+    });
 
     // ---------------------------- SOCKETS ----------------------------------
     // socket connection
@@ -201,7 +201,7 @@ $(document).ready(function() {
         }, 10000);
         setTimeout(function() {
             console.log('connect');
-            if (users_rw) {
+            if (permissions.manage_users) {
                 socket.send(JSON.stringify({ act: 'config', arg: '', msgId: msgHandler() }));
                 socket.send(JSON.stringify({ act: 'get_users', arg: '', msgId: msgHandler() }));
             }
@@ -249,7 +249,7 @@ $(document).ready(function() {
 
     // user table
     $('#newUser').click(function() { newUser(); });
-    if (users_rw) {
+    if (permissions.manage_users) {
         usersTabulator = new Tabulator("#usersTable", {
             layout: "fitColumns",
             index: '_id',
@@ -257,7 +257,7 @@ $(document).ready(function() {
                 socket.send(JSON.stringify({ act: 'update_user', arg: cell.getRow().getData(), msgId: msgHandler() }));
             },
             columns: [
-                { title: 'User ID', field: '_id' },
+                { title: 'User ID', field: '_id', visible: false },
                 { title: 'Avatar', field: 'avatar', formatter: function(cell, formatterParams, onRendered) {
                     if (cell.getValue() !== null) {
                         return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/' + cell.getRow().getData()['_id'] + '.png"/>';
@@ -268,8 +268,9 @@ $(document).ready(function() {
                 { title: 'Username', field: 'username' },
                 { title: 'Name', field: 'name', editor: 'input' },
                 { title: 'Password', field: 'password', editor: 'input' },
-                { title: 'Permissions', field: 'permissions' },
-                { formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+                { title: 'Manage Missions', field: 'permissions.manage_missions', editor: 'tickCross', formatter: 'tickCross' },
+                { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross' },
+                { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
                     socket.send(JSON.stringify({ act: 'delete_user', arg: { user_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
                 }},
             ]

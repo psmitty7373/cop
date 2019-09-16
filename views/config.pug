@@ -32,7 +32,7 @@ html
           button.propButton.btn.btn-primary#newUser(type='button', style="float: right;") New User
         table#usersTable
         
-script var permissions = "#{permissions}".split(',');
+script var permissions = !{permissions};
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/bootstrap.min.js')

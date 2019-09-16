@@ -188,6 +188,10 @@ td a {
     padding: 10px;
 }
 
+#addUser {
+    margin-bottom: 5px;
+}
+
 #progressbar {
     width: 100%;
     height: 25px;

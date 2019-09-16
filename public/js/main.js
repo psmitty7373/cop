@@ -2,6 +2,9 @@ var socket;
 var pendingMsg = [];
 var msgId = 0;
 
+if (!permissions)
+    permissions = { manage_users: false, manage_missions: false };
+
 function deleteRowConfirm(table, id) {
     $('#modal-title').text('Are you sure?');
     $('#modal-body').html('<p>Are you sure you want to delete this row?</p>');
@@ -10,27 +13,6 @@ function deleteRowConfirm(table, id) {
     $('#modal-content').removeClass('modal-details');
     $('#modal').modal('show')
 }
-
-function deleteRow(table, id) {
-    $(table).jqGrid('delRowData', id);
-    var data = { oper: 'del', _id: id }
-    $.ajax({
-        url: 'api/missions',
-        type: 'POST',
-        data: data,
-        dataType: 'json',
-        cache: false,
-        success: function() {
-        },
-        error: function() {
-            console.log('mission delete error');
-        }
-    });
-}
-
-var lastSelection = null;
-if (!permissions)
-    permissions = [];
 
 function getDate() {
     var date = new Date();
@@ -60,6 +42,36 @@ function addZero(i) {
     return i;
 }
 
+function newMission() {
+    bootbox.dialog({
+        message: `
+<form>
+  <div class="form-group row">
+    <label for="nmName" class="col-sm-2 col-form-label">Mission Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="nmName" value="">
+    </div>
+  </div>
+</form>`,
+        title: 'Insert New Mission',
+        buttons: {
+            confirm: {
+                label: 'Insert',
+                className: 'btn-primary',
+                callback: function() {
+                    var mission = {};
+                    mission.name = $('#nmName').val();
+                    socket.send(JSON.stringify({ act:'insert_mission', arg: mission, msgId: msgHandler() }));
+                }
+            },
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
+    });
+}
+
 // ---------------------------- SOCKET.IO MESSAGES / HANDLERS ----------------------------------
 function msgHandler() {
     pendingMsg[msgId] = setTimeout(function() {
@@ -79,12 +91,11 @@ function msgHandler() {
 }
 
 $(document).ready(function() {
-    var missions_rw = false;
-    var delete_missions = false;
-    if (permissions.indexOf('all') !== -1 || permissions.indexOf('manage_missions') !== -1)
-        missions_rw = true;
-    if (permissions.indexOf('all') !== -1 || permissions.indexOf('delete_missions') !== -1)
-        delete_missions = true;
+    // prevent bootbox from reloading on submit / enter
+    $(document).on("submit", ".bootbox form", function(e) {
+        e.preventDefault();
+        $(".bootbox .btn-primary").click();
+    });
 
     // ---------------------------- SOCKETS ----------------------------------
     if (location.protocol === 'https:') {
@@ -101,7 +112,6 @@ $(document).ready(function() {
         }, 10000);
         setTimeout(function() {
             console.log('connect');
-//            socket.send(JSON.stringify({ act:'join', arg: {mission_id: mission_id}, msgId: msgHandler() }));
             socket.send(JSON.stringify({ act:'main', arg: '', msgId: msgHandler() }));
             socket.send(JSON.stringify({ act:'get_missions', arg: '', msgId: msgHandler() }));
         }, 100);
@@ -128,20 +138,43 @@ $(document).ready(function() {
                 break;
             
             case 'get_missions':
-                // missions
                 missionsTabulator.setData(msg.arg.missions);
+                break;
+                
+            case 'insert_mission':
+                missionsTabulator.addRow(msg.arg);
+                break;
+    
+            case 'update_mission':
+                missionsTabulator.updateRow(msg.arg._id, msg.arg);
+                break;
+    
+            case 'delete_mission':
+                missionsTabulator.deleteRow(msg.arg.mission_id);
                 break;
         }
     }
 
+    $('#newMission').click(function() { newMission(); });
     missionsTabulator = new Tabulator("#missionsTable", {
         layout: "fitColumns",
+        index: '_id',
+        cellEdited: function(cell){
+            socket.send(JSON.stringify({ act: 'update_mission', arg: cell.getRow().getData(), msgId: msgHandler() }));
+        },
         columns: [
-            { title: 'Mission ID', field: '_id' },
-            { title: 'Mission Name', field: 'name', editor: 'input'},
+            { title: 'Mission ID', field: '_id', visible: false },
+            { title: 'Mission Name', field: 'name', editable: function () { return permissions.manage_missions; }, editor: 'input'},
             { title: 'Owner', field: 'username' },
-            { title: 'Launch', formatter: 'link', formatterParams: { label: 'Open Mission', urlPrefix: 'cop?mission=', urlField: '_id'} }
+            { title: 'Launch', formatter: 'link', formatterParams: { label: 'Open Mission', urlPrefix: 'cop?mission=', urlField: '_id'} },
         ]
     });
+    if (permissions.manage_missions) {
+        $('#newMission').show();
+        missionsTabulator.addColumn(
+            { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+                socket.send(JSON.stringify({ act: 'delete_mission', arg: { mission_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
+            }}, false, null);
+    }
  
 });

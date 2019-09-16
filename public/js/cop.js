@@ -10,21 +10,8 @@ function getParameterByName(name, url) {
 mission_id = getParameterByName('mission');
 
 // ---------------------------- PERMISSIONS & BUTTONS ----------------------------------
-if (!permissions)
-    permissions = [];
-var diagram_rw = false;
-var details_rw = false;
-
-// more permissions stuff
-var users_rw = false;
-var notes_rw = false;
-if (permissions.indexOf('all') !== -1 || permissions.indexOf('manage_users') !== -1)
-        users_rw = true;
-if (permissions.indexOf('all') !== -1 || permissions.indexOf('modify_details') !== -1)
-        details_rw = true;
-if (permissions.indexOf('all') !== -1 || permissions.indexOf('modify_notes') !== -1) {
-        notes_rw = true;
-        $("#newNoteButton").prop('disabled', false);
+if (!permissions) {
+    permissions = { manage_users: false, modify_diagram: false, modify_notes: false, modify_files: false, api_access: false };
 }
 
 // ---------------------------- MINIMAP ----------------------------------
@@ -284,16 +271,66 @@ function getObjectSelect() {
     return res;
 }
 
-function insertRow() {
+function addUser() {
     bootbox.dialog({
-        message: "Username: <input type='text' id='username'><br>Permissions: <input type='text' id='permissions'><br>",
-        title: "Insert New User",
+        message: `
+<form>
+  <div class="form-group row">
+    <label for="nuUsername" class="col-sm-2 col-form-label">Username</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="nuUsername" value="">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="nuName" class="col-sm-2 col-form-label">Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="nuName" value="">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="nuPassword" class="col-sm-2 col-form-label">Password</label>
+    <div class="col-sm-10">
+      <input type="password" class="form-control" id="nuPassword" placeholder="Password">
+    </div>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
+    <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermModifyDiagram">
+    <label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermModifyNotes">
+    <label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermModifyFiles">
+    <label class="form-check-label" for="nuPermModifyFiles">Modify Files</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermApiAccess">
+    <label class="form-check-label" for="nuPermApiAccess">API Access</label>
+  </div>
+</form>`,
+        title: 'Insert New User',
         buttons: {
             confirm: {
-                label: "Insert",
-                className: "btn-primary",
+                label: 'Insert',
+                className: 'btn-primary',
                 callback: function() {
-                    console.log("Hi "+ $('#first_name').val());
+                    var user = {};
+                    user.username = $('#nuUsername').val();
+                    user.name = $('#nuName').val();
+                    user.password = $('#nuPassword').val();
+                    user.permissions = { manage_users: $('#nuPermManageUsers').is(":checked"),
+                        modify_diagram: $('#nuPermModifyDiagram').is(":checked"),
+                        modify_notes: $('#nuPermModifyNotes').is(":checked"),
+                        modify_files: $('#nuPermModifyFiles').is(":checked"),
+                        api_access: $('#nuPermApiAccess').is(":checked"),
+                    },
+                    socket.send(JSON.stringify({ act:'insert_user', arg: user, msgId: msgHandler() }));
                 }
             },
             cancel: {
@@ -311,10 +348,22 @@ $(document).ready(function() {
     $('#modal-footer').html('');
     //$('#modal').modal('show');
 
+    // start clocks
     startTime();
+
+    // chat notification sound
     notifSound = new Audio('sounds/knock.mp3');
+
+    // draggable / resizable modals
     $('.modal-dialog').draggable({ handle: '.modal-header' });
     $('.modal-content').resizable({ minHeight: 153, minWidth: 300});
+
+    // prevent bootbox from reloading on submit / enter
+    $(document).on("submit", ".bootbox form", function(e) {
+        e.preventDefault();
+        $(".bootbox .btn-primary").click();
+    });
+
     // ---------------------------- SOCKETS ----------------------------------
     if (location.protocol === 'https:') {
         socket = new WebSocket('wss://' + window.location.host + '/mcscop/');
@@ -607,11 +656,11 @@ $(document).ready(function() {
         $('#prop-' + v).imagepicker({
             hide_select : true,
             initialized: function() {
-                if (!diagram_rw)
+                if (!permissions.modify_diagram)
                     $("#propObjectGroup").find("div").unbind('click');
             },
             selected : function() {
-                if (!diagram_rw)
+                if (!permissions.modify_diagram)
                     return;
                 if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
                     var obj = canvas.getActiveObject();
@@ -633,19 +682,22 @@ $(document).ready(function() {
 
     // ---------------------------- USERS TABLE ----------------------------------   
     // bottom table tabs
-    console.log('here');
     $('#chatTab').click(function() { toggleTable('chat'); });
     $('#settingsTab').click(function() { toggleTable('settings'); });
 
-     $('#insertRow').click(function() { insertRow(); });
+     $('#addUser').click(function() { addUser(); });
 
     settingsTabulator = new Tabulator("#settingsTable", {
         layout: "fitColumns",
         columns: [
-            { title: '_id', field: '_id' },
-            { title: 'User ID', field: 'user_id' },
+            { title: '_id', field: '_id', visible: false },
+            { title: 'User ID', field: 'user_id', visible: false },
             { title: 'Username', field: 'username', editor: 'input' },
-            { title: 'Permissions', field: 'permissions', editor: 'select', editorParams: { none: 'None', all:'All', manage_users:'Manage Users', modify_diagram: 'Modify Diagram', modify_notes: 'Modify Notes', modify_details: 'Modify Details', modify_files: 'Modify Files' } }
+            { title: 'U', field: 'permissions.manage_users', editor: 'tick', formatter: 'tick' },
+            { title: 'D', field: 'permissions.modify_diagram', editor: 'tick', formatter: 'tick' },
+            { title: 'N', field: 'permissions.modify_notes', editor: 'tick', formatter: 'tick' },
+            { title: 'F', field: 'permissions.modify_files', editor: 'tick', formatter: 'tick' },
+            { title: 'A', field: 'permissions.api_access', editor: 'tick', formatter: 'tick' }
         ]
     });
 

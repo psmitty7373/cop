@@ -11,7 +11,6 @@ function toggleToolbar(mode) {
 }
 
 function openToolbar(mode) {
-    console.log(mode, settings);
     if (toolbarState && mode == activeToolbar)
         return;
 
@@ -32,7 +31,7 @@ function openToolbar(mode) {
                     $("#toolbarBody").addClass("disabledDiv");
                 else
                     $("#toolbarBody").removeClass("disabledDiv");
-                if (diagram_rw)
+                if (permissions.modify_diagram)
                     $('#toolbarTitle').html('Edit Object');
                 else
                     $('#toolbarTitle').text('View Object');
@@ -213,13 +212,13 @@ function editDetails(id, name) {
     if (!name)
         name = '';
     if (!id && canvas.getActiveObject()) {
-        if (details_rw)
+        if (permissions.modify_details)
             rw = true;
         id = 'm-' + mission_id + 'd-' + canvas.getActiveObject()._id;
         if (canvas.getActiveObject().name_val)
             name = '- ' + canvas.getActiveObject().name_val.split('\n')[0];
     } else {
-        if (notes_rw)
+        if (permissions.modify_notes)
             rw = true;
     }
     if (id) {
@@ -268,7 +267,7 @@ function editDetails(id, name) {
                     });
                 } else {
                     var disabled = ' disabled';
-                    if (details_rw)
+                    if (permissions.modify_details)
                         disabled = '';
                     var w = windowManager.createWindow({
                         sticky:  false,
@@ -331,8 +330,7 @@ function toggleTable(mode) {
 // READY!
 $(document).ready(function() {
     // bind buttons
-    if (permissions.indexOf('all') !== -1 || permissions.indexOf('modify_diagram') !== -1) {
-        diagram_rw = true;
+    if (permissions.modify_diagram) {
         $('#propName').prop('disabled', false);
         $('#newObjectButton').prop('disabled', false).click(newObject);
         $('#propFillColor').prop('disabled', false);
@@ -346,6 +344,9 @@ $(document).ready(function() {
         $('#objectHeight').prop('disabled', false);
         $('#insertObjectButton').prop('disabled', false).click(insertObject);
         $('#deleteObjectButton').prop('disabled', false).click(deleteObjectConfirm);;
+    }
+    if (permissions.modify_notes) {
+        $("#newNoteButton").prop('disabled', false);
     }
     $('#propName').change(function() { updatePropName(this.value) });
     $('#lockObject').change(function() { toggleObjectLock($('#lockObject').is(':checked')) });
