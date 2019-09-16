@@ -83,7 +83,6 @@ var f = function(e)
                         processData: false,
                         success: function() {
                             e.target.src = 'images/avatars/' + e.target.id.split('_')[1] + '.png?' + new Date().getTime();
-//                            $("#users").trigger("reloadGrid");
                         },
                         error: function() {
                             console.log('upload error');
@@ -98,41 +97,6 @@ var f = function(e)
         }
     }
 };
-
-function deleteRow(e, type, table, id) {
-    e.stopPropagation();
-    $.ajax({
-        url: 'api/' + type,
-        type: 'POST',
-        data: {_id: id, table: table, oper: 'del'},
-        dataType: 'json',
-        cache: false,
-        success: function(data) {
-            $(table).jqGrid('delRowData', id);
-        },
-        error: function() {
-        }
-    });
-}
-
-function saveRow(e, type, table, id) {
-    e.stopPropagation();
-    lastSelection = null;
-    var data = {};
-    var oper = 'edit';
-    if (id.indexOf('jqg') !== -1)
-        oper = 'add';
-    $(table).jqGrid('saveRow', id, {extraparam: {oper: oper}});
-    $(table).trigger("reloadGrid");           
-}
-
-function cancelRow(e, type, table, id) {
-    e.stopPropagation();
-    lastSelection = null;
-    e.stopPropagation();
-    $(table).jqGrid('restoreRow', id);
-    $(table).jqGrid('resetSelection');
-}
 
 // ---------------------------- SOCKET.IO MESSAGES / HANDLERS ----------------------------------
 function msgHandler() {
@@ -152,6 +116,63 @@ function msgHandler() {
     return msgId++; 
 }
 
+function newUser() {
+    bootbox.dialog({
+        message: `
+<form>
+  <div class="form-group row">
+    <label for="nuUsername" class="col-sm-2 col-form-label">Username</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="nuUsername" value="">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="nuName" class="col-sm-2 col-form-label">Name</label>
+    <div class="col-sm-10">
+      <input type="text" class="form-control" id="nuName" value="">
+    </div>
+  </div>
+  <div class="form-group row">
+    <label for="nuPassword" class="col-sm-2 col-form-label">Password</label>
+    <div class="col-sm-10">
+      <input type="password" class="form-control" id="nuPassword" placeholder="Password">
+    </div>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermAll">
+    <label class="form-check-label" for="nuPermAll">All Permissions</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
+    <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
+  </div>
+  <div class="form-check">
+    <input type="checkbox" class="form-check-input" id="nuPermManageMissions">
+    <label class="form-check-label" for="nuPermManageMissions">Manage Missions</label>
+  </div>
+</form>`,
+        title: 'Insert New User',
+        buttons: {
+            confirm: {
+                label: 'Insert',
+                className: 'btn-primary',
+                callback: function() {
+                    var user = {};
+                    user.username = $('#nuUsername').val();
+                    user.name = $('#nuName').val();
+                    user.password = $('#nuPassword').val();
+                    user.permissions = [];
+                    socket.send(JSON.stringify({ act:'insert_user', arg: user, msgId: msgHandler() }));
+                }
+            },
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
+    });
+}
+
 $(document).ready(function() {
     document.body.addEventListener('dragleave', f, false);
     document.body.addEventListener('dragover', f, false);
@@ -164,6 +185,7 @@ $(document).ready(function() {
     }
 
     // ---------------------------- SOCKETS ----------------------------------
+    // socket connection
     if (location.protocol === 'https:') {
         socket = new WebSocket('wss://' + window.location.host + '/mcscop/');
         wsdb = new WebSocket('wss://' + window.location.host + '/mcscop/');
@@ -172,6 +194,7 @@ $(document).ready(function() {
         wsdb = new WebSocket('ws://' + window.location.host + '/mcscop/');
     }
 
+    // socket onopen
     socket.onopen = function() {
         socket.pingInterval = setInterval(function ping() {
             socket.send(JSON.stringify({ act: 'ping', arg: '', msgId: msgHandler() }));
@@ -179,7 +202,8 @@ $(document).ready(function() {
         setTimeout(function() {
             console.log('connect');
             if (users_rw) {
-                socket.send(JSON.stringify({ act:'get_users', arg: '', msgId: msgHandler() }));
+                socket.send(JSON.stringify({ act: 'config', arg: '', msgId: msgHandler() }));
+                socket.send(JSON.stringify({ act: 'get_users', arg: '', msgId: msgHandler() }));
             }
         }, 100);
     };
@@ -206,127 +230,49 @@ $(document).ready(function() {
             
             case 'get_users':
                 // missions
-                usersTabulator.setData(msg.arg.users);
+                usersTabulator.setData(msg.arg);
+                break;
+
+            case 'insert_user':
+                usersTabulator.addRow(msg.arg);
+                break;
+
+            case 'update_user':
+                usersTabulator.updateRow(msg.arg._id, msg.arg);
+                break;
+
+            case 'delete_user':
+                usersTabulator.deleteRow(msg.arg.user_id);
                 break;
         }
     }
+
+    // user table
+    $('#newUser').click(function() { newUser(); });
     if (users_rw) {
         usersTabulator = new Tabulator("#usersTable", {
             layout: "fitColumns",
+            index: '_id',
+            cellEdited: function(cell){
+                socket.send(JSON.stringify({ act: 'update_user', arg: cell.getRow().getData(), msgId: msgHandler() }));
+            },
             columns: [
                 { title: 'User ID', field: '_id' },
-                { title: 'Avatar', field: 'avatar' },
-                { title: 'Username', field: 'username', editor: 'input'},
+                { title: 'Avatar', field: 'avatar', formatter: function(cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== null) {
+                        return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/' + cell.getRow().getData()['_id'] + '.png"/>';
+                    } else {
+                        return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/blank.png"/>';
+                    }
+                }},
+                { title: 'Username', field: 'username' },
                 { title: 'Name', field: 'name', editor: 'input' },
                 { title: 'Password', field: 'password', editor: 'input' },
-                { title: 'Permissions', field: 'permissions' }
+                { title: 'Permissions', field: 'permissions' },
+                { formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+                    socket.send(JSON.stringify({ act: 'delete_user', arg: { user_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
+                }},
             ]
         });
-
-
-
-
-
-        
-
-        /*
-        $("#users").jqGrid({
-            datatype: 'json',
-            mtype: 'POST',
-            url: 'api/users',
-            editurl: 'api/users',
-            autowidth: true,
-            maxHeight: 600,
-            height: 300,
-            rowNum: -1,
-            reloadAfterSubmit: true,
-            colModel: [
-                { label: ' ', template: 'actions', formatter: function(cell, options, row) {
-                        var buttons = '<div title="Delete row" style="float: left;';
-                        if (!users_rw)
-                            buttons += ' display: none;';
-                        buttons += '" class="ui-pg-div ui-inline-del" id="jDelButton_' + options.rowId + '" onclick="config.deleteRow(event, \'users\', \'#users\', \'' + options.rowId + '\')" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-trash"></span></div> <div title="Save row" style="float: left; display: none;" class="ui-pg-div ui-inline-save" id="jSaveButton_' + options.rowId + '" onclick="config.saveRow(event, \'users\', \'#users\', \'' + options.rowId + '\')" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-disk"></span></div><div title="Cancel row editing" style="float: left; display: none;" class="ui-pg-div ui-inline-cancel" id="jCancelButton_' + options.rowId + '" onclick="config.cancelRow(event, \'users\', \'#users\', \'' + options.rowId + '\')" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-cancel"></span></div>';
-                        return buttons;
-                    },
-                    width: 15,
-                    formatoptions: {
-                        keys: true,
-                    }
-                },
-                { label: '_id', name: '_id', key: true, editable: false, hidden: true },
-                { label: 'Avatar', name: 'avatar', width: 53, fixed: true, editable: false, formatter: function (c, o, r) {
-                        if (r.avatar !== null)
-                            return '<img class="droppable avatar" id="avatar_' + r._id + '" src="images/avatars/' + r._id + '.png"/>';
-                        else
-                            return '<img class="droppable avatar" id="avatar_' + r._id + '" src="images/avatars/blank.png"/>';
-                    }
-                },
-                { label: 'Username', name: 'username', width: 50, editable: users_rw, edittype: 'text' },
-                { label: 'Name', name: 'name', width: 50, editable: users_rw, edittype: 'text' },
-                { label: 'API Key', name: 'api', width: 85, editable: users_rw, edittype: 'text' },
-                { label: 'Set Password', name: 'password', width: 50, editable: users_rw, edittype: 'password' },
-                { label: 'System Permissions', name: 'permissions', width: 150, editable: users_rw, edittype: 'select', formatter: 'select', editoptions: {
-                        value: {none: 'None', all:'All', manage_missions:'Manage Missions', delete_missions: 'Delete Missions', manage_users:'Manage Users' },
-                        multiple: true,
-                        size: 10
-                    }
-                }
-
-            ],
-            sortable: true,
-            pager: '#usersPager',
-            pgbuttons: false,
-            pgtext: null,
-            onSelectRow: function (id, r, e) {
-                if (id && id !== lastSelection && users_rw) {
-                    var grid = $("#users");
-                    grid.jqGrid('restoreRow', lastSelection);
-                    $("table#users tr#"+$.jgrid.jqID(id)+ " div.ui-inline-del").hide();
-                    $("table#users tr#"+$.jgrid.jqID(id)+ " div.ui-inline-edit").hide();
-                    $("table#users tr#"+$.jgrid.jqID(id)+ " div.ui-inline-save").show();
-                    $("table#users tr#"+$.jgrid.jqID(id)+ " div.ui-inline-cancel").show();
-                    lastSelection = id;
-                    grid.jqGrid('editRow', id, {keys: true, successfunc: function () {
-                            $("table#users tr#"+$.jgrid.jqID(lastSelection)+ " div.ui-inline-del").show();
-                            $("table#users tr#"+$.jgrid.jqID(lastSelection)+ " div.ui-inline-edit").show();
-                            $("table#users tr#"+$.jgrid.jqID(lastSelection)+ " div.ui-inline-save").hide();
-                            $("table#users tr#"+$.jgrid.jqID(lastSelection)+ " div.ui-inline-cancel").hide();
-                            $("#users").trigger("reloadGrid");
-                            lastSelection = null;
-                        },
-                        afterrestorefunc: function (options) {
-                            lastSelection = null;
-                            $('#users').jqGrid('resetSelection');
-                        }
-                    });
-                }
-            },
-        });
-        $('#users').navGrid('#usersPager', {
-            add: false,
-            edit: false,
-            del: false
-        });
-        $('#users').inlineNav('#usersPager', {
-            edit: false,
-            add: users_rw,
-            del: false,
-            cancel: false,
-            save: false,
-            addParams: {
-                addRowParams: {
-                    keys: true,
-                    successfunc: function() {
-                        $("#users").trigger("reloadGrid");
-                    },
-                    url: 'api/users'
-                },
-            }
-        });
-        $(window).bind("resize", function () {
-            $("#users").jqGrid("setGridWidth", $("#users").closest(".jumbotron").width());
-        }).triggerHandler("resize");
-
-        */
     }
 });

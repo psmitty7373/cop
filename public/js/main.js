@@ -102,6 +102,7 @@ $(document).ready(function() {
         setTimeout(function() {
             console.log('connect');
 //            socket.send(JSON.stringify({ act:'join', arg: {mission_id: mission_id}, msgId: msgHandler() }));
+            socket.send(JSON.stringify({ act:'main', arg: '', msgId: msgHandler() }));
             socket.send(JSON.stringify({ act:'get_missions', arg: '', msgId: msgHandler() }));
         }, 100);
     };

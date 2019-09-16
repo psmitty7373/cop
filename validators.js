@@ -8,6 +8,36 @@ const insert_chat = {
     additionalProperties: true
 }
 
+const insert_user = {
+    type: 'object',
+    properties: {
+        username: { type: 'string', maxLength: 24, pattern: '^[a-zA-Z0-9_\.]{1,24}$' },
+        name: { type: 'string', maxLength: 64 },
+        password: { type: 'string',  maxLength: 64 },
+    },
+    required: ['username', 'name', 'password'],
+    additionalProperties: true
+}
+
+const update_user = {
+    type: 'object',
+    properties: {
+        name: { type: 'string', maxLength: 64 },
+        password: { type: 'string',  maxLength: 64 },
+    },
+    required: ['name'],
+    additionalProperties: true
+}
+
+const delete_user = {
+    type: 'object',
+    properties: {
+        user_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+    },
+    required: ['user_id'],
+    additionalProperties: true
+}
+
 const insert_user_setting = {
     type: 'object',
     properties: {
@@ -177,6 +207,9 @@ const move_object = {
 
 module.exports = {
     insert_chat: insert_chat,
+    insert_user: insert_user,
+    update_user: update_user,
+    delete_user: delete_user,
     insert_user_setting: insert_user_setting,
     update_user_setting: update_user_setting,
     insert_note: insert_note,

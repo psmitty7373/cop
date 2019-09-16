@@ -497,7 +497,7 @@ $(document).ready(function() {
                         if (canvas.item(i)._id == o._id) {
                             var obj = canvas.item(i);
                             obj.dirty = true;
-                            console.log(obj.objType);
+
                             if (obj.objType !== 'link') {
                                 obj.set('angle', o.rot);
                                 if (o.type === 'shape') {
@@ -649,144 +649,6 @@ $(document).ready(function() {
         ]
     });
 
-    /*
-    $("#users").jqGrid({
-        datatype: 'local',
-        cellsubmit: 'clientArray',
-        editurl: 'clientArray',
-        data: [],
-        gridview: true,
-        height: 350,
-        rowNum: 9999,
-        cellEdit: true,
-        pager: '#usersPager',
-        pgbuttons: false,
-        sortname: 'username',
-        sortorder: 'asc',
-        pgtext: null,
-        viewrecords: false,
-        colModel: [
-            { label: 'Id', name: '_id', width: 40, fixed: true, key: true, editable: false, hidden: true },
-            { label: ' ', name: 'actions', fixed: true, formatter: function(cell, options, row) {
-                    var buttons = '<div title="Delete row" style="float: left;';
-                    if (!users_rw)
-                        buttons += ' display: none;';
-                    buttons += '" class="ui-pg-div ui-inline-del" id="jDelButton_' + options.rowId + '" onclick="cop.deleteRowConfirm(\'user_setting\', \'#users\', \'' + options.rowId + '\', \'users_\')" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-trash"></span></div> ';
-                    buttons += '<div title="Save row" style="float: left; display: none;" class="ui-pg-div ui-inline-save ui-inline-save-row" id="jSaveButton_' + options.rowId + '" onclick="cop.saveRow(\'user_setting\', \'#users\', \'' + options.rowId + '\', \'users_\')" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-disk"></span></div>';
-                    buttons += '<div title="Save row" style="float: left; display: none;" class="ui-pg-div ui-inline-save ui-inline-save-cell" id="jSaveButton_' + options.rowId + '" onclick="$(\'#users\').saveCell(lastselection.iRow, lastselection.iCol);" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-disk"></span></div>';
-                    buttons += '<div title="Cancel new row" style="float: left; display: none;" class="ui-pg-div ui-inline-cancel ui-inline-cancel-row" id="jCancelButton_' + options.rowId + '" onclick="jQuery.fn.fmatter.rowactions.call(this,\'cancel\'); addingRow = false;" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-cancel"></span></div>';
-                    buttons +=  '<div title="Cancel row editing" style="float: left; display: none;" class="ui-pg-div ui-inline-cancel ui-inline-cancel-cell" id="jCancelButton_' + options.rowId + '<div title="Cancel row editing" style="float: left; display: none;" class="ui-pg-div ui-inline-cancel" id="btn_cancel_' + options.rowId + '" onclick="$(\'#users\').restoreCell(lastselection.iRow, lastselection.iCol);" onmouseover="jQuery(this).addClass(\'ui-state-hover\');" onmouseout="jQuery(this).removeClass(\'ui-state-hover\');"><span class="ui-icon ui-icon-cancel"></span></div>';
-                    return buttons;
-                },
-                width: 50,
-                hidden: !users_rw,
-                formatoptions: {
-                    keys: true,
-                }
-            },
-            { label: 'Username', name: 'user_id', width: 100, editable: users_rw, formatter: 'select', edittype: 'select', editoptions: { value: '' } },
-            { label: 'Permissions', name: 'permissions', width: 200, editable: users_rw, edittype: 'select', formatter: 'select', editoptions: {
-                    value: {none: 'None', all:'All', manage_users:'Manage Users', modify_diagram: 'Modify Diagram', modify_notes: 'Modify Notes', modify_details: 'Modify Details', modify_files: 'Modify Files'},
-                    multiple: true,
-                    size: 10
-                }
-            }
-        ],
-        onSelectRow: function() {
-            return false;
-        },
-        beforeSelectRow: function(rowid, e) {
-            return false;
-        },
-        beforeEditCell: function (id, cn, val, iRow, iCol) {
-            if (lastselection.id && lastselection.id !== id) {
-                $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-del').show();
-                $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-save-cell').hide();
-                $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-cancel-cell').hide();
-            }
-            $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-del').hide();
-            $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-save-cell').show();
-            $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-cancel-cell').show();
-            lastselection = {id: id, iRow: iRow, iCol: iCol};
-        },
-        beforeSaveCell: function (options, col, value) {
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-del').show();
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-save-cell').hide();
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-cancel-cell').hide();
-            $('#users').jqGrid('resetSelection');
-            lastselection.id = null;
-            var data = $('#users').getRowData(options);
-            data[col] = value;
-            delete data.actions;
-            if (!Array.isArray(data.permissions))
-                data.permissions = data.permissions.split(',');
-            socket.send(JSON.stringify({act: 'update_user_setting', arg: data, msgId: msgHandler()}));
-        },
-        afterEditCell: function(id, name, val, iRow, iCol) {
-            // this handles clicking outside a cell while editing... a janky blur
-            cellEdit = function() {
-                $('#users').saveCell(iRow,iCol);
-                cellEdit = null;
-            }
-        },
-        afterRestoreCell: function (options) {
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-del').show();
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-save-cell').hide();
-            $('#users tr#'+$.jgrid.jqID(options)+ ' div.ui-inline-cancel-cell').hide();
-            $('#users').jqGrid('resetSelection');
-        }
-    });
-    //users pager
-    $('#users').jqGrid('navGrid', '#usersPager', {
-        add: false,
-        edit: false,
-        del: false,
-        refresh: false
-    });
-    if (users_rw) {
-        $('#users').jqGrid('navGrid').jqGrid('navButtonAdd', '#usersPager', {
-            position:"last",
-            caption:"",
-            buttonicon:"ui-icon-plus",
-            onClickButton: function(){
-                if (cellEdit)
-                    cellEdit();
-                if (!addingRow) {
-                    addingRow = true;
-                    // get / set roles and users dropdown
-                    $('#users').jqGrid('addRow', {position: 'last', addRowParams: {
-                            keys: true,
-                            beforeSaveRow: function(options, id) {
-                                addingRow = false;
-                                data = {};
-                                $(this).find('input, select, textarea').each(function () {
-                                    data[this.name] = $(this).val();
-                                });
-                                delete data.actions;
-                                $('#users').jqGrid('restoreRow', id, function(){ setTimeout(function () { socket.send(JSON.stringify({act: 'insert_user', arg: data, msgId: msgHandler()})); } , 10); });
-                                $('#users').jqGrid('resetSelection');
-                            },
-                            oneditfunc: function(id) {
-                                if (lastselection.id && lastselection.id !== id) {
-                                    $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-del').show();
-                                    $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-save-row').hide();
-                                    $('#users tr#'+$.jgrid.jqID(lastselection.id)+ ' div.ui-inline-cancel-row').hide();
-                                }
-                                $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-del').hide();
-                                $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-save-row').show();
-                                $('#users tr#'+$.jgrid.jqID(id)+ ' div.ui-inline-cancel-row').show();
-                                lastselection = {id: id, iRow: null, iCol: null};
-                            },
-                            afterrestorefunc: function() {
-                                addingRow = false;
-                            }
-                        }
-                   });
-                }
-            }
-        });
-    }*/
-
     // ---------------------------- BUTTONS ----------------------------------
     $('#zoomInButton').click(function() { zoomIn(); });
     $('#zoomOutButton').click(function() { zoomOut(); });
@@ -805,14 +667,14 @@ $(document).ready(function() {
         else
             chatPosition[activeChannel] = $('#' + activeChannel).scrollTop();
         $('.channel-pane').hide();
-        $('.channel').removeClass('channel-selected');
+        $('.channel').removeClass('channelSelected');
         $('#' + c).show();
         unreadMessages[c] = 0;
         $('#unread-' + c).hide();
         $('#chatTab').css('background-color', '');
         if (!chatPosition[c] || chatPosition[c] === 'bottom')
             $('#' + c).scrollTop($('#' + c)[0].scrollHeight);
-        $('#channel-' + c).addClass('channel-selected');
+        $('#channel-' + c).addClass('channelSelected');
         activeChannel = c;
     });
 
@@ -903,7 +765,7 @@ $(document).ready(function() {
         }, 100);
     });
 
-    // on resize, resize the canvas and our jqgrids
+    // on resize, resize the canvas
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function() {

@@ -9,7 +9,7 @@ const validators = require('./validators.js');
 const express = require('express');
 const app = express();
 const async = require('async');
-const bcrypt = require('bcrypt-nodejs');
+const bcrypt = require('bcrypt');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const crypto = require('crypto');
@@ -30,7 +30,7 @@ const xssFilters = require('xss-filters');
 const wss = require('ws');
 const ws = new wss.Server({server:http});
 
-const cop_permissions = ['all', 'manage_missions', 'delete_missions', 'manage_users'];
+const cop_permissions = ['all', 'manage_missions', 'manage_users'];
 const mission_permissions = ['all', 'manage_users', 'modify_diagram', 'modify_notes', 'modify_files', 'api_access'];
 
 app.set('view engine', 'pug');
@@ -114,6 +114,7 @@ function dynamicSort(property) {
 }
 
 function sendToRoom(room, msg, selfSocket) {
+    console.log(room, msg);
     if (!selfSocket)
         selfSocket = null;
     if (rooms.get(room)) {
@@ -211,18 +212,20 @@ function processNode(dir, mission_id, f) {
     };
 }
 
-function insertLogEvent(socket, message, channel) {
+async function insertLogEvent(socket, message, channel) {
     if (!channel || channel === '')
         channel = 'log';
     var timestamp = (new Date).getTime();
     var log = { mission_id: ObjectID(socket.mission_id), user_id: ObjectID(socket.user_id), channel: channel, text: message, timestamp: timestamp, deleted: false };
-    mdb.collection('chats').insertOne(log, function (err, result) {
-        if (!err) {
-            log.username = socket.username;
-            sendToRoom(socket.room, JSON.stringify({ act: 'chat', arg: [ log ] }));
-        } else
-            console.log(err);
-    });
+    try {
+        var res = await mdb.collection('chats').insertOne(log);
+        log.username = socket.username;
+        sendToRoom(socket.room, JSON.stringify({ act: 'chat', arg: [ log ] }));
+        return [];
+    } catch (err) {
+        console.log(err);
+        return [];
+    }
 }
 
 ws.on('connection', function(socket, req) {
@@ -262,6 +265,7 @@ const pingInterval = setInterval(function ping() {
     });
 }, 30000);
 
+// get object listing
 async function getObjects(socket) {
     try {
         res = await mdb.collection('objects').find({ mission_id: ObjectID(socket.mission_id), deleted: { $ne: true } }).sort({ z: 1 }).toArray();
@@ -272,12 +276,94 @@ async function getObjects(socket) {
     }
 }
 
+// get user listing
 async function getUsers(socket) {
     try {
-        return await mdb.collection('users').find({ deleted: { $ne: true } }, { username: 1 }).toArray();
+        return await mdb.collection('users').find({ deleted: { $ne: true } }, { projection: { password: 0 } }).toArray();
     } catch (err) {
         console.log(err);
         return [];
+    }
+}
+
+// insert new user
+async function insertUser(socket, user) {
+    hash = await bcrypt.hash(user.password, 10);
+    var api = crypto.randomBytes(32).toString('hex');
+    user.password = hash;
+    user.api = api;
+    user.avatar = '';
+    user.deleted = false;
+    try {
+        var res = await mdb.collection('users').insertOne(user);
+        return res.ops[0];
+    } catch (err) {
+        console.log(err);
+        return false;
+    }
+}
+
+// update user
+async function updateUser(socket, user) {
+    if (user.name === 'admin') {
+        user.permissions = 'all'; // make sure admin always has all permissions
+    }
+    /*
+    else {
+        var new_perms = [];
+        user.permissions = req.body.permissions.split(',');
+        for (var i = 0; i < req.body.permissions.length; i++) {
+            if (cop_permissions.indexOf(req.body.permissions[i]) > -1)
+                new_perms.push(req.body.permissions[i]);
+        }
+    }*/
+
+    // new password
+    if (user.password && user.password !== '') {
+        var hash = await bcrypt.hash(user.password, 10);
+        var new_values = { $set: { name: user.name, password: hash }};
+        try {
+            var res = await mdb.collection('users').updateOne({ _id: ObjectID(user._id) }, new_values);
+            if (res.result.ok === 1) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+
+    // same old password
+    else {
+        var new_values = { $set: { name: user.name }};
+        try {
+            var res = await mdb.collection('users').updateOne({ _id: ObjectID(user._id) }, new_values);
+            if (res.result.ok === 1) {
+                return true;
+            }
+            else {
+                return false;
+            }
+        } catch (err) {
+            console.log(err);
+            return false;
+        }
+    }
+}
+
+// delete user
+async function deleteUser(socket, user) {
+    try {
+        var res = await mdb.collection('users').updateOne({ _id: ObjectID(user) }, { $set: { deleted: true } });
+        if (res.result.ok === 1) {
+            return true;
+        }
+    } catch (err) {
+        console.log(err);
+        return false;
     }
 }
 
@@ -429,36 +515,61 @@ async function setupSocket(socket) {
         }
         console.log(msg.act, socket.loggedin);
         if (msg.act && socket.loggedin) {
-            if (msg.act === 'stream') {
-                var stream = new WebSocketJSONStream(socket);
-                socket.type = 'sharedb';
-                backend.listen(stream);
+            switch (msg.act) {
+                case 'stream':
+                    var stream = new WebSocketJSONStream(socket);
+                    socket.type = 'sharedb';
+                    backend.listen(stream);
+                    break;
 
-            } else if (msg.act === 'join') {
-                //TODO permissions
-                socket.room = msg.arg.mission_id;
-                socket.mission_id = msg.arg.mission_id;
-                if (!rooms.get(msg.arg.mission_id)) {
-                    rooms.set(msg.arg.mission_id, new Set());
-                }
+                // join mission room
+                case 'join':
+                    //TODO permissions
+                    socket.room = msg.arg.mission_id;
+                    socket.mission_id = msg.arg.mission_id;
+                    if (!rooms.get(msg.arg.mission_id)) {
+                        rooms.set(msg.arg.mission_id, new Set());
+                    }
 
-                rooms.get(msg.arg.mission_id).add(socket);
-                socket.type = 'diagram';
+                    rooms.get(msg.arg.mission_id).add(socket);
+                    socket.type = 'diagram';
 
-                var resp = {};
+                    var resp = {};
 
-                resp.users = await getUsers(socket);
-                resp.objects = await getObjects(socket);
-                resp.userSettings = await getMissionUsers(socket);
-                resp.notes = await getNotes(socket);
-                resp.chats = await getChats(socket);
+                    resp.users = await getUsers(socket);
+                    resp.objects = await getObjects(socket);
+                    resp.userSettings = await getMissionUsers(socket);
+                    resp.notes = await getNotes(socket);
+                    resp.chats = await getChats(socket);
 
-                socket.send(JSON.stringify({ act:'join', arg: resp }));
+                    socket.send(JSON.stringify({ act:'join', arg: resp }));
+                    break;
+                
+                case 'main':
+                // join main room
+                    socket.room = 'main';
+                    if (!rooms.get('main')) {
+                        rooms.set('main', new Set());
+                    }
+                    rooms.get('main').add(socket);
+                    socket.type = 'main';
+                    break;
 
-            } else if (msg.act === 'get_missions') {
-                var resp = {};
-                resp.missions = await getMissions(socket);
-                socket.send(JSON.stringify({ act:'get_missions', arg: resp }));
+                case 'config':
+                // join config room
+                    socket.room = 'config';
+                    if (!rooms.get('config')) {
+                        rooms.set('config', new Set());
+                    }
+                    rooms.get('config').add(socket);
+                    socket.type = 'config';
+                    break;
+
+                case 'get_missions':
+                    var resp = {};
+                    resp.missions = await getMissions(socket);
+                    socket.send(JSON.stringify({ act:'get_missions', arg: resp }));
+                    break;
                     /*
                     // edit mission
                     } else if (req.body.oper === 'edit' && hasPermission(req.session.cop_permissions, 'manage_missions') && req.body._id && req.body.name && req.body.start_date) {
@@ -507,12 +618,65 @@ async function setupSocket(socket) {
                         console.log('Error');
                     }
                     */
-            } else if (msg.act === 'get_users') {
-                var resp = {};
-                resp.users = await getUsers(socket);
-                socket.send(JSON.stringify({ act:'get_users', arg: resp }));
-            }
-            else {
+            // get users
+            case 'get_users':
+            case 'insert_user':
+            case 'update_user':
+            case 'delete_user':
+                if (hasPermission(socket.cop_permissions, 'manage_users')) {
+                    if (msg.act === 'get_users') {
+                        var resp = {};
+                        resp.users = await getUsers(socket);
+                        socket.send(JSON.stringify({ act:'get_users', arg: resp.users }));
+
+                    // insert user
+                    } else if (msg.act === 'insert_user') {
+                        if (ajv.validate(validators.insert_user, msg.arg)) {
+                            var res = await insertUser(socket, msg.arg);
+                            if (res) {
+                                res.password = '';
+                                sendToRoom(socket.room, JSON.stringify({ act: 'insert_user', arg: res }));
+                            }
+                        } else {
+                            socket.send(JSON.stringify({ act: 'error', arg: { text: 'Invalid request data.' }}));
+                            console.log('[!] insert_user validation failed.')
+                        }
+
+                    // update user
+                    } else if (msg.act === 'update_user') {
+                        if (ajv.validate(validators.update_user, msg.arg)) {
+                            var res = await updateUser(socket, msg.arg);
+                            if (res) {
+                                delete msg.arg.username;
+                                delete msg.arg.api;
+                                msg.arg.password = '';
+                                sendToRoom(socket.room, JSON.stringify({ act: 'update_user', arg: msg.arg }));
+                            } else {
+                                socket.send(JSON.stringify({ act: 'error', arg: { text: 'Error modifying user.' }}));
+                            }
+                        } else {
+                            socket.send(JSON.stringify({ act: 'error', arg: { text: 'Invalid request data.' }}));
+                            console.log('[!] update_user validation failed.')
+                        }
+
+                    // delete user
+                    } else if (msg.act === 'delete_user') {
+                        if (ajv.validate(validators.delete_user, msg.arg)) {
+                            var res = await deleteUser(socket, msg.arg.user_id);
+                            if (res) {
+                                    sendToRoom(socket.room, JSON.stringify({ act: 'delete_user', arg: { user_id: msg.arg.user_id }}));
+                            } else {
+                                socket.send(JSON.stringify({ act: 'error', arg: { text: 'Error deleting user.' }}));
+                            }
+                        } else {
+                            socket.send(JSON.stringify({ act: 'error', arg: { text: 'Invalid request data.' }}));
+                            console.log('[!] delete_user validation failed.')
+                        }
+                    }
+                }
+                break;
+
+            default:
                 // mission commands
                 if (socket.mission_id && ObjectID.isValid(socket.mission_id) && socket.user_id && ObjectID.isValid(socket.user_id)) {
                     switch (msg.act) {
@@ -1046,98 +1210,8 @@ app.post('/api/:table', function (req, res) {
     res.writeHead(200, {"Content-Type": "application/json"});
 // MISSIONS
     
-// USERS
-    if (req.params.table !== undefined && req.params.table === 'users' && hasPermission(req.session.cop_permissions, 'manage_users')) {
-        // get users
-        if (req.body.oper === undefined) {
-            mdb.collection('users').find({ deleted: { $ne: true }}, { password: 0 }).toArray(function(err, rows) {
-                if (rows) {
-                    res.end(JSON.stringify(rows))
-                } else {
-                    res.end(JSON.stringify('[]'));
-                    if (err)
-                        console.log(err);
-                }
-            });
-
-        // edit user
-        } else if (req.body.oper !== undefined && req.body.oper === 'edit' && req.body.name !== undefined && req.body._id) {
-            if (req.body.name === 'admin')
-                req.body.permissions = 'all'; // make sure admin always has all permissions
-            else {
-                var new_perms = [];
-                req.body.permissions = req.body.permissions.split(',');
-                for (var i = 0; i < req.body.permissions.length; i++) {
-                    if (cop_permissions.indexOf(req.body.permissions[i]) > -1)
-                        new_perms.push(req.body.permissions[i]);
-                }
-            }
-            if (req.body.password !== '') {
-                bcrypt.hash(req.body.password, null, null, function(err, hash) {
-                    var new_values = { $set: { name: req.body.name, permissions: req.body.permissions, password: hash }};
-                    mdb.collection('users').updateOne({ _id: ObjectID(req.body._id) }, new_values, function (err, result) {
-                        if (!err) {
-                            res.end(JSON.stringify('OK'));
-                        } else {
-                            res.end(JSON.stringify('ERR8'));
-                            console.log(err);
-                        }
-                    });
-                });
-    
-            // update user
-            } else {
-                var new_values = { $set: { name: req.body.name, permissions: req.body.permissions }};
-                mdb.collection('users').updateOne({ _id: ObjectID(req.body._id) }, new_values, function (err, result) {
-                    if (!err) {
-                        res.end(JSON.stringify('OK'));
-                    } else {
-                        res.end(JSON.stringify('ERR9'));
-                        console.log(err);
-                    }
-                });
-            }
-
-        // add user
-        } else if (req.body.oper !== undefined && req.body.oper === 'add' && req.body.username && req.body.name !== undefined) {
-            bcrypt.hash(req.body.password, null, null, function(err, hash) {
-                if (!err) {
-                    if (req.body.permissions === undefined || req.body.permissions === '')
-                        req.body.permissions = null;
-                    var api = crypto.randomBytes(32).toString('hex');
-                    var user = { username: req.body.username, name: req.body.name, password: hash, permissions: req.body.permissions, api: api, avatar: '', deleted: false };
-                    mdb.collection('users').insertOne(user, function (err, result) {
-                        if (!err) {
-                            res.end(JSON.stringify('OK'));
-                        } else {
-                            console.log(err);
-                            res.end(JSON.stringify('ERR13'));
-                        }
-                    });
-                } else
-                    console.log(err);
-            });
-
-        // delete user
-        } else if (req.body.oper !== undefined && req.body.oper === 'del' && req.body._id !== undefined) {
-            if (req.body.name === 'admin') // don't delete admin
-                res.end(JSON.stringify('ERR12'));
-            else {
-                mdb.collection('users').updateOne({ _id: ObjectID(req.body._id) }, { $set: { deleted: true } }, function (err, result) {
-                    if (!err) {
-                        res.end(JSON.stringify('OK'));
-                    } else {
-                        console.log(err);
-                        res.end(JSON.stringify('ERR13'));
-                    }
-                });
-            }
-        } else {
-            res.end(JSON.stringify('ERR14'));
-        }
-
     // change password
-    } else if (req.params.table !== undefined && req.params.table === 'change_password') {
+    if (req.params.table !== undefined && req.params.table === 'change_password') {
         bcrypt.hash(req.body.newpass, null, null, function(err, hash) {
             mdb.collection('users').updateOne({ _id: ObjectID(req.session.user_id) }, { $set: { password: hash }}, function (err, result) {
                 if (!err) {
