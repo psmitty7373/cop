@@ -1,16 +1,24 @@
-# MCSCOP
+# COP
 
-## About MCSCOP
-MCSCOP is a node.js based web application that allows a team to create a "Common Operating Picture" during a network intrusion event.  The tool allows real-time collaborative network diagraming, event tracking, and operator note-taking.  Additionally the tool allows file sharing and chat to facilitate operator interaction and callaboration.
+## About COP
+COP is a node.js based web application that allows a team to create a "Common Operating Picture" during a incident, CTF, or any thing else..  The tool allows real-time collaborative network diagraming, event tracking, note-taking, and coordination.  Additionally the tool allows file sharing and chat to facilitate user interaction and callaboration.
 
 ## Installation
+### Installing on Debian 9+
+```bash
+git clone https://github.com/psmitty7373/cop.git
+cd cop/
+./install-cop-apt.sh
+```
+
 ### Installing on Centos 7
 ```bash
-git clone https://github.com/psmitty7373/mcscop.git
-cd mcscop/
+git clone https://github.com/psmitty7373/cop.git
+cd cop/
 ./install-cop.sh
 ```
-The install script will walk through getting any dependencies and creating an initial admin user and password.  The install script will also install PM2 run MCSCOP as a service.  Once completed MCSCOP will listen on port 3000 and can be accessed via a web browser  at http://<centos ip>:3000.
+
+The install script will walk through getting any dependencies and creating an initial admin user and password.  The script can also establish a systemd service for the cop. Once completed SCOP will listen on port 3000 and can be accessed via a web browser at http://<server ip>:3000.
  
 ## Features
 
@@ -23,3 +31,7 @@ The install script will walk through getting any dependencies and creating an in
 ### General Notes
 
 ### File Sharing
+
+### Chat
+
+### API access
