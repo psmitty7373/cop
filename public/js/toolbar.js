@@ -257,6 +257,7 @@ function editDetails(id, name) {
                             ]
                         }
                     });
+                    quill.root.setAttribute('spellcheck', false)
                     quill.setContents(openDocs[id].data);
                     quill.on('text-change', function(delta, oldDelta, source) {
                         if (source !== 'user') return;

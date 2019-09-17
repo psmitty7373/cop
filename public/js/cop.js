@@ -154,6 +154,7 @@ function updateMinimap() {
     var mTop = (MAXHEIGHT - settings.y / zoom) * scaleY;
     var mWidth = (canvas.width / zoom) * scaleX;
     var mHeight = (canvas.height / zoom) * scaleY;
+    minimapCtx.strokeStyle = '#ffffff';
     minimapCtx.clearRect(0, 0, minimapCtx.canvas.width, minimapCtx.canvas.height);
     minimapCtx.beginPath();
     minimapCtx.rect(mLeft, mTop, mWidth, mHeight);
@@ -166,6 +167,7 @@ function updateMinimapBg() {
     minimapBgCtx.clearRect(0, 0, minimapCtx.canvas.width, minimapCtx.canvas.height);
     for (var i = 0; i < canvas.getObjects().length; i++) {
         if (canvas.item(i).objType === 'icon' || canvas.item(i).objType === 'shape') {
+            minimapBgCtx.fillStyle = '#ffffff';
             minimapBgCtx.fillRect((MAXWIDTH + canvas.item(i).left) * scaleX, (MAXHEIGHT + canvas.item(i).top) * scaleY, 2, 2);
         }
     }
@@ -342,6 +344,11 @@ $(document).ready(function() {
 
     // start clocks
     startTime();
+
+    // save last thing clicked
+    $(window).click(function(e) {
+        lastClick = e.target;
+    });
 
     // chat notification sound
     notifSound = new Audio('sounds/knock.mp3');

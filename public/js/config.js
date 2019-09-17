@@ -270,7 +270,7 @@ $(document).ready(function() {
                 { title: 'Password', field: 'password', editor: 'input' },
                 { title: 'Manage Missions', field: 'permissions.manage_missions', editor: 'tickCross', formatter: 'tickCross', align: 'center' },
                 { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross', align: 'center'  },
-                { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+                { headerSort: false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
                     socket.send(JSON.stringify({ act: 'delete_user', arg: { user_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
                 }},
             ]

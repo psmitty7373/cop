@@ -6,7 +6,6 @@
 }
 
 body {
-    background-color: rgb(33,37,43);
     font-family: lato;
 }
 
@@ -68,6 +67,7 @@ td a {
 }
 
 .canvas {
+    background-color: #555;
     position: relative;
     width: 100%;
     height: 100%;
@@ -109,10 +109,8 @@ td a {
 .jumbotron {
     border-radius: 0px;
     overflow: hidden;
-    border: 1px solid #7f7f7f;
     margin-bottom: 5px;
     padding: 5px;
-    background-color: #d2d2d2;
 }
 
 .myavatar {
@@ -151,7 +149,7 @@ td a {
 
 .messageSender {
     font-weight: 900;
-    color: #2C2D30;
+    color: #E74C3C;
     line-height: 18px;
     margin-right: 4px;
 }
@@ -211,8 +209,7 @@ td a {
 }
 
 .navbar {
-    border-radius: 0px;
-    margin-bottom: 0px;
+    height: 36px;
     min-height:32px !important
 }
 
@@ -226,9 +223,9 @@ td a {
     margin-bottom: 5px;
 }
 
-#files, #notes {
+#tools, #files, #notes {
     height: 100%;
-    overflow-y: scroll;
+    overflow-y: auto;
     overflow-x: hidden;
 }
 
@@ -330,13 +327,13 @@ td a {
     height: 100%;
     display: flex;
     flex-direction: column;
-    background: #ffffff;
 }
 
 #channel-footer {
     width: 100%;
-    padding-left: 10px;
-    padding-right: 10px;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-right: 20px;
     padding-bottom: 5px;
 }
 
@@ -345,18 +342,14 @@ td a {
     overflow-x: hidden;
     overflow-y: scroll;
     padding-top: 5px;
-    padding-left: 15px;
+    padding-left: 5px;
 }
 
 #channels {
-    background: #303E4D;
-    width: 220px;
+    background: #375a7f;
+    width: 150px;
     height: 100%;
     float: left;
-}
-
-#toolsForm {
-    overflow-y: scroll;
 }
 
 #toolsForm, #notesForm, #filesForm {
@@ -368,6 +361,10 @@ td a {
     padding-bottom: 45px;
 }
 
+#prevObjectSearch {
+    margin-right: 5px;
+}
+
 .canvas-container {
     width: 100% !important;
     height: 100% !important;;
@@ -376,18 +373,29 @@ td a {
     top: 0px !important;
 }
 
+.jstree-default .jstree-wholerow-clicked {
+    background-color: transparent;
+    background: transparent;
+}
+
+.jstree-default .jstree-wholerow-hovered {
+    background-color: #00000017;
+}
+
 .modal {
     overflow: hidden;
 }
 
 .modal-header {
-    background-color: darkgray;
+    background-color: #222;
+    border: 0px;
 }
 
 .modal-content {
-    background-color: lightgray;
+    /*background-color: lightgray;*/
     display: flex;
     flex-flow: column;
+    border: 0px;
 }
 
 .modal-details {
@@ -418,7 +426,8 @@ td a {
 }
 
 .modal-footer {
-    background-color: darkgray;
+    background-color: #222;
+    border: 0px;
 }
 
 .ql-editor {
@@ -427,6 +436,19 @@ td a {
 
 .ql-toolbar.ql-snow {
     padding: 4px;
+    border: 0px;
+}
+
+.ql-container.ql-snow {
+    border: 0px;
+}
+
+.ql-snow .ql-stroke {
+    stroke: #fff;
+}
+
+.ql-snow .ql-picker.ql-expanded .ql-picker-label {
+    color: #fff;
 }
 
 .login-logo {
@@ -440,7 +462,6 @@ td a {
 }
 
 .object-details {
-    background-color: #ffffff;
     font-family: courier;
     display: flex;
     flex-direction: column;
@@ -455,8 +476,7 @@ td a {
     max-width: 400px;
     padding: 15px 35px 45px;
     margin: 0 auto;
-    background-color: lightgray;
-    border: 1px solid rgba(0,0,0,0.1);
+    background-color: #505050;
     .form-signin-heading {
         margin-bottom: 30px;
     }
@@ -479,8 +499,7 @@ td a {
     left: 5px;
     width: 100px;
     height: 100px;
-    background-color: white;
-    border: solid 1px #7f7f7f;
+    background-color: #101010;
 }
 
 #zoom-buttons {
@@ -602,7 +621,7 @@ td a {
     top: 0px;
     right: 0px;
     position: absolute;
-    background: #9d9d9d;
+    background: #375a7f;
 }
 
 .vertNavInsideRight {
@@ -619,7 +638,7 @@ td a {
     padding-bottom: 2px;
     width: 35;
     height: 100px;
-    border-bottom: 2px solid #7f7f7f;
+    border-bottom: 2px solid #224050;
     position: relative;
     z-index: 4;
 }
@@ -656,8 +675,8 @@ td a {
 }
 
 #bottomJumbo {
-    height: 450px;
-    min-height: 350px;
+    height: 350px;
+    min-height: 300px;
     padding: 0px;
     width: 100%;
 }
@@ -668,13 +687,13 @@ td a {
 
 .activeTab {
     z-index: 40;
-    background-color: #efefef;
+    background-color: #333;
     position: relative;
 }
 
 .active-horiz-tab {
     z-index: 40;
-    background-color: #d2d2d2;
+    background-color: #333;
 }
 
 #toolsTabTag {
@@ -718,7 +737,7 @@ td a {
 
 
 #toolbar {
-    background-color: #fff;
+    background-color: #303030;
     position: absolute;
     right: 0px;
     top: 0px;
@@ -732,7 +751,6 @@ td a {
 #toolbarBody {
     width: 0px;
     height: 100%;
-    background-color: #efefef;
     overflow: hidden;
 }
 

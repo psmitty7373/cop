@@ -85,7 +85,7 @@ function addChatMessage(messages, bulk) {
                 $('#' + messages[i].channel).scrollTop($('#' + messages[i].channel)[0].scrollHeight);
         }
         if (messages[i].more)
-            pane.prepend('<div id="get-more-messages"><span onClick="getMoreMessages(\'' + messages[i].channel + '\')">Get more messages.</span></div>');
+            pane.prepend('<div id="get-more-messages"><span onClick="getMoreMessages(\'' + messages[i].channel + '\')">Get older messages.</span></div>');
     }
 }
 

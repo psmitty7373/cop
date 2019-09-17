@@ -1,20 +1,18 @@
 html
   head
     title= title
-    link(rel='stylesheet', href='css/bootstrap.min.css')
+    link(rel='icon', href='favicon.ico', type='image/x-icon')
+    link(rel='stylesheet', href='css/jquery-ui.min.css')
+    link(rel='stylesheet', href='css/tab_test.css')
+    link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
     link(rel='stylesheet', href='css/highlight.min.css')
     link(rel='stylesheet', href='css/image-picker.css')
-    link(rel='stylesheet', href='css/tabulator_bootstrap.min.css')
-    link(rel='stylesheet', href='css/jquery-ui.min.css')
-    link(rel='stylesheet', href='css/jquery-ui.theme.min.css')
-    link(rel='stylesheet', href='css/jquery-ui-timepicker-addon.min.css')
     link(rel='stylesheet', href='css/quill.snow.css')
     link(rel='stylesheet', href='css/jstree.min.css')
     link(rel='stylesheet', href='css/palette-color-picker.css')
     link(rel='stylesheet', href='css/toastr.min.css')
     link(rel='stylesheet', href='css/files.css')
     link(rel='stylesheet', href='css/style.css')
-    link(rel='https://fonts.googleapis.com/css?family=Roboto:400,500|Inconsolata:400,700')
 
   body
     div.container-fluid
@@ -30,12 +28,12 @@ html
           canvas#background
           canvas#canvas
           div#message
-          div.input-group#objectSearchBar
+          div#objectSearchBar
             input(type="text", placeholder="Search...").form-control#objectSearch
             span#foundCount
             span.input-group-btn
-              button.btn.btn-default#prevObjectSearch &#8249;
-              button.btn.btn-default#nextObjectSearch &#8250;
+              button.btn.btn-secondary#prevObjectSearch &#8249;
+              button.btn.btn-secondary#nextObjectSearch &#8250;
           div#zoom-buttons
             button.zoomIn#zoomInButton.ui-icon.ui-icon-zoomin
             button.zoomOut#zoomOutButton.ui-icon.ui-icon-zoomout
@@ -61,58 +59,59 @@ html
               div#progressbarContainer
                 div#progressbar
             form#toolsForm.toolbar-form
-              span.toolbarTitle#toolbarTitle Edit Object
-              button.propButton.btn.btn-success#newObjectButton(type='button' disabled) New!
-              input(type="hidden", name="id")#propID
-              input(type="hidden", name="type")#propType
-              div.form-group#propNameGroup
-                label Name
-                textarea(name="name" disabled).form-control#propName
-              div.form-group#propColorGroup
-                label Color
-                div.colors
-                  span#propFillColorSpan
-                    input#propFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
-                  span#propStrokeColorSpan
-                    input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
-              div.form-group#propObjectGroup
-                ul
-                  li
-                    a(href="#tabs-icon") Icons
-                  li
-                    a(href="#tabs-shape") Shapes
-                  li
-                    a(href="#tabs-link") Links
-                div#tabs-icon
-                  select.image-picker#prop-icon
-                    each icon in icons
-                      option(data-img-src="images/icons/" + icon, data-img-class="first", value=icon) icon
-                div#tabs-shape
-                  select.image-picker#prop-shape
-                    each shape in shapes
-                      option(data-img-src="images/shapes/" + shape, data-img-class="first", value=shape) shape
-                div#tabs-link
-                  select.image-picker#prop-link
-                    each link in links
-                      option(data-img-src="images/links/" + link, data-img-class="first", value=link) link
-              div.form-group#moveObject
-                  div.checkbox#lockObjectGroup
-                    label
-                      input(type="checkbox", value="0" disabled)#lockObject
-                      | Locked?
-                  div#sizeObject.input-group
-                    input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
-                    span.input-group-addon x
-                    input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
-                  button.propButton.btn.btn-default#moveUp(type='button' disabled) Up
-                  button.propButton.btn.btn-default#moveDown(type='button' disabled) Down
-                  button.propButton.btn.btn-default#moveToFront(type='button' disabled) Front
-                  button.propButton.btn.btn-default#moveToBack(type='button' disabled) Back
-              div.form-group#makeObject
-                  button.propButton.btn.btn-primary#insertObjectButton(type='button' disabled) Insert
-                  button.propButton.btn.btn-info#editDetailsButton(type='button') Details
-                  button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
-                  button.btn.btn-default#closeToolbarButton(type='button') Cancel
+              div#tools
+                span.toolbarTitle#toolbarTitle Edit Object
+                button.propButton.btn.btn-success#newObjectButton(type='button' disabled) New!
+                input(type="hidden", name="id")#propID
+                input(type="hidden", name="type")#propType
+                div.form-group#propNameGroup
+                  label Name
+                  textarea(name="name" disabled).form-control#propName
+                div.form-group#propColorGroup
+                  label Color
+                  div.colors
+                    span#propFillColorSpan
+                      input#propFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
+                    span#propStrokeColorSpan
+                      input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+                div.form-group#propObjectGroup
+                  ul
+                    li
+                      a(href="#tabs-icon") Icons
+                    li
+                      a(href="#tabs-shape") Shapes
+                    li
+                      a(href="#tabs-link") Links
+                  div#tabs-icon
+                    select.image-picker#prop-icon
+                      each icon in icons
+                        option(data-img-src="images/icons/" + icon, data-img-class="first", value=icon) icon
+                  div#tabs-shape
+                    select.image-picker#prop-shape
+                      each shape in shapes
+                        option(data-img-src="images/shapes/" + shape, data-img-class="first", value=shape) shape
+                  div#tabs-link
+                    select.image-picker#prop-link
+                      each link in links
+                        option(data-img-src="images/links/" + link, data-img-class="first", value=link) link
+                div.form-group#moveObject
+                    div.checkbox#lockObjectGroup
+                      label
+                        input(type="checkbox", value="0" disabled)#lockObject
+                        | Locked?
+                    div#sizeObject.input-group
+                      input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
+                      span.input-group-addon x
+                      input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
+                    button.propButton.btn.btn-secondary#moveUp(type='button' disabled) Up
+                    button.propButton.btn.btn-secondary#moveDown(type='button' disabled) Down
+                    button.propButton.btn.btn-secondary#moveToFront(type='button' disabled) Front
+                    button.propButton.btn.btn-secondary#moveToBack(type='button' disabled) Back
+                div.form-group#makeObject
+                    button.propButton.btn.btn-primary#insertObjectButton(type='button' disabled) Insert
+                    button.propButton.btn.btn-info#editDetailsButton(type='button') Details
+                    button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
+                    button.btn.btn-secondary#closeToolbarButton(type='button') Cancel
 
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div#tables
@@ -130,7 +129,7 @@ html
 
           div#settings(style="display: none;")
             button.propButton.btn.btn-primary#addUser(type='button') Add User
-            table#settingsTable.table.table-striped.table-bordered
+            table#settingsTable
             
         div#tableNav.vertNavInsideRight
           div.vertNav

@@ -330,7 +330,7 @@ function updateLink(link) {
 }
 
 function setObjectLock(o, l) {
-    o.set({hasControls: !l, lockMovementX: l, lockMovementY: l, lockScalingX: l, lockScalingY: l, lockRotation: l});
+    o.set({hasControls: !l, lockMovementX: l, lockMovementY: l, lockScalingX: l, lockScalingY: l, lockRotation: 0});
 }
 
 function getObjectCenter(o) {
@@ -748,7 +748,7 @@ function addObjectToCanvas(o, selected, cb) {
             name_val: o.name,
             fromId: o.obj_a,
             toId: o.obj_b,
-            fill: '#000000',
+            fill: '#eeeeee',
             stroke: o.stroke_color,
             strokeWidth: 3,
             hasControls: false,
@@ -760,6 +760,7 @@ function addObjectToCanvas(o, selected, cb) {
             lockScalingY: true,
             lockRotation: true,
         });
+
         var name = new fabric.Text(o.name, {
             parent_id: o._id,
             parent: line,
@@ -768,9 +769,9 @@ function addObjectToCanvas(o, selected, cb) {
             originX: 'center',
             originY: 'top',
             textAlign: 'center',
-            fill: '#000000',
+            fill: '#eeeeee',
             angle: 0,
-            fontSize: 10,
+            fontSize: 12,
             fontFamily: 'verdana',
             left: line.getCenterPoint().x,
             top: line.getCenterPoint().y
@@ -806,8 +807,9 @@ function addObjectToCanvas(o, selected, cb) {
                     lockMovementY: !permissions.modify_diagram ? true : o.locked,
                     lockScalingX: !permissions.modify_diagram ? true : o.locked,
                     lockScalingY: !permissions.modify_diagram ? true : o.locked,
-                    lockRotation: !permissions.modify_diagram ? true : o.locked
+                    lockRotation: true
                 });
+                shape.setControlVisible('mtr', false);
                 if (shape._objects && !shape.image.includes('static')) {
                     for (var i = 0; i < shape._objects.length; i++) {
                         var fill = shape._objects[i].fill;
@@ -833,8 +835,8 @@ function addObjectToCanvas(o, selected, cb) {
                     originX: 'center',
                     originY: 'top',
                     textAlign: 'center',
-                    fill: '#000000',
-                    fontSize: 10,
+                    fill: '#eeeeee',
+                    fontSize: 12,
                     fontFamily: 'lato',
                     left: o.x + (shape.width * shape.scaleX)/2,
                     top: o.y + shape.height * shape.scaleY + 4
@@ -877,7 +879,7 @@ function addObjectToCanvas(o, selected, cb) {
                 lockMovementY: !permissions.modify_diagram ? true : o.locked,
                 lockScalingX: !permissions.modify_diagram ? true : o.locked,
                 lockScalingY: !permissions.modify_diagram ? true : o.locked,
-                lockRotation: !permissions.modify_diagram ? true : o.locked
+                lockRotation: true
             });
         } else if (shape === 'circle') {
             shape = new fabric.Ellipse({
@@ -902,7 +904,7 @@ function addObjectToCanvas(o, selected, cb) {
                 lockMovementY: !permissions.modify_diagram ? true : o.locked,
                 lockScalingX: !permissions.modify_diagram ? true : o.locked,
                 lockScalingY: !permissions.modify_diagram ? true : o.locked,
-                lockRotation: !permissions.modify_diagram ? true : o.locked
+                lockRotation: true
             });
         } else
             return;

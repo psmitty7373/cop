@@ -172,7 +172,7 @@ $(document).ready(function() {
     if (permissions.manage_missions) {
         $('#newMission').show();
         missionsTabulator.addColumn(
-            { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+            { headerSort: false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
                 socket.send(JSON.stringify({ act: 'delete_mission', arg: { mission_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
             }}, false, null);
     }

@@ -1,12 +1,7 @@
 html
   head
     title= title
-    link(rel='stylesheet', href='css/bootstrap.min.css')
-    link(rel='stylesheet', href='css/jquery-ui.min.css')
-    link(rel='stylesheet', href='css/jquery-ui.theme.min.css')
-    link(rel='icon', href='favicon.ico', type='image/x-icon')
-    link(rel='stylesheet', href='css/tabulator_bootstrap.min.css')
-    link(rel='stylesheet', href='css/style.css')
+    include top_includes.pug
   body
     div.container
       include nav.pug
@@ -30,7 +25,7 @@ html
       div.jumbotron#usersJumbotron(style='display: none;')
         h2 Users
           button.propButton.btn.btn-primary#newUser(type='button', style="float: right;") New User
-        table#usersTable.table.table-striped.table-bordered
+        table#usersTable
         
 script var permissions = !{permissions};
 script(src='js/jquery-3.4.1.min.js')
