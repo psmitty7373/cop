@@ -272,26 +272,18 @@ function getObjectSelect() {
 }
 
 function addUser() {
-    bootbox.dialog({
-        message: `
+    var msg = `
 <form>
-  <div class="form-group row">
-    <label for="nuUsername" class="col-sm-2 col-form-label">Username</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control" id="nuUsername" value="">
-    </div>
-  </div>
-  <div class="form-group row">
-    <label for="nuName" class="col-sm-2 col-form-label">Name</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control" id="nuName" value="">
-    </div>
-  </div>
-  <div class="form-group row">
-    <label for="nuPassword" class="col-sm-2 col-form-label">Password</label>
-    <div class="col-sm-10">
-      <input type="password" class="form-control" id="nuPassword" placeholder="Password">
-    </div>
+  <div class="form-group">
+    <label for="nuUserId">User:</label>
+    <select class="form-control" id="nuUserId">
+`;
+    for (var i = 0; i < userSelect.length; i++) {
+        msg+= '<option value="' + userSelect[i]._id + '">' + userSelect[i].username + '</option>';
+    }
+    
+    msg += `
+    </select>
   </div>
   <div class="form-check">
     <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
@@ -314,23 +306,23 @@ function addUser() {
     <label class="form-check-label" for="nuPermApiAccess">API Access</label>
   </div>
 </form>`,
-        title: 'Insert New User',
+    bootbox.dialog({
+        message: msg,
+        title: 'Add User',
         buttons: {
             confirm: {
                 label: 'Insert',
                 className: 'btn-primary',
                 callback: function() {
                     var user = {};
-                    user.username = $('#nuUsername').val();
-                    user.name = $('#nuName').val();
-                    user.password = $('#nuPassword').val();
+                    user.user_id = $('#nuUserId').val();
                     user.permissions = { manage_users: $('#nuPermManageUsers').is(":checked"),
                         modify_diagram: $('#nuPermModifyDiagram').is(":checked"),
                         modify_notes: $('#nuPermModifyNotes').is(":checked"),
                         modify_files: $('#nuPermModifyFiles').is(":checked"),
                         api_access: $('#nuPermApiAccess').is(":checked"),
                     },
-                    socket.send(JSON.stringify({ act:'insert_user', arg: user, msgId: msgHandler() }));
+                    socket.send(JSON.stringify({ act:'insert_user_mission', arg: user, msgId: msgHandler() }));
                 }
             },
             cancel: {
@@ -427,8 +419,7 @@ $(document).ready(function() {
                 }
                 checkIfShapesCached(objects);
 
-                // users
-                userSelect = userSelect.concat(msg.arg.users);
+                // mission users                
                 settingsTabulator.setData(msg.arg.userSettings);
 
                 // notes
@@ -438,11 +429,14 @@ $(document).ready(function() {
                 addChatMessage(msg.arg.chats, true);
 
                 break;
+            case 'get_users':
+                userSelect = userSelect.concat(msg.arg);
 
             // chat
             case 'bulk_chat':
                 addChatMessage(msg.arg, true);
                 break;
+
             case 'chat':
                 addChatMessage(msg.arg);
                 break;
@@ -456,32 +450,30 @@ $(document).ready(function() {
             case 'insert_note':
                 $('#notes').jstree(true).create_node('#', msg.arg);
                 break;
+
             case 'rename_note':
                 var node = $('#notes').jstree(true).get_node(msg.arg.id, true);
                 if (node)
                     $('#notes').jstree(true).rename_node(node, msg.arg.name);
                 break;
+
             case 'delete_note':
-                var node = $('#notes').jstree(true).get_node(msg.arg.id, true);
+                var node = $('#notes').jstree(true).get_node(msg.arg, true);
                 if (node)
                     $('#notes').jstree(true).delete_node(node);
                 break;
 
             // users
-            case 'update_user_setting':
-                var e = msg.arg;
-                //$('#users').jqGrid('setRowData', e._id, e);
+            case 'insert_user_mission':
+                settingsTabulator.addRow(msg.arg);
                 break;
 
-            case 'insert_user_setting':
-                var e = msg.arg;
-                //$('#users').jqGrid('addRowData', e._id, e, 'last');
-                //$('#users').jqGrid('sortGrid', 'event_time', false, 'asc');
+            case 'update_user_mission':
+                settingsTabulator.updateRow(msg.arg._id, msg.arg);    
                 break;
 
-            case 'delete_user_setting':
-                var e = msg.arg;
-                //$('#users').jqGrid('delRowData', e._id);
+            case 'delete_user_mission':
+                settingsTabulator.deleteRow(msg.arg);
                 break;
 
             // objects
@@ -683,21 +675,32 @@ $(document).ready(function() {
     // ---------------------------- USERS TABLE ----------------------------------   
     // bottom table tabs
     $('#chatTab').click(function() { toggleTable('chat'); });
+    if (permissions.manage_users) {
+        $('#settingsTab').show();
+        $('#settingsTabTag').show();
+    }
     $('#settingsTab').click(function() { toggleTable('settings'); });
 
      $('#addUser').click(function() { addUser(); });
 
     settingsTabulator = new Tabulator("#settingsTable", {
         layout: "fitColumns",
+        index: '_id',
+        cellEdited: function(cell){
+            socket.send(JSON.stringify({ act: 'update_user_mission', arg: cell.getRow().getData(), msgId: msgHandler() }));
+        },
         columns: [
             { title: '_id', field: '_id', visible: false },
             { title: 'User ID', field: 'user_id', visible: false },
-            { title: 'Username', field: 'username', editor: 'input' },
-            { title: 'U', field: 'permissions.manage_users', editor: 'tick', formatter: 'tick' },
-            { title: 'D', field: 'permissions.modify_diagram', editor: 'tick', formatter: 'tick' },
-            { title: 'N', field: 'permissions.modify_notes', editor: 'tick', formatter: 'tick' },
-            { title: 'F', field: 'permissions.modify_files', editor: 'tick', formatter: 'tick' },
-            { title: 'A', field: 'permissions.api_access', editor: 'tick', formatter: 'tick' }
+            { title: 'Username', field: 'username' },
+            { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross' },
+            { title: 'Modify Diagram', field: 'permissions.modify_diagram', editor: 'tickCross', formatter: 'tickCross' },
+            { title: 'Modify Notes', field: 'permissions.modify_notes', editor: 'tickCross', formatter: 'tickCross' },
+            { title: 'Modify Files', field: 'permissions.modify_files', editor: 'tickCross', formatter: 'tickCross' },
+            { title: 'API Access', field: 'permissions.api_access', editor: 'tickCross', formatter: 'tickCross' },
+            { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
+                socket.send(JSON.stringify({ act: 'delete_user_mission', arg: { _id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
+            }},
         ]
     });
 

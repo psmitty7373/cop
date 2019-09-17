@@ -130,15 +130,15 @@ html
 
           div#settings(style="display: none;")
             button.propButton.btn.btn-primary#addUser(type='button') Add User
-            table#settingsTable.table.table-striped.table-bordered(style="width: 100%")
+            table#settingsTable.table.table-striped.table-bordered
             
         div#tableNav.vertNavInsideRight
           div.vertNav
             div.vertTab.activeTab#chatTab
-            div.vertTab#settingsTab
+            div.vertTab#settingsTab(style='display: none;')
             div.vertNav.click-through(style='position: absolute;')
               div.tabText.tab-float.rotated#chatTabTag CHAT
-              div.tabText.tab-float.rotated#settingsTabTag SETTINGS
+              div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
 
     div#windowPane.windowPane
 
@@ -163,7 +163,7 @@ script(src='js/bootstrap.min.js')
 script(src='js/bootbox.min.js')
 script(src='js/bootstrap-window.min.js')
 
-script(src='js/tabulator.min.js')
+script(src='js/tabulator.js')
 
 script(src='js/sharedb-client.min.js')
 script(src='js/rich-text.min.js')

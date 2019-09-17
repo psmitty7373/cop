@@ -8,6 +8,16 @@ const insert_chat = {
     additionalProperties: true
 }
 
+const get_old_chats = {
+    type: 'object',
+    properties: {
+        start_from: { type: 'integer' },
+        channel: { type: 'string', 'enum': [ 'log', 'general' ] },
+    },
+    required: ['start_from', 'channel'],
+    additionalProperties: false
+}
+
 const insert_user = {
     type: 'object',
     properties: {
@@ -31,8 +41,14 @@ const update_user = {
     properties: {
         name: { type: 'string', maxLength: 64 },
         password: { type: 'string',  maxLength: 64 },
+        permissions: { type: 'object', properties: {
+                manage_users: { type: 'boolean' },
+                manage_missions: { type: 'boolean' }
+            },
+        required: ['manage_users', 'manage_missions'],
+        additionalProperties: false
+        }
     },
-    required: ['name'],
     additionalProperties: true
 }
 
@@ -72,28 +88,53 @@ const delete_mission = {
     additionalProperties: true
 }
 
-const insert_user_setting = {
+const insert_user_mission = {
     type: 'object',
     properties: {
         user_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
-        permissions: { type: 'array' },
-        role: { type: 'string', pattern: '^$|^[a-fA-F0-9]{24}$' },
+        permissions: { type: 'object', properties: {
+                manage_users: { type: 'boolean' },
+                modify_diagram: { type: 'boolean' },
+                modify_notes: { type: 'boolean' },
+                modify_files: { type: 'boolean' },
+                api_access: { type: 'boolean' }
+            },
+            required: ['manage_users', 'modify_diagram', 'modify_notes', 'modify_files', 'api_access'],
+            additionalProperties: false
+        }
     },
-    required: ['user_id', 'permissions', 'role'],
+    required: ['user_id', 'permissions'],
     additionalProperties: true
 }
 
-const update_user_setting = {
+const update_user_mission = {
     type: 'object',
     properties: {
         _id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
-        user_id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' },
-        permissions: { type: 'array' },
-        role: { type: 'string', pattern: '^$|^[a-fA-F0-9]{24}$' },
+        permissions: { type: 'object', properties: {
+                manage_users: { type: 'boolean' },
+                modify_diagram: { type: 'boolean' },
+                modify_notes: { type: 'boolean' },
+                modify_files: { type: 'boolean' },
+                api_access: { type: 'boolean' }
+            },
+            required: ['manage_users', 'modify_diagram', 'modify_notes', 'modify_files', 'api_access'],
+            additionalProperties: false
+        }
     },
-    required: ['_id', 'user_id', 'permissions', 'role'],
+    required: ['_id', 'permissions'],
     additionalProperties: true
 }
+
+const delete_user_mission = {
+    type: 'object',
+    properties: {
+        _id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+    },
+    required: ['_id'],
+    additionalProperties: true
+}
+
 
 const insert_note = {
     type: 'object',
@@ -111,6 +152,15 @@ const rename_note = {
         name: { type: 'string', maxLength: 64 },
     },
     required: ['id', 'name'],
+    additionalProperties: true
+};
+
+const delete_note = {
+    type: 'object',
+    properties: {
+        id: { type: 'string', pattern: '^[a-fA-F0-9]{24}$' }
+    },
+    required: ['id'],
     additionalProperties: true
 };
 
@@ -241,16 +291,19 @@ const move_object = {
 
 module.exports = {
     insert_chat: insert_chat,
+    get_old_chats: get_old_chats,
     insert_user: insert_user,
     update_user: update_user,
     delete_user: delete_user,
     insert_mission: insert_mission,
     update_mission: update_mission,
     delete_mission: delete_mission,
-    insert_user_setting: insert_user_setting,
-    update_user_setting: update_user_setting,
+    insert_user_mission: insert_user_mission,
+    update_user_mission: update_user_mission,
+    delete_user_mission: delete_user_mission,
     insert_note: insert_note,
     rename_note: rename_note,
+    delete_note: delete_note,
     insert_event: insert_event,
     update_event: update_event,
     insert_opnote: insert_opnote,

@@ -212,7 +212,7 @@ function editDetails(id, name) {
     if (!name)
         name = '';
     if (!id && canvas.getActiveObject()) {
-        if (permissions.modify_details)
+        if (permissions.modify_notes)
             rw = true;
         id = 'm-' + mission_id + 'd-' + canvas.getActiveObject()._id;
         if (canvas.getActiveObject().name_val)
@@ -221,6 +221,7 @@ function editDetails(id, name) {
         if (permissions.modify_notes)
             rw = true;
     }
+    console.log(rw);
     if (id) {
         $('#modal-title').text('Edit Notes ' + name);
         $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">Close</button>');
@@ -324,8 +325,6 @@ function toggleTable(mode) {
             break;
     }
 }
-
-
 
 // READY!
 $(document).ready(function() {

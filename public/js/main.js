@@ -138,7 +138,7 @@ $(document).ready(function() {
                 break;
             
             case 'get_missions':
-                missionsTabulator.setData(msg.arg.missions);
+                missionsTabulator.setData(msg.arg);
                 break;
                 
             case 'insert_mission':
@@ -150,7 +150,7 @@ $(document).ready(function() {
                 break;
     
             case 'delete_mission':
-                missionsTabulator.deleteRow(msg.arg.mission_id);
+                missionsTabulator.deleteRow(msg.arg);
                 break;
         }
     }

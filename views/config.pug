@@ -30,12 +30,12 @@ html
       div.jumbotron#usersJumbotron(style='display: none;')
         h2 Users
           button.propButton.btn.btn-primary#newUser(type='button', style="float: right;") New User
-        table#usersTable
+        table#usersTable.table.table-striped.table-bordered
         
 script var permissions = !{permissions};
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/bootstrap.min.js')
 script(src='js/bootbox.min.js')
-script(src='js/tabulator.min.js')
+script(src='js/tabulator.js')
 script(src='js/config.js')

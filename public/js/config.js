@@ -242,7 +242,7 @@ $(document).ready(function() {
                 break;
 
             case 'delete_user':
-                usersTabulator.deleteRow(msg.arg.user_id);
+                usersTabulator.deleteRow(msg.arg);
                 break;
         }
     }
@@ -268,8 +268,8 @@ $(document).ready(function() {
                 { title: 'Username', field: 'username' },
                 { title: 'Name', field: 'name', editor: 'input' },
                 { title: 'Password', field: 'password', editor: 'input' },
-                { title: 'Manage Missions', field: 'permissions.manage_missions', editor: 'tickCross', formatter: 'tickCross' },
-                { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross' },
+                { title: 'Manage Missions', field: 'permissions.manage_missions', editor: 'tickCross', formatter: 'tickCross', align: 'center' },
+                { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross', align: 'center'  },
                 { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
                     socket.send(JSON.stringify({ act: 'delete_user', arg: { user_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
                 }},

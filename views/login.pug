@@ -5,11 +5,10 @@ html
     link(rel='stylesheet', href='css/style.css')
   body
     div.container
-      include nav.pug
       div.wrapper
         form(method='post' action='login').form-signin
           img(src='images/logo.png').login-logo
-          h2.form-signin-heading.text-center MCS-COP Login
+          h2.form-signin-heading.text-center COP Login
           if (message)
             div.alert.alert-danger.alert-error= message
           input(type='text' name='username' placeholder='Username' autofocus='autofocus').form-control

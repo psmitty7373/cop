@@ -234,14 +234,17 @@ td a {
 
 #tables {
     height: 100%;
-    position: relative;
-    flex-grow: 1;
+    left: 0px;
+    right: 0px;
 }
 
 #chat, #settings {
     padding: 5px;
+    padding-right: 46px;
     height: 100%;
-    width: 100%;
+    position: absolute;
+    left: 0px;
+    right: 0px;
 }
 
 #chat2 {
@@ -595,9 +598,10 @@ td a {
 
 .vertNav {
     height: 100%;
-    width: 36px;
+    width: 35px;
     top: 0px;
-    position: relative;
+    right: 0px;
+    position: absolute;
     background: #9d9d9d;
 }
 
@@ -654,8 +658,8 @@ td a {
 #bottomJumbo {
     height: 450px;
     min-height: 350px;
-    display: flex;
     padding: 0px;
+    width: 100%;
 }
 
 .click-through {
