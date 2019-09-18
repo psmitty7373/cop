@@ -5539,7 +5539,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 				var cell = _this6.getCell(cellName);
 	
 				if (cell) {
-					let cellV = cellName.split(".");
+                    cellV = cellName.split(".");
 					if (cellV.length > 1) {
 						var dataValue = data[cellV[0]][cellV[1]];
 					} else {

@@ -117,36 +117,14 @@ function msgHandler() {
 }
 
 function newUser() {
+    var msg = '<form><div class="form-group row"><label for="nuUsername" class="col-sm-2 col-form-label">Username</label><div class="col-sm-10"><input type="text" class="form-control" id="nuUsername" value=""></div></div>';
+    msg += '<div class="form-group row"><label for="nuName" class="col-sm-2 col-form-label">Name</label><div class="col-sm-10"><input type="text" class="form-control" id="nuName" value=""></div></div>';
+    msg += '<div class="form-group row"><label for="nuPassword" class="col-sm-2 col-form-label">Password</label><div class="col-sm-10"><input type="password" class="form-control" id="nuPassword" placeholder="Password"></div></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageUsers"><label class="form-check-label" for="nuPermManageUsers">Manage Users</label></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageMissions"><label class="form-check-label" for="nuPermManageMissions">Manage Missions</label></div></form>';
+
     bootbox.dialog({
-        message: `
-<form>
-  <div class="form-group row">
-    <label for="nuUsername" class="col-sm-2 col-form-label">Username</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control" id="nuUsername" value="">
-    </div>
-  </div>
-  <div class="form-group row">
-    <label for="nuName" class="col-sm-2 col-form-label">Name</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control" id="nuName" value="">
-    </div>
-  </div>
-  <div class="form-group row">
-    <label for="nuPassword" class="col-sm-2 col-form-label">Password</label>
-    <div class="col-sm-10">
-      <input type="password" class="form-control" id="nuPassword" placeholder="Password">
-    </div>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
-    <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermManageMissions">
-    <label class="form-check-label" for="nuPermManageMissions">Manage Missions</label>
-  </div>
-</form>`,
+        message: msg,
         title: 'Insert New User',
         buttons: {
             confirm: {

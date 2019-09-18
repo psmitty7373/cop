@@ -9,8 +9,10 @@ var f = function(e)
         e.stopPropagation();
         e.preventDefault();
         e.dataTransfer.dropEffect = ($(srcElement).hasClass('droppable')) ? 'copy' : 'none';
-        if (e.dataTransfer.dropEffect === 'copy' && e.type !== 'dragleave')
+        if (e.dataTransfer.dropEffect === 'copy' && e.type !== 'dragleave') {
             $(srcElement).addClass('jstree-wholerow-hovered');
+        }
+
         if (e.type == 'drop') {
             var formData = new FormData();
             formData.append('dir', srcElement.id);
@@ -71,9 +73,14 @@ $(document).ready(function() {
                 var o = 'download/mission-' + mission_id + '/' + data.selected[0];
                 var dl = $('<iframe />').attr('src', o).hide().appendTo('body');
             }
+
         }).jstree({
             'core': {
                 'check_callback': true,
+                'themes': {
+                    'dots': true
+                    
+                },
                 'data': {
                     'method': 'POST',
                     'url': function(node) {
@@ -133,6 +140,7 @@ $(document).ready(function() {
                 }
             }
         });
+
     $(document).on('dnd_stop.vakata', function(e, data) {
         var t = $(data.event.target);
         var targetnode = t.closest('.jstree-node');

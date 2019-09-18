@@ -24,12 +24,14 @@ function notification(msg) {
     if (!("Notification" in window) || Notification.permission === 'denied') {
         toastr.info(msg.text, msg.username)
     }
+
     else if (Notification.permission === 'granted') {
         var notification = new Notification(msg.username, {
-            icon: 'images/avatars/' + msg.user_id + '.png',
+            icon: 'images/avatars/' + msg.tuser_id + '.png',
             body: msg.text
         });
     }
+
     else {
         Notification.requestPermission(function (permission) {
             if (!('permission' in Notification)) {
@@ -43,49 +45,74 @@ function notification(msg) {
 }
 
 function addChatMessage(messages, bulk) {
-    if (!bulk)
+    if (!bulk) {
         bulk = false;
+    }
+
     for (var i = 0; i < messages.length; i++) {
-        if (!earliest_messages[messages[i].channel])
-            earliest_messages[messages[i].channel] = 2147483647000
-        var pane = $('#' + messages[i].channel);
-        var ts = messages[i].timestamp;
-        if (ts < earliest_messages[messages[i].channel]) {
-            earliest_messages[messages[i].channel] = ts;
+        var channel = messages[i].channel;
+        var tuser_id = messages[i].user_id;
+        var username = messages[i].username;
+
+        if (!earliest_messages[channel]) {
+            earliest_messages[channel] = 2147483647000
         }
+
+        var pane = $('#' + channel + 'Messages');
+        var ts = messages[i].timestamp;
+
+        if (ts < earliest_messages[channel]) {
+            earliest_messages[channel] = ts;
+        }
+
         if (messages[i].prepend)
-            pane.prepend('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + messages[i].user_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + messages[i].username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
+            pane.prepend('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + tuser_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
+
         else {
-            var atBottom = $('#' + messages[i].channel)[0].scrollHeight - Math.round($('#' + messages[i].channel).scrollTop()) == $('#' + messages[i].channel).outerHeight();
-            var newMsg = $('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + messages[i].user_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + messages[i].username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
-            if (!bulk && activeChannel === messages[i].channel)
+            // check if at bottom
+            var atBottom = ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y);
+
+            var newMsg = $('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + tuser_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
+
+            if (!bulk && activeChannel === channel) {
                 newMsg.hide();
+            }
+
             newMsg.appendTo(pane);
-            if (!bulk && messages[i].channel !== 'log' && user_id != messages[i].user_id) {
+
+            if (!bulk && channel !== 'log' && user_id != tuser_id) {
                 if (messages[i].text.search('@' + username) >= 0 || messages[i].text.search('@alert') >= 0) {
                     notification(messages[i]);
                 }
             }
-            if (!bulk && messages[i].channel !== 'log' && (activeTable !== 'chat' || activeChannel !== messages[i].channel)) {
-                if (!unreadMessages[messages[i].channel]) {
+
+            if (!bulk && channel !== 'log' && (activeTable !== 'chat' || activeChannel !== channel)) {
+                if (!unreadMessages[channel]) {
                     $('.newMessage').removeClass('newMessage');
                     $('.newMessageLabel').remove();
-                    unreadMessages[messages[i].channel] = 1;
+                    unreadMessages[channel] = 1;
                     newMsg.addClass('newMessage');
                     newMsg.append('<div class="newMessageLabel">New Messages</div>');
                 }
                 else
-                    unreadMessages[messages[i].channel]++;
-                $('#unread-' + messages[i].channel).text(unreadMessages[messages[i].channel]).show();
+                    unreadMessages[channel]++;
+                $('#unread-' + channel).text(unreadMessages[channel]).show();
                 $('#chatTab').css('background-color', '#ff6060');
             }
-            if (!bulk && activeChannel === messages[i].channel)
+
+            if (!bulk && activeChannel === channel) {
                 newMsg.fadeIn('fast');
-            if (atBottom)
-                $('#' + messages[i].channel).scrollTop($('#' + messages[i].channel)[0].scrollHeight);
+            }
+
+            // if at bottom, wait for 
+            if (atBottom) {
+                setTimeout(function() {
+                    $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
+                }, 25);
+            }
         }
         if (messages[i].more)
-            pane.prepend('<div id="get-more-messages"><span onClick="getMoreMessages(\'' + messages[i].channel + '\')">Get older messages.</span></div>');
+            pane.prepend('<div id="get-more-messages"><span onClick="getMoreMessages(\'' + channel + '\')">Get older messages.</span></div>');
     }
 }
 
@@ -94,3 +121,37 @@ function getMoreMessages(channel) {
     $('#get-more-messages').remove();
     socket.send(JSON.stringify({act:'get_old_chats', arg: {channel: channel, start_from: earliest_messages[channel]}, msgId: msgHandler()}));
 }
+
+$(document).ready(function() {
+    $('.channel').click(function(e) {
+        var channel = e.target.id.split('-')[1];
+
+        if ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y) {
+            chatPosition[activeChannel] = 'bottom';
+        }
+        else {
+            chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
+        }
+
+        $('.channel-pane').hide();
+        $('.channel').removeClass('channelSelected');
+        $('#' + channel).show();
+        unreadMessages[channel] = 0;
+        $('#unread-' + channel).hide();
+        $('#chatTab').css('background-color', '');
+
+        if (!chatPosition[channel] || chatPosition[channel] === 'bottom') {
+            $('#' + channel).scrollTop($('#' + channel)[0].scrollHeight);
+        }
+
+        $('#channel-' + channel).addClass('channelSelected');
+        activeChannel = channel;
+    });
+
+    // clear unread when clicking on channel
+    $('#chatTab').click(function(e) {
+        unreadMessages[activeChannel] = 0;
+        $('#unread-' + activeChannel).hide();
+        $('#chatTab').css('background-color', '');
+    });
+});

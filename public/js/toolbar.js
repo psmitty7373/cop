@@ -27,14 +27,20 @@ function openToolbar(mode) {
             $('#propFillColorSpan').show();
             // editing an object
             if (canvas.getActiveObject()) {
-                if (canvas.getActiveObjects().length > 1)
+                if (canvas.getActiveObjects().length > 1) {
                     $("#toolbarBody").addClass("disabledDiv");
-                else
+                }
+                else {
                     $("#toolbarBody").removeClass("disabledDiv");
-                if (permissions.modify_diagram)
+                }
+
+                if (permissions.modify_diagram) {
                     $('#toolbarTitle').html('Edit Object');
-                else
+                }
+                else {
                     $('#toolbarTitle').text('View Object');
+                }
+
                 $('#propNameGroup').show();
                 $('#propObjectGroup').show();
                 $('#editDetailsButton').show();
@@ -42,6 +48,7 @@ function openToolbar(mode) {
                 $('#insertObjectButton').hide();
                 $('#newObjectButton').show();
                 $('#propObjectGroup').tabs('disable');
+
                 var objType = $('#propType').val();
                 if (objType === 'link') {
                     $('#sizeObject').hide();
@@ -51,6 +58,7 @@ function openToolbar(mode) {
                     $('#sizeObject').show();
                     $('#lockObjectGroup').show();
                 }
+
                 var index = $('#propObjectGroup a[href="#tabs-' + objType + '"]').parent().index();
                 $('#moveObject').show();
                 $('#propObjectGroup').tabs('enable', index);
@@ -79,11 +87,13 @@ function openToolbar(mode) {
                 $('#insertObjectButton').show();
             }
             break;
+
         case 'notes':
             $('#toolsForm').hide();
             $('#notesForm').show();
             $('#filesForm').hide();
             break;
+
         case 'files':
             $('#toolsForm').hide();
             $('#notesForm').hide();
@@ -130,12 +140,14 @@ function updateSelection(options) {
                 $('#objectHeight').val(Math.round(o.height * o.scaleY));
                 $('#lockObject').prop('checked', o.locked);
                 $('#propName').val('');
+
                 if (o.children !== undefined) {
                     for (var i = 0; i < o.children.length; i++) {
                         if (o.children[i].objType === 'name')
                             $('#propName').val(o.children[i].text);
                     }
                 }
+                
                 $('#propType').val(o.objType);
                 $('#prop-' + o.objType).val(o.image.replace('.svg','.png'));
                 $('#prop-' + o.objType).data('picker').sync_picker_with_select();
@@ -216,14 +228,17 @@ function editDetails(id, name) {
             rw = true;
         id = 'm-' + mission_id + 'd-' + canvas.getActiveObject()._id;
         if (canvas.getActiveObject().name_val)
-            name = '- ' + canvas.getActiveObject().name_val.split('\n')[0];
+            name = canvas.getActiveObject().name_val.split('\n')[0];
     } else {
         if (permissions.modify_notes)
             rw = true;
     }
-    console.log(rw);
+
     if (id) {
-        $('#modal-title').text('Edit Notes ' + name);
+        if (name == '') {
+            name = "Note Editor";
+        }
+        $('#modal-title').text(name);
         $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">Close</button>');
         $('#modal-content').addClass('modal-details');
         if (!openDocs[id]) {
@@ -234,9 +249,10 @@ function editDetails(id, name) {
                 }
                 if (err) throw err;
                 if (openDocs[id].type.name === 'rich-text') {
+                    // create window
                     var w = windowManager.createWindow({
                         sticky:  false,
-                        title: 'Edit Notes ' + name,
+                        title: name,
                         effect: 'none',
                         bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
                         closeCallback: function() {
@@ -244,7 +260,11 @@ function editDetails(id, name) {
                             delete openDocs[id];
                         }    
                     });
+
+                    // make dragable
                     w.$el.draggable({ handle: '.modal-header' }).children('.window-content').resizable({ minHeight: 153, minWidth: 300});
+
+                    // start quill
                     var quill = new Quill('#object_details_' + id, {
                         theme: 'snow',
                         readOnly: !rw,
@@ -257,23 +277,31 @@ function editDetails(id, name) {
                             ]
                         }
                     });
+
                     quill.root.setAttribute('spellcheck', false)
                     quill.setContents(openDocs[id].data);
                     quill.on('text-change', function(delta, oldDelta, source) {
                         if (source !== 'user') return;
                         openDocs[id].submitOp(delta, {source: quill});
                     });
+
                     openDocs[id].on('op', function(op, source) {
                         if (source === quill) return;
                         quill.updateContents(op);
                     });
+
+                    $('#object_details_' + id).overlayScrollbars({ className: "os-theme-dark" });
+
                 } else {
                     var disabled = ' disabled';
-                    if (permissions.modify_details)
+                    if (permissions.modify_details) {
                         disabled = '';
+                    }
+
+                    // create window
                     var w = windowManager.createWindow({
                         sticky:  false,
-                        title: 'Edit Notes ' + name,
+                        title: name,
                         effect: 'none',
                         bodyContent: '<textarea id="object_details_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
                         closeCallback: function() {
@@ -281,7 +309,13 @@ function editDetails(id, name) {
                             delete openDocs[id];
                         }    
                     });
+
+                    // set scrollbars
+                    w.$el.children('.object-details').overlayScrollbars({ className: "os-theme-dark" });
+
+                    // make dragable
                     w.$el.draggable({ handle: '.modal-header' }).children('.window-content').resizable({ minHeight: 153, minWidth: 300});
+
                     var element = document.getElementById('object_details_' + id);
                     var binding = new StringBinding(element, openDocs[id]);
                     binding.setup();

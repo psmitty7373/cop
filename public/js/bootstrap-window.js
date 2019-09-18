@@ -72,7 +72,6 @@
             options.elements.handle.prepend(options.elements.buttons.restore);
         }
         if (_this.$el.find('[data-dismiss=window]').length <= 0) {
-            console.log('here');        
             //button.close(type='button' data-dismiss='modal')#modal-close &times;
             options.elements.handle.append('<button type="button" class="close" data-dismiss="window" aria-hidden="false">&times;</button>');
         }

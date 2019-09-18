@@ -3,6 +3,7 @@ html
     title= title
     link(rel='icon', href='favicon.ico', type='image/x-icon')
     link(rel='stylesheet', href='css/jquery-ui.min.css')
+    link(rel='stylesheet', href='css/OverlayScrollbars.min.css')
     link(rel='stylesheet', href='css/tab_test.css')
     link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
     link(rel='stylesheet', href='css/highlight.min.css')
@@ -11,7 +12,6 @@ html
     link(rel='stylesheet', href='css/jstree.min.css')
     link(rel='stylesheet', href='css/palette-color-picker.css')
     link(rel='stylesheet', href='css/toastr.min.css')
-    link(rel='stylesheet', href='css/files.css')
     link(rel='stylesheet', href='css/style.css')
 
   body
@@ -52,13 +52,13 @@ html
             div.tabText.tab-float.rotated#filesTabTag FILES
           div#toolbarBody
             div#notesForm.toolbar-form
+              //button.btn.btn-primary#newNoteButton(disabled) New Note
               div#notes
-              button.btn.btn-primary#newNoteButton(style='margin-top: 5px' disabled) New Note
             div#filesForm.toolbar-form
               div#files
               div#progressbarContainer
                 div#progressbar
-            form#toolsForm.toolbar-form
+            div#toolsForm.toolbar-form
               div#tools
                 span.toolbarTitle#toolbarTitle Edit Object
                 button.propButton.btn.btn-success#newObjectButton(type='button' disabled) New!
@@ -123,7 +123,9 @@ html
                 span#unread-general.unread(style="display: none;")
             div#channel-panes
               div#log.channel-pane
+                div#logMessages
               div#general.channel-pane(style="display: none;")
+                div#generalMessages
               div#channel-footer
                 input(type="text", name="messageInput")#messageInput.messageInput
 
@@ -146,39 +148,34 @@ script(type="template/text", id="details_template")
     div.window-content.modal-content
       div.window-header.modal-header
         div.window-title.modal-title
-      div.window-body.modal-body(style="height:100%;")
+      div.window-body.modal-body
       div.window-footer.modal-footer
 
 script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/jquery-ui-timepicker-addon.min.js')
-
+script(src='js/jquery.overlayScrollbars.min.js')
 script(src='js/fabric.min.js')
-
 script(src='js/toastr.min.js')
-
 script(src='js/bootstrap.min.js')
 script(src='js/bootbox.min.js')
-script(src='js/bootstrap-window.min.js')
-
-script(src='js/tabulator.js')
-
 script(src='js/sharedb-client.min.js')
 script(src='js/rich-text.min.js')
-script(src='js/highlight.js')
+script(src='js/highlight.min.js')
 script(src='js/quill.min.js')
-
 script(src='js/image-picker.min.js')
-
 script(src='js/jstree.min.js')
-
 script(src='js/palette-color-picker.min.js')
 
-script(src='js/helpers.js')
-script(src='js/toolbar.js')
-script(src='js/notes.js')
-script(src='js/files.js')
-script(src='js/chat.js')
-script(src='js/diagram.js')
-script(src='js/cop.js')
+//script(src='js/bootstrap-window.js')
+//script(src='js/tabulator.js')
+//script(src='js/helpers.js')
+//script(src='js/toolbar.js')
+//script(src='js/notes.js')
+//script(src='js/files.js')
+//script(src='js/chat.js')
+//script(src='js/diagram.js')
+//script(src='js/cop.js')
+
+script(src='js/cop.min.js')

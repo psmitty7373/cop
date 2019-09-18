@@ -44,15 +44,7 @@ function addZero(i) {
 
 function newMission() {
     bootbox.dialog({
-        message: `
-<form>
-  <div class="form-group row">
-    <label for="nmName" class="col-sm-2 col-form-label">Mission Name</label>
-    <div class="col-sm-10">
-      <input type="text" class="form-control" id="nmName" value="">
-    </div>
-  </div>
-</form>`,
+        message: '<form><div class="form-group row"><label for="nmName" class="col-sm-2 col-form-label">Mission Name</label><div class="col-sm-10"><input type="text" class="form-control" id="nmName" value=""></div></div></form>',
         title: 'Insert New Mission',
         buttons: {
             confirm: {

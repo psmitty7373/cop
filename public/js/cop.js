@@ -274,40 +274,18 @@ function getObjectSelect() {
 }
 
 function addUser() {
-    var msg = `
-<form>
-  <div class="form-group">
-    <label for="nuUserId">User:</label>
-    <select class="form-control" id="nuUserId">
-`;
+    var msg = '<form><div class="form-group"><label for="nuUserId">User:</label><select class="form-control" id="nuUserId">';
+
     for (var i = 0; i < userSelect.length; i++) {
         msg+= '<option value="' + userSelect[i]._id + '">' + userSelect[i].username + '</option>';
     }
     
-    msg += `
-    </select>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
-    <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermModifyDiagram">
-    <label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermModifyNotes">
-    <label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermModifyFiles">
-    <label class="form-check-label" for="nuPermModifyFiles">Modify Files</label>
-  </div>
-  <div class="form-check">
-    <input type="checkbox" class="form-check-input" id="nuPermApiAccess">
-    <label class="form-check-label" for="nuPermApiAccess">API Access</label>
-  </div>
-</form>`,
+    msg += '</select></div><div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageUsers"><label class="form-check-label" for="nuPermManageUsers">Manage Users</label></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyDiagram"><label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyNotes"><label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyFiles"><label class="form-check-label" for="nuPermModifyFiles">Modify Files</label></div>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermApiAccess"><label class="form-check-label" for="nuPermApiAccess">API Access</label></div></form>';
+
     bootbox.dialog({
         message: msg,
         title: 'Add User',
@@ -341,6 +319,14 @@ $(document).ready(function() {
     $('#modal-body').html('<p>Loading COP, please wait...</p><img src="images/loading.gif"/>');
     $('#modal-footer').html('');
     //$('#modal').modal('show');
+
+    // scrollbars
+    $('#toolsForm').overlayScrollbars({ className: "os-theme-light" });
+    $('#notesForm').overlayScrollbars({ className: "os-theme-light" });
+    $('#filesForm').overlayScrollbars({ className: "os-theme-light" });
+    $('#log').overlayScrollbars({ className: "os-theme-light" });
+    $('#general').overlayScrollbars({ className: "os-theme-light" });
+    $('#propObjectGroup').overlayScrollbars({ className: "os-theme-dark" });
 
     // start clocks
     startTime();
@@ -434,10 +420,11 @@ $(document).ready(function() {
 
                 // chat
                 addChatMessage(msg.arg.chats, true);
-
                 break;
+
             case 'get_users':
                 userSelect = userSelect.concat(msg.arg);
+                break;
 
             // chat
             case 'bulk_chat':
@@ -721,31 +708,6 @@ $(document).ready(function() {
     $('#downloadDiagramButton').click(function() { downloadDiagram(this); });
     $('#downloadOpnotesButton').click(function() { downloadOpnotes(); });
     
-    // ---------------------------- CHAT ----------------------------------
-    $('.channel').click(function(e) {
-        var c = e.target.id.split('-')[1];
-        if ($('#' + activeChannel)[0].scrollHeight - $('#' + activeChannel).scrollTop() === $('#' + activeChannel).outerHeight())
-            chatPosition[activeChannel] = 'bottom';
-        else
-            chatPosition[activeChannel] = $('#' + activeChannel).scrollTop();
-        $('.channel-pane').hide();
-        $('.channel').removeClass('channelSelected');
-        $('#' + c).show();
-        unreadMessages[c] = 0;
-        $('#unread-' + c).hide();
-        $('#chatTab').css('background-color', '');
-        if (!chatPosition[c] || chatPosition[c] === 'bottom')
-            $('#' + c).scrollTop($('#' + c)[0].scrollHeight);
-        $('#channel-' + c).addClass('channelSelected');
-        activeChannel = c;
-    });
-
-    $('#chatTab').click(function(e) {
-        unreadMessages[activeChannel] = 0;
-        $('#unread-' + activeChannel).hide();
-        $('#chatTab').css('background-color', '');
-    });
-
     // ---------------------------- WINDOW MANAGER ----------------------------------
     windowManager = new WindowManager({
         container: "#windowPane",
@@ -810,6 +772,8 @@ $(document).ready(function() {
                 updatePropStrokeColor(color);
         }
     });
+
+
     
     // make the diagram resizable
     $("#diagramJumbo").resizable({ handles: 's', minHeight: 350 });
@@ -916,7 +880,10 @@ $(document).ready(function() {
             }
         }
     })
+
+    // set focus to diagram
     $('#diagramJumbo').focus();
+
     // load settings from cookie
     loadSettings();
     resizeCanvas();

@@ -13,7 +13,7 @@ function createNotesTree(arg) {
                 'check_callback': true,
                 'data': arg
             },
-            'plugins': ['dnd', 'wholerow', 'contextmenu'],
+            'plugins': ['wholerow', 'contextmenu'],
             'contextmenu': {
                 'select_node' : false,
                 'items': function(node) {
