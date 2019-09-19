@@ -116,7 +116,7 @@ html
                     button.propButton.btn.btn-info#editDetailsButton(type='button') Details
                     button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
                     button.btn.btn-secondary#closeToolbarButton(type='button') Cancel
-
+      
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
           div#chat
@@ -136,32 +136,35 @@ html
           div#settings.tableContainer(style="display: none;")
             div.tableHeader
               button.propButton.btn.btn-primary.tableButton#addUser(type='button') Add User
+              h4.tableTitle Settings
             div.tableBody
               table#settingsTable
 
           div#events.tableContainer(style="display: none;")
             div.tableHeader
               button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
+              h4.tableTitle Events
             div.tableBody
               table#eventsTable
 
           div#opnotes.tableContainer(style="display: none;")
             div.tableHeader
               button.propButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
+              h4.tableTitle Opnotes
             div.tableBody
               table#opnotesTable
             
         div#tableNav.vertNavInsideRight
           div.vertNav
             div.vertTab.activeTab#chatTab
-            div.vertTab#settingsTab(style='display: none;')
             div.vertTab#eventsTab
             div.vertTab#opnotesTab
+            div.vertTab#settingsTab(style='display: none;')
             div.vertNav.click-through(style='position: absolute;')
               div.tabText.tab-float.rotated#chatTabTag CHAT
-              div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
               div.tabText.tab-float.rotated#eventsTabTag EVENTS
               div.tabText.tab-float.rotated#opnotesTabTag OPNOTES
+              div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
 
     div#windowPane.windowPane
 

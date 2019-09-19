@@ -40,11 +40,10 @@ var settings = {
 var earliest_messages = {}; //= 2147483647000;
 var creatingLink = false;
 var userSelect = [];
-var objectSelect = [];
+var objectSelect = [{ _id: null, name: null }];
 var objectsLoaded = null;
 var updatingObject = false;
 var socket;
-var toolbarState = false;
 var firstNode = null;
 var SVGCache = {};
 var tempLinks = [];
@@ -52,14 +51,9 @@ var guides = {};
 var resizeTimer = null;
 var updateSettingsTimer = null;
 var objectMovingTimer = null;
-var activeToolbar = null;
-var activeTable = 'chat';
-var activeChannel = 'log';
-var chatPosition = {};
 var objectSearchResults = [];
 var objectSearchPtr = null;
-var firstChat = true;
-var unreadMessages = {};
+
 var lastClick = null;
 var msgId = 0;
 var pendingMsg = [];
@@ -192,6 +186,21 @@ function updateMinimapBg() {
 
 
 // ---------------------------- SOCKET.IO MESSAGES / HANDLERS ----------------------------------
+function cleanupRow(row) {
+    if (typeof(row) !== 'object') {
+        return row;
+    }
+
+    var keys = Object.keys(row);
+    for (var i = 0; i < keys.length; i++) {
+        if (!row[keys[i]]) {
+            row[keys[i]] = '';
+        }
+    }
+
+    return row;
+}
+
 function msgHandler() {
     pendingMsg[msgId] = setTimeout(function () {
         for (m in pendingMsg) {
@@ -379,7 +388,8 @@ function addEvent() {
     <div class="form-group row">
         <label for="neSourceObject" class="col-sm-4 col-form-label">Source:</label>
         <div class="col-sm-8">
-            <select class="form-control" id="neSourceObject">`;
+            <select class="form-control" id="neSourceObject">
+                <option value=""></option>`;
 
     for (var i = 0; i < objectSelect.length; i++) {
         msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
@@ -392,7 +402,8 @@ function addEvent() {
     <div class="form-group row">
         <label for="neDestObject" class="col-sm-4 col-form-label">Destination:</label>
         <div class="col-sm-8">
-            <select class="form-control" id="neDestObject">`;
+            <select class="form-control" id="neDestObject">
+                <option value=""></option>`;
 
     for (var i = 0; i < objectSelect.length; i++) {
         msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
@@ -414,8 +425,8 @@ function addEvent() {
     </div>
     <script type="text/javascript">
         $(function () {
-            $('#neDiscoveryTime').datetimepicker();
-            $('#neEventTime').datetimepicker();
+            $('#neDiscoveryTime').datetimepicker({ defaultDate: moment() });
+            $('#neEventTime').datetimepicker({ defaultDate: moment() });
         });
     </script>
 </form>`;
@@ -448,6 +459,49 @@ function addEvent() {
             }
         }
     });
+}
+
+var dateEditor = function (cell, onRendered, success, cancel) {
+    var editor = document.createElement("input");
+    editor.setAttribute('id','dateTimePicker');
+    var called = false;
+
+    onRendered(function (){
+        var dtp = $('#dateTimePicker');
+        dtp.addClass("datetimepicker-input")
+        dtp.css({
+            width: '100%',
+            height: '100%',
+        })
+        dtp.focus();
+        dtp.attr('data-toggle', 'datetimepicker');
+        dtp.attr('data-target', '#dateTimePicker');
+        dtp.datetimepicker({ widgetParent: 'body' });
+        dtp.datetimepicker('show');
+        var picker = $('body').find('.bootstrap-datetimepicker-widget:last');
+        picker.css({
+            'bottom': window.innerHeight - cell._cell.element.getBoundingClientRect().y + 'px',
+            'left': cell._cell.element.getBoundingClientRect().x + 'px'
+        })
+    });
+
+    function successFunc(){
+        if (called) {
+            return;
+        }
+        called = true;
+        window.removeEventListener("scroll", successFunc, true);
+        $('#dateTimePicker').datetimepicker('date', $('#dateTimePicker').val());
+        success($('#dateTimePicker').datetimepicker('date').format());
+        $('#dateTimePicker').datetimepicker('destroy');
+    }
+
+    editor.addEventListener("change", successFunc);
+    editor.addEventListener("blur", successFunc);
+    // remove on scroll also
+    window.addEventListener("scroll", successFunc, true);
+
+    return editor;
 }
 
 // READY!
@@ -573,7 +627,7 @@ $(document).ready(function () {
 
             case 'get_objects':
                 objectsLoaded = [];
-                objectSelect = [];
+                objectSelect = [{ _id: '', name: '' }];
                 var objects = msg.arg;
                 for (var o in objects) {
                     objectSelect.push({
@@ -594,19 +648,15 @@ $(document).ready(function () {
                 opnotesTabulator.setData(msg.arg);
                 break;
 
-            case 'get_chats':
-                addChatMessage(msg.arg, true);
-                break;
-
-            case 'get_notes':
-                createNotesTree(msg.arg);
-                break;
-
             case 'get_users':
                 userSelect = msg.arg;
                 break;
 
                 // chat
+            case 'get_chats':
+                addChatMessage(msg.arg, true, true);
+                break;
+
             case 'bulk_chat':
                 addChatMessage(msg.arg, true);
                 break;
@@ -630,7 +680,6 @@ $(document).ready(function () {
                 break;
 
             case 'update_event':
-                console.log(msg);
                 eventsTabulator.updateRow(msg.arg._id, msg.arg);
                 break;
 
@@ -639,6 +688,10 @@ $(document).ready(function () {
                 break;
 
                 // notes
+            case 'get_notes':
+                createNotesTree(msg.arg);
+                break;
+
             case 'insert_note':
                 $('#notes').jstree(true).create_node('#', msg.arg);
                 break;
@@ -744,10 +797,10 @@ $(document).ready(function () {
 
                             if (obj.objType !== 'link') {
                                 obj.set('angle', o.rot);
-                                if (o.type === 'shape') {
+                                if (obj.objType === 'shape') {
                                     obj.set('width', o.scale_x);
                                     obj.set('height', o.scale_y);
-                                } else if (o.type === 'icon') {
+                                } else if (obj.objType === 'icon') {
                                     obj.set('scaleX', o.scale_x);
                                     obj.set('scaleY', o.scale_y);
                                 }
@@ -799,7 +852,7 @@ $(document).ready(function () {
             case 'insert_object':
                 for (var h = 0; h < msg.arg.length; h++) {
                     var o = msg.arg[h];
-                    objectSelect[objects[o]._id] = objects[o].name.split('\n')[0];
+                    objectSelect.push({ _id: o._id, name: o.name.split('\n')[0] });
                     addObjectToCanvas(o, false);
                 }
                 updateMinimapBg();
@@ -807,7 +860,9 @@ $(document).ready(function () {
 
             case 'delete_object':
                 var _id = msg.arg;
-                delete objectSelect[_id];
+                for (var i = 0; i < objectSelect.length; i++) {
+                    
+                }
                 for (var i = 0; i < canvas.getObjects().length; i++) {
                     if (canvas.item(i)._id == _id) {
                         var object = canvas.item(i);
@@ -943,37 +998,47 @@ $(document).ready(function () {
             {
                 title: 'Manage Users',
                 field: 'permissions.manage_users',
-                editor: 'tickCross',
                 formatter: 'tickCross',
-                align: 'center'
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
             },
             {
                 title: 'Modify Diagram',
                 field: 'permissions.modify_diagram',
-                editor: 'tickCross',
                 formatter: 'tickCross',
-                align: 'center'
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
             },
             {
                 title: 'Modify Notes',
                 field: 'permissions.modify_notes',
-                editor: 'tickCross',
                 formatter: 'tickCross',
-                align: 'center'
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
             },
             {
                 title: 'Modify Files',
                 field: 'permissions.modify_files',
-                editor: 'tickCross',
                 formatter: 'tickCross',
-                align: 'center'
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
             },
             {
                 title: 'API Access',
                 field: 'permissions.api_access',
-                editor: 'tickCross',
                 formatter: 'tickCross',
-                align: 'center'
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
             },
             {
                 headerSort: false,
@@ -998,9 +1063,12 @@ $(document).ready(function () {
         layout: "fitColumns",
         index: '_id',
         cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            row = cleanupRow(row);
+
             socket.send(JSON.stringify({
                 act: 'update_event',
-                arg: cell.getRow().getData(),
+                arg: row,
                 msgId: msgHandler()
             }));
         },
@@ -1016,11 +1084,13 @@ $(document).ready(function () {
             },
             {
                 title: 'Discovery Time',
-                field: 'discovery_time'
+                field: 'discovery_time',
+                editor: dateEditor
             },
             {
                 title: 'Event Time',
-                field: 'event_time'
+                field: 'event_time',
+                editor: dateEditor
             },
             {
                 title: 'Source',
@@ -1038,7 +1108,7 @@ $(document).ready(function () {
                     }
                 },
                 formatter: function (cell, formatterParams, onRendered) {
-                    if (cell.getValue() !== undefined && cell.getValue() !== '') {
+                    if (cell.getValue() !== undefined && cell.getValue()) {
                         return objectSelect.find(obj => obj._id == cell.getValue()).name
                     } else {
                         return ""
@@ -1061,7 +1131,7 @@ $(document).ready(function () {
                     }
                 },
                 formatter: function (cell, formatterParams, onRendered) {
-                    if (cell.getValue() !== undefined && cell.getValue() !== '') {
+                    if (cell.getValue() !== undefined && cell.getValue()) {
                         return objectSelect.find(obj => obj._id == cell.getValue()).name
                     } else {
                         return ""
@@ -1269,8 +1339,6 @@ $(document).ready(function () {
         }
     });
 
-
-
     // make the diagram resizable
     $("#diagramJumbo").resizable({
         handles: 's',
@@ -1303,15 +1371,6 @@ $(document).ready(function () {
             resizeCanvas();
         }, 100);
     }, false);
-
-    // capture enter key in chat input bar
-    $("#messageInput").keypress(function (e) {
-        var key = e.charCode || e.keyCode || 0;
-        if (key === $.ui.keyCode.ENTER) {
-            sendChatMessage($("#messageInput").val(), activeChannel);
-            $("#messageInput").val('');
-        }
-    });
 
     // capture keys
     window.addEventListener("keydown", function (e) {

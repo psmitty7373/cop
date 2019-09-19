@@ -14266,8 +14266,9 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 					var offset = Tabulator.prototype.helpers.elOffset(cellEl);
 
 					listEl.style.minWidth = cellEl.offsetWidth + "px";
-
-					listEl.style.top = offset.top + cellEl.offsetHeight + "px";
+					
+					// make the select be above
+					listEl.style.bottom = window.innerHeight - offset.top + "px";// - cellEl.offsetHeight + "px";
 					listEl.style.left = offset.left + "px";
 					document.body.appendChild(listEl);
 				}

@@ -1,28 +1,104 @@
 // ---------------------------- Toolbar Stuff  ----------------------------------
-function toggleToolbar(mode) {
-    if (mode === null) {
+var activeSubToolbar = null;
+var activeToolbar = null;
+var activeTable = 'chat';
+var toolbarState = false;
+
+function toggleToolbar(toolbar) {
+    if (toolbar === null) {
         toggleToolbar('tools');
         return;
     }
 
     if ($('#toolbarBody').width() === 0) {
-        openToolbar(mode);
+        openToolbar(toolbar);
     } else {
-        if (activeToolbar === mode)
+        if (activeToolbar === toolbar)
             closeToolbar();
         else
-            openToolbar(mode);
+            openToolbar(toolbar);
     }
 }
 
-function openToolbar(mode) {
-    if (toolbarState && mode == activeToolbar) {
+function toolbarEditObject() {
+    if (activeSubToolbar === 'editObject')
+        return;
+
+    if (canvas.getActiveObjects().length > 1) {
+        $("#toolbarBody").addClass("disabledDiv");
+    } else {
+        $("#toolbarBody").removeClass("disabledDiv");
+    }
+
+    if (permissions.modify_diagram) {
+        $('#toolbarTitle').html('Edit Object');
+    } else {
+        $('#toolbarTitle').text('View Object');
+    }
+
+    $('#propNameGroup').show();
+    $('#propObjectGroup').show();
+    $('#editDetailsButton').show();
+    $('#deleteObjectButton').show();
+    $('#insertObjectButton').hide();
+    $('#newObjectButton').show();
+    $('#propObjectGroup').tabs('disable');
+
+    var objType = $('#propType').val();
+
+    if (objType === 'link') {
+        $('#sizeObject').hide();
+        $('#lockObjectGroup').hide();
+        $('#propFillColorSpan').hide();
+    } else {
+        $('#sizeObject').show();
+        $('#lockObjectGroup').show();
+    }
+
+    var index = $('#propObjectGroup a[href="#tabs-' + objType + '"]').parent().index();
+    $('#moveObject').show();
+    $('#propObjectGroup').tabs('enable', index);
+    $('#propObjectGroup').tabs('option', 'active', index);
+
+    activeSubToolbar = 'editObject';
+}
+
+function toolbarNewObject() {
+    if (activeSubToolbar === 'newObject')
+        return;
+
+    $("#toolbarBody").removeClass("disabledDiv");
+    $('#toolbarTitle').html('New Object');
+    $('#propID').val('');
+    $('#propNameGroup').show();
+    $('#propName').val('');
+    $('#propFillColor').val(lastFillColor);
+    $('#propFillColor').data('paletteColorPickerPlugin').reload();
+    $('#propStrokeColor').val(lastStrokeColor);
+    $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
+    $('#lockObject').prop('checked', false);
+    $('#propType').val('icon');
+    $('#prop-icon').val('00-000-icon-hub.png');
+    $('#prop-icon').data('picker').sync_picker_with_select();
+    $('#propObjectGroup').tabs('enable');
+    $('#propObjectGroup').tabs('option', 'active', 0);
+    $('#moveObject').hide();
+    $('#newObjectButton').hide();
+    $('#editDetailsButton').hide();
+    $('#deleteObjectButton').hide();
+    $('#insertObjectButton').show();
+
+    activeSubToolbar = 'newObject';
+}
+
+function openToolbar(toolbar) {
+    if (toolbarState && toolbar == activeToolbar) {
         return;
     }
 
     $('#toolbarButton').addClass('open');
     $('#' + activeToolbar + 'Tab').removeClass('activeTab');
-    $('#' + mode + 'Tab').addClass('activeTab');
+    $('#' + toolbar + 'Tab').addClass('activeTab');
     $('#toolbarBody').animate({
         width: Math.max(10, Math.min($('#diagramJumbo').width() - 60, settings.toolbar))
     }, {
@@ -30,9 +106,9 @@ function openToolbar(mode) {
     });
 
     toolbarState = true;
-    activeToolbar = mode;
+    activeToolbar = toolbar;
 
-    switch (mode) {
+    switch (toolbar) {
         case 'tools':
             $('#toolsForm').show();
             $('#notesForm').hide();
@@ -40,62 +116,12 @@ function openToolbar(mode) {
             $('#propFillColorSpan').show();
             // editing an object
             if (canvas.getActiveObject()) {
-                if (canvas.getActiveObjects().length > 1) {
-                    $("#toolbarBody").addClass("disabledDiv");
-                } else {
-                    $("#toolbarBody").removeClass("disabledDiv");
-                }
+                toolbarEditObject();
 
-                if (permissions.modify_diagram) {
-                    $('#toolbarTitle').html('Edit Object');
-                } else {
-                    $('#toolbarTitle').text('View Object');
-                }
-
-                $('#propNameGroup').show();
-                $('#propObjectGroup').show();
-                $('#editDetailsButton').show();
-                $('#deleteObjectButton').show();
-                $('#insertObjectButton').hide();
-                $('#newObjectButton').show();
-                $('#propObjectGroup').tabs('disable');
-
-                var objType = $('#propType').val();
-                if (objType === 'link') {
-                    $('#sizeObject').hide();
-                    $('#lockObjectGroup').hide();
-                    $('#propFillColorSpan').hide();
-                } else {
-                    $('#sizeObject').show();
-                    $('#lockObjectGroup').show();
-                }
-
-                var index = $('#propObjectGroup a[href="#tabs-' + objType + '"]').parent().index();
-                $('#moveObject').show();
-                $('#propObjectGroup').tabs('enable', index);
-                $('#propObjectGroup').tabs('option', 'active', index);
-                // new object
+            // new object
             } else if (canvas.getActiveObject() === undefined || canvas.getActiveObject() === null) {
-                $("#toolbarBody").removeClass("disabledDiv");
-                $('#toolbarTitle').html('New Object');
-                $('#propID').val('');
-                $('#propNameGroup').show();
-                $('#propName').val('');
-                $('#propFillColor').val(lastFillColor);
-                $('#propFillColor').data('paletteColorPickerPlugin').reload();
-                $('#propStrokeColor').val(lastStrokeColor);
-                $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
-                $('#lockObject').prop('checked', false);
-                $('#propType').val('icon');
-                $('#prop-icon').val('00-000-icon-hub.png');
-                $('#prop-icon').data('picker').sync_picker_with_select();
-                $('#propObjectGroup').tabs('enable');
-                $('#propObjectGroup').tabs('option', 'active', 0);
-                $('#moveObject').hide();
-                $('#newObjectButton').hide();
-                $('#editDetailsButton').hide();
-                $('#deleteObjectButton').hide();
-                $('#insertObjectButton').show();
+               
+                toolbarNewObject();
             }
             break;
 
@@ -162,6 +188,7 @@ function updateSelection(options) {
                     }
                 }
             } else {
+                toolbarEditObject();
                 $('#propID').val(o._id);
                 $('#propFillColor').val(o.fill);
                 $('#propFillColor').data('paletteColorPickerPlugin').reload();
@@ -409,17 +436,17 @@ function insertObject() {
 }
 
 // bottom table toggle
-function toggleTable(mode) {
-    if (mode === activeTable) {
+function toggleTable(toolbar) {
+    if (toolbar === activeTable) {
         return;
     }
     $('#' + activeTable).hide();
     $('#' + activeTable + 'Tab').removeClass('activeTab');
-    $('#' + mode).show();
-    $('#' + mode + 'Tab').addClass('activeTab');
-    activeTable = mode;
+    $('#' + toolbar).show();
+    $('#' + toolbar + 'Tab').addClass('activeTab');
+    activeTable = toolbar;
 
-    switch (mode) {
+    switch (toolbar) {
         case 'chat':
             break;
 

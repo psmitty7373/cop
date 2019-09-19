@@ -1,3 +1,8 @@
+var activeChannel = 'log';
+var chatPosition = {};
+var firstChat = true;
+var unreadMessages = {};
+
 // toastr
 var notifSound = null;
 toastr.options = {
@@ -42,9 +47,12 @@ function notification(msg) {
     }
 }
 
-function addChatMessage(messages, bulk) {
+function addChatMessage(messages, bulk, scroll) {
     if (!bulk) {
         bulk = false;
+    }
+    if (!scroll) {
+        scroll = false;
     }
 
     for (var i = 0; i < messages.length; i++) {
@@ -63,9 +71,9 @@ function addChatMessage(messages, bulk) {
             earliest_messages[channel] = ts;
         }
 
-        if (messages[i].prepend)
+        if (messages[i].prepend) {
             pane.prepend('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + tuser_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
-
+        }
         else {
             // check if at bottom
             var atBottom = ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y);
@@ -105,11 +113,18 @@ function addChatMessage(messages, bulk) {
             if (atBottom) {
                 setTimeout(function () {
                     $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
-                }, 25);
+                }, 50);
             }
         }
         if (messages[i].more)
             pane.prepend('<div id="get-more-messages"><span onClick="getMoreMessages(\'' + channel + '\')">Get older messages.</span></div>');
+    }
+
+    // scroll to bottom
+    if (scroll) {
+        setTimeout(function() {
+            $('#log').overlayScrollbars().scroll($('#log').overlayScrollbars().scroll().max.y);
+        }, 500);
     }
 }
 
@@ -133,10 +148,12 @@ $(document).ready(function () {
     $('.channel').click(function (e) {
         var channel = e.target.id.split('-')[1];
 
-        if ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y) {
-            chatPosition[activeChannel] = 'bottom';
-        } else {
-            chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
+        if (channel !== activeChannel) {
+            if ($('#' + activeChannel).overlayScrollbars().scroll().max.y == $('#' + activeChannel).overlayScrollbars().scroll().position.y) {
+                chatPosition[activeChannel] = 'bottom';
+            } else {
+                chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
+            }
         }
 
         $('.channel-pane').hide();
@@ -147,7 +164,9 @@ $(document).ready(function () {
         $('#chatTab').css('background-color', '');
 
         if (!chatPosition[channel] || chatPosition[channel] === 'bottom') {
-            $('#' + channel).scrollTop($('#' + channel)[0].scrollHeight);
+            setTimeout(function() {
+                $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
+            }, 50);
         }
 
         $('#channel-' + channel).addClass('channelSelected');
@@ -159,5 +178,14 @@ $(document).ready(function () {
         unreadMessages[activeChannel] = 0;
         $('#unread-' + activeChannel).hide();
         $('#chatTab').css('background-color', '');
+    });
+
+    // capture enter key in chat input bar
+    $("#messageInput").keypress(function (e) {
+        var key = e.charCode || e.keyCode || 0;
+        if (key === $.ui.keyCode.ENTER) {
+            sendChatMessage($("#messageInput").val(), activeChannel);
+            $("#messageInput").val('');
+        }
     });
 });

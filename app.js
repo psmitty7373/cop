@@ -2067,6 +2067,7 @@ async function setupSocket(socket) {
                                                         act: 'move_object',
                                                         arg: args.concat(args_broadcast)
                                                     }), socket);
+
                                                     socket.send(JSON.stringify({
                                                         act: 'move_object',
                                                         arg: args_broadcast
@@ -2113,6 +2114,7 @@ async function setupSocket(socket) {
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.update_event, msg.arg)) {
                                     updateEvent(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {

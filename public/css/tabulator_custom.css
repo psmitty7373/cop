@@ -753,6 +753,7 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-right: 1px solid #eee
 }
 
 .tabulator-row .tabulator-cell:last-of-type {
