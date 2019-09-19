@@ -5522,7 +5522,8 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 			var cellNameArray = [];
 			var found = false;
 			for (var attrname in data) {
-				{if (data[attrname].constructor == Object ){
+
+				{if (data[attrname] && data[attrname].constructor == Object ){
 					for (var nestedAtt in data[attrname]){
 						cellNameArray.push(attrname + "."  + nestedAtt);
 					}
@@ -5539,7 +5540,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 				var cell = _this6.getCell(cellName);
 	
 				if (cell) {
-                    cellV = cellName.split(".");
+                    let cellV = cellName.split(".");
 					if (cellV.length > 1) {
 						var dataValue = data[cellV[0]][cellV[1]];
 					} else {
@@ -14162,7 +14163,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 							element: false
 						};
 
-						if (item.value === curentValue || !isNaN(parseFloat(item.value)) && !isNaN(parseFloat(item.value)) && parseFloat(item.value) === parseFloat(curentValue)) {
+						if (item.value === curentValue) {// || !isNaN(parseFloat(item.value)) && !isNaN(parseFloat(item.value)) && parseFloat(item.value) === parseFloat(curentValue)) {
 							setCurrentItem(item);
 						}
 

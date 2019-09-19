@@ -1,43 +1,41 @@
 // toastr
 var notifSound = null;
 toastr.options = {
-  "closeButton": true,
-  "debug": false,
-  "newestOnTop": false,
-  "progressBar": false,
-  "positionClass": "toast-top-center",
-  "preventDuplicates": true,
-  "onclick": null,
-  "showDuration": "300",
-  "hideDuration": "1000",
-  "timeOut": "5000",
-  "extendedTimeOut": "1000",
-  "showEasing": "swing",
-  "hideEasing": "linear",
-  "showMethod": "fadeIn",
-  "hideMethod": "fadeOut"
+    "closeButton": true,
+    "debug": false,
+    "newestOnTop": false,
+    "progressBar": false,
+    "positionClass": "toast-top-center",
+    "preventDuplicates": true,
+    "onclick": null,
+    "showDuration": "300",
+    "hideDuration": "1000",
+    "timeOut": "5000",
+    "extendedTimeOut": "1000",
+    "showEasing": "swing",
+    "hideEasing": "linear",
+    "showMethod": "fadeIn",
+    "hideMethod": "fadeOut"
 }
 
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
-    notifSound.play();
     if (!("Notification" in window) || Notification.permission === 'denied') {
+        notifSound.play();
         toastr.info(msg.text, msg.username)
-    }
-
-    else if (Notification.permission === 'granted') {
+    } else if (Notification.permission === 'granted') {
+        notifSound.play();
         var notification = new Notification(msg.username, {
             icon: 'images/avatars/' + msg.tuser_id + '.png',
             body: msg.text
         });
-    }
-
-    else {
+    } else {
         Notification.requestPermission(function (permission) {
             if (!('permission' in Notification)) {
                 Notification.permission = permission;
             }
             if (permission === 'granted') {
+                notifSound.play();
                 var notification = new Notification(msg);
             }
         });
@@ -93,8 +91,7 @@ function addChatMessage(messages, bulk) {
                     unreadMessages[channel] = 1;
                     newMsg.addClass('newMessage');
                     newMsg.append('<div class="newMessageLabel">New Messages</div>');
-                }
-                else
+                } else
                     unreadMessages[channel]++;
                 $('#unread-' + channel).text(unreadMessages[channel]).show();
                 $('#chatTab').css('background-color', '#ff6060');
@@ -106,7 +103,7 @@ function addChatMessage(messages, bulk) {
 
             // if at bottom, wait for 
             if (atBottom) {
-                setTimeout(function() {
+                setTimeout(function () {
                     $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
                 }, 25);
             }
@@ -119,17 +116,26 @@ function addChatMessage(messages, bulk) {
 // called when a user requests more history from teh current chat
 function getMoreMessages(channel) {
     $('#get-more-messages').remove();
-    socket.send(JSON.stringify({act:'get_old_chats', arg: {channel: channel, start_from: earliest_messages[channel]}, msgId: msgHandler()}));
+    socket.send(JSON.stringify({
+        act: 'get_old_chats',
+        arg: {
+            channel: channel,
+            start_from: earliest_messages[channel]
+        },
+        msgId: msgHandler()
+    }));
 }
 
-$(document).ready(function() {
-    $('.channel').click(function(e) {
+$(document).ready(function () {
+    // chat notification sound
+    notifSound = new Audio('sounds/knock.mp3');
+
+    $('.channel').click(function (e) {
         var channel = e.target.id.split('-')[1];
 
         if ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y) {
             chatPosition[activeChannel] = 'bottom';
-        }
-        else {
+        } else {
             chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
         }
 
@@ -149,7 +155,7 @@ $(document).ready(function() {
     });
 
     // clear unread when clicking on channel
-    $('#chatTab').click(function(e) {
+    $('#chatTab').click(function (e) {
         unreadMessages[activeChannel] = 0;
         $('#unread-' + activeChannel).hide();
         $('#chatTab').css('background-color', '');

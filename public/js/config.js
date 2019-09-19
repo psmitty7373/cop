@@ -3,7 +3,10 @@ var pendingMsg = [];
 var msgId = 0;
 
 if (!permissions)
-    permissions = { manage_users: false, manage_missions: false };
+    permissions = {
+        manage_users: false,
+        manage_missions: false
+    };
 
 function showModal(title, body, footer) {
     $('#modal-title').text(title);
@@ -12,7 +15,11 @@ function showModal(title, body, footer) {
     $('#modal').modal('show')
 }
 
-$("#changePassword").click(function(e) { e.preventDefault(); changePassword(); });
+$("#changePassword").click(function (e) {
+    e.preventDefault();
+    changePassword();
+});
+
 function changePassword() {
     if ($('#cpNew').val() !== $('#cpConfirm').val()) {
         $('#modal-title').text('Error!');
@@ -20,7 +27,9 @@ function changePassword() {
         $('#modal-footer').html('');
         $('#modal').modal('show')
     } else {
-        var data = {newpass: $('#cpNew').val()};
+        var data = {
+            newpass: $('#cpNew').val()
+        };
         $('#cpNew').val('');
         $('#cpConfirm').val('');
         $.ajax({
@@ -29,7 +38,7 @@ function changePassword() {
             data: data,
             dataType: 'json',
             cache: false,
-            success: function(resp) {
+            success: function (resp) {
                 if (resp == 'OK') {
                     $('#modal-title').text('Password Changed!');
                     $('#modal-body').html('<p>Password changed successfully!</p>');
@@ -40,7 +49,7 @@ function changePassword() {
                 $('#modal-footer').html('');
                 $('#modal').modal('show')
             },
-            error: function() {
+            error: function () {
                 console.log('mission delete error');
             }
         });
@@ -48,11 +57,9 @@ function changePassword() {
 }
 
 var _URL = window.URL || window.webkitURL;
-var f = function(e)
-{
-    var srcElement = e.srcElement? e.srcElement : e.target;
-    if ($.inArray('Files', e.dataTransfer.types) > -1)
-    {
+var f = function (e) {
+    var srcElement = e.srcElement ? e.srcElement : e.target;
+    if ($.inArray('Files', e.dataTransfer.types) > -1) {
         e.stopPropagation();
         e.preventDefault();
         e.dataTransfer.dropEffect = ($(srcElement).hasClass('droppable')) ? 'copy' : 'none';
@@ -66,10 +73,10 @@ var f = function(e)
             }
             var formData = new FormData();
             var file = e.dataTransfer.files[0];
-            formData.append('file',file);
-            formData.append('id',e.target.id.split('_')[1]);
+            formData.append('file', file);
+            formData.append('id', e.target.id.split('_')[1]);
             var img = new Image();
-            img.onload = function() {
+            img.onload = function () {
                 if (this.width > 72 || this.height > 72 || this.height !== this.width || file['type'] !== 'image/png') {
                     showModal('Image Error!', 'Sorry, avatars must be <= 72x72px, square, and in .png format.', '');
                 } else {
@@ -81,16 +88,16 @@ var f = function(e)
                         cache: false,
                         contentType: false,
                         processData: false,
-                        success: function() {
+                        success: function () {
                             e.target.src = 'images/avatars/' + e.target.id.split('_')[1] + '.png?' + new Date().getTime();
                         },
-                        error: function() {
+                        error: function () {
                             console.log('upload error');
                         }
                     });
                 }
             };
-            img.onerror = function() {
+            img.onerror = function () {
                 showModal('Image Error!', 'Sorry, avatars must be <= 72x72px, square, and in .png format.', '');
             };
             img.src = _URL.createObjectURL(file);
@@ -100,7 +107,7 @@ var f = function(e)
 
 // ---------------------------- SOCKET.IO MESSAGES / HANDLERS ----------------------------------
 function msgHandler() {
-    pendingMsg[msgId] = setTimeout(function() {
+    pendingMsg[msgId] = setTimeout(function () {
         for (m in pendingMsg) {
             clearTimeout(pendingMsg[m]);
         }
@@ -111,9 +118,12 @@ function msgHandler() {
         $('#modal-footer').html('');
         $('#modal-content').removeAttr('style');
         $('#modal-content').removeClass('modal-details');
-        $('#modal').removeData('bs.modal').modal({backdrop: 'static', keyboard: false});
+        $('#modal').removeData('bs.modal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
     }, 30000);
-    return msgId++; 
+    return msgId++;
 }
 
 function newUser() {
@@ -130,13 +140,20 @@ function newUser() {
             confirm: {
                 label: 'Insert',
                 className: 'btn-primary',
-                callback: function() {
+                callback: function () {
                     var user = {};
                     user.username = $('#nuUsername').val();
                     user.name = $('#nuName').val();
                     user.password = $('#nuPassword').val();
-                    user.permissions = { manage_users: $('#nuPermManageUsers').is(":checked"), manage_missions: $('#nuPermManageMissions').is(":checked") }
-                    socket.send(JSON.stringify({ act:'insert_user', arg: user, msgId: msgHandler() }));
+                    user.permissions = {
+                        manage_users: $('#nuPermManageUsers').is(":checked"),
+                        manage_missions: $('#nuPermManageMissions').is(":checked")
+                    }
+                    socket.send(JSON.stringify({
+                        act: 'insert_user',
+                        arg: user,
+                        msgId: msgHandler()
+                    }));
                 }
             },
             cancel: {
@@ -147,17 +164,17 @@ function newUser() {
     });
 }
 
-$(document).ready(function() {
+$(document).ready(function () {
     document.body.addEventListener('dragleave', f, false);
     document.body.addEventListener('dragover', f, false);
     document.body.addEventListener('drop', f, false);
-    
+
     if (permissions.manage_users) {
         $('#usersJumbotron').show();
     }
 
     // prevent bootbox from reloading on submit / enter
-    $(document).on("submit", ".bootbox form", function(e) {
+    $(document).on("submit", ".bootbox form", function (e) {
         e.preventDefault();
         $(".bootbox .btn-primary").click();
     });
@@ -173,23 +190,35 @@ $(document).ready(function() {
     }
 
     // socket onopen
-    socket.onopen = function() {
+    socket.onopen = function () {
         socket.pingInterval = setInterval(function ping() {
-            socket.send(JSON.stringify({ act: 'ping', arg: '', msgId: msgHandler() }));
+            socket.send(JSON.stringify({
+                act: 'ping',
+                arg: '',
+                msgId: msgHandler()
+            }));
         }, 10000);
-        setTimeout(function() {
+        setTimeout(function () {
             console.log('connect');
             if (permissions.manage_users) {
-                socket.send(JSON.stringify({ act: 'config', arg: '', msgId: msgHandler() }));
-                socket.send(JSON.stringify({ act: 'get_users', arg: '', msgId: msgHandler() }));
+                socket.send(JSON.stringify({
+                    act: 'config',
+                    arg: '',
+                    msgId: msgHandler()
+                }));
+                socket.send(JSON.stringify({
+                    act: 'get_users',
+                    arg: '',
+                    msgId: msgHandler()
+                }));
             }
         }, 100);
     };
 
     // message handler
-    socket.onmessage = function(msg) {
+    socket.onmessage = function (msg) {
         msg = JSON.parse(msg.data);
-        switch(msg.act) {
+        switch (msg.act) {
             // general
             case 'ack':
                 clearTimeout(pendingMsg[msg.arg]);
@@ -205,7 +234,7 @@ $(document).ready(function() {
                 $('#modal-content').removeClass('modal-details');
                 $('#modal').removeData('bs.modal').modal({});
                 break;
-            
+
             case 'get_users':
                 // missions
                 usersTabulator.setData(msg.arg);
@@ -226,31 +255,79 @@ $(document).ready(function() {
     }
 
     // user table
-    $('#newUser').click(function() { newUser(); });
+    $('#newUser').click(function () {
+        newUser();
+    });
     if (permissions.manage_users) {
         usersTabulator = new Tabulator("#usersTable", {
             layout: "fitColumns",
             index: '_id',
-            cellEdited: function(cell){
-                socket.send(JSON.stringify({ act: 'update_user', arg: cell.getRow().getData(), msgId: msgHandler() }));
+            cellEdited: function (cell) {
+                socket.send(JSON.stringify({
+                    act: 'update_user',
+                    arg: cell.getRow().getData(),
+                    msgId: msgHandler()
+                }));
             },
-            columns: [
-                { title: 'User ID', field: '_id', visible: false },
-                { title: 'Avatar', field: 'avatar', formatter: function(cell, formatterParams, onRendered) {
-                    if (cell.getValue() !== null) {
-                        return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/' + cell.getRow().getData()['_id'] + '.png"/>';
-                    } else {
-                        return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/blank.png"/>';
+            columns: [{
+                    title: 'User ID',
+                    field: '_id',
+                    visible: false
+                },
+                {
+                    title: 'Avatar',
+                    field: 'avatar',
+                    formatter: function (cell, formatterParams, onRendered) {
+                        if (cell.getValue() !== null) {
+                            return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/' + cell.getRow().getData()['_id'] + '.png"/>';
+                        } else {
+                            return '<img class="droppable avatarSm" id="avatar_' + cell.getRow().getData()['_id'] + '" src="images/avatars/blank.png"/>';
+                        }
                     }
-                }},
-                { title: 'Username', field: 'username' },
-                { title: 'Name', field: 'name', editor: 'input' },
-                { title: 'Password', field: 'password', editor: 'input' },
-                { title: 'Manage Missions', field: 'permissions.manage_missions', editor: 'tickCross', formatter: 'tickCross', align: 'center' },
-                { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross', align: 'center'  },
-                { headerSort: false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
-                    socket.send(JSON.stringify({ act: 'delete_user', arg: { user_id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
-                }},
+                },
+                {
+                    title: 'Username',
+                    field: 'username'
+                },
+                {
+                    title: 'Name',
+                    field: 'name',
+                    editor: 'input'
+                },
+                {
+                    title: 'Password',
+                    field: 'password',
+                    editor: 'input'
+                },
+                {
+                    title: 'Manage Missions',
+                    field: 'permissions.manage_missions',
+                    editor: 'tickCross',
+                    formatter: 'tickCross',
+                    align: 'center'
+                },
+                {
+                    title: 'Manage Users',
+                    field: 'permissions.manage_users',
+                    editor: 'tickCross',
+                    formatter: 'tickCross',
+                    align: 'center'
+                },
+                {
+                    headerSort: false,
+                    formatter: 'buttonCross',
+                    width: 40,
+                    align: 'center',
+                    cellClick: function (e, cell) {
+                        socket.send(JSON.stringify({
+                            act: 'delete_user',
+                            arg: {
+                                user_id: cell.getRow().getData()['_id']
+                            },
+                            msgId: msgHandler()
+                        }));
+                    }
+                },
             ]
         });
     }

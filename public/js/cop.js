@@ -11,7 +11,13 @@ mission_id = getParameterByName('mission');
 
 // ---------------------------- PERMISSIONS & BUTTONS ----------------------------------
 if (!permissions) {
-    permissions = { manage_users: false, modify_diagram: false, modify_notes: false, modify_files: false, api_access: false };
+    permissions = {
+        manage_users: false,
+        modify_diagram: false,
+        modify_notes: false,
+        modify_files: false,
+        api_access: false
+    };
 }
 
 // ---------------------------- MINIMAP ----------------------------------
@@ -23,10 +29,18 @@ minimap.width = minimapBg.width = 100;
 minimap.height = minimapBg.height = 100;
 
 // ---------------------------- GLOBALS ----------------------------------
-var settings = {'zoom': 1.0, 'x': Math.round($('#diagramJumbo').width()/2), 'y': Math.round(700/2), 'diagram': 700, 'tools': 400, 'notes': 400, 'files': 400};
+var settings = {
+    'zoom': 1.0,
+    'x': Math.round($('#diagramJumbo').width() / 2),
+    'y': Math.round(700 / 2),
+    'diagram': 700,
+    'toolbar': 400,
+    'tables': 350
+};
 var earliest_messages = {}; //= 2147483647000;
 var creatingLink = false;
 var userSelect = [];
+var objectSelect = [];
 var objectsLoaded = null;
 var updatingObject = false;
 var socket;
@@ -70,7 +84,7 @@ function checkIfShapesCached(msg) {
         }
         checkIfObjectsLoaded();
     } else {
-        setTimeout(function() {
+        setTimeout(function () {
             checkIfShapesCached(msg);
         }, 50);
     }
@@ -97,17 +111,17 @@ function checkIfObjectsLoaded() {
 function getIcon(icon, cb) {
     var path = 'images/icons/';
     if (!SVGCache[icon]) {
-        $.get(path + icon, function(data) {
-            fabric.loadSVGFromString(data, function(objects, options) {
+        $.get(path + icon, function (data) {
+            fabric.loadSVGFromString(data, function (objects, options) {
                 SVGCache[icon] = fabric.util.groupSVGElements(objects, options);
                 if (cb) {
                     cb();
                 }
                 objectsLoaded.pop();
             });
-        }, 'text').fail(function() {
-            $.get(path + 'missing.svg', function(data) {
-                fabric.loadSVGFromString(data, function(objects, options) {
+        }, 'text').fail(function () {
+            $.get(path + 'missing.svg', function (data) {
+                fabric.loadSVGFromString(data, function (objects, options) {
                     SVGCache[icon] = fabric.util.groupSVGElements(objects, options);
                     if (cb) {
                         cb();
@@ -133,14 +147,17 @@ function loadSettings() {
     settings = JSON.parse(dc.split('mcscop-settings=')[1]);
     $('#diagramJumbo').height(settings.diagram);
     canvas.setZoom(settings.zoom);
-    canvas.relativePan({ x: settings.x, y: settings.y });
+    canvas.relativePan({
+        x: settings.x,
+        y: settings.y
+    });
 }
 
 function updateSettings() {
     if (updateSettingsTimer)
         window.clearTimeout(updateSettingsTimer);
-    updateSettingsTimer = setTimeout(function() {
-            document.cookie = "mcscop-settings=" + JSON.stringify(settings);
+    updateSettingsTimer = setTimeout(function () {
+        document.cookie = "mcscop-settings=" + JSON.stringify(settings);
     }, 100);
 }
 
@@ -176,7 +193,7 @@ function updateMinimapBg() {
 
 // ---------------------------- SOCKET.IO MESSAGES / HANDLERS ----------------------------------
 function msgHandler() {
-    pendingMsg[msgId] = setTimeout(function() {
+    pendingMsg[msgId] = setTimeout(function () {
         for (m in pendingMsg) {
             clearTimeout(pendingMsg[m]);
         }
@@ -189,14 +206,24 @@ function msgHandler() {
         $('#modal-footer').html('');
         $('#modal-content').removeAttr('style');
         $('#modal-content').removeClass('modal-details');
-        $('#modal').removeData('bs.modal').modal({backdrop: 'static', keyboard: false});
+        $('#modal').removeData('bs.modal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
     }, 30000);
-    return msgId++; 
+    return msgId++;
 }
 
 // send chat message to db
 function sendChatMessage(msg, channel) {
-    socket.send(JSON.stringify({act: 'insert_chat', arg: {channel: channel, text: msg}, msgId: msgHandler()}));
+    socket.send(JSON.stringify({
+        act: 'insert_chat',
+        arg: {
+            channel: channel,
+            text: msg
+        },
+        msgId: msgHandler()
+    }));
 }
 
 // show message above canvas for link creation, etc
@@ -204,7 +231,7 @@ function showMessage(msg, timeout) {
     $('#message').html('<span class="messageHeader">' + msg + '</span>');
     $('#message').show();
     if (timeout !== undefined) {
-        setTimeout(function() {
+        setTimeout(function () {
             $('#message').html('');
             $('#message').hide();
         }, timeout * 1000);
@@ -241,50 +268,52 @@ function startTime() {
 function deleteObjectConfirm() {
     $('#modal-title').text('Are you sure?');
     $('#modal-body').html('<p>Are you sure you want to delete this object?</p><p>Deleting an object will delete all attached notes.</p>');
-    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="cop.deleteObject();">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
+    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="deleteObject();">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
     $('#modal-content').removeAttr('style');
     $('#modal-content').removeClass('modal-details');
     $('#modal').modal('show')
 }
 
-function getUserSelect() {
-    userSelect.sort(function(a, b) {
-        return a.username.localeCompare(b.name);
-    });
-    var user = {};
-    for (var i = 0; i < userSelect.length; i++) {
-        user[userSelect[i]._id] = userSelect[i].username;
-    }
-    return user;
+function sortByName(a, b) {
+    return a.name.localeCompare(b.name);
 }
 
-function getObjectSelect() {
-    var res = ':';
-    var objs = canvas.getObjects();
-    objs.sort(function(a, b) {
-        if (!a.name_val || !b.name_val)
-            return 0;
-        return a.name_val.localeCompare(b.name_val);
-    });
-    for (var i = 0; i < objs.length; i++) {
-        if (objs[i].objType === 'icon' || objs[i].objType === 'shape')
-            res += ';' + objs[i]._id + ':' + objs[i].name_val.split('\n')[0].replace(':','').replace(';','');
-    }
-    return res;
-}
-
+// add user to user table dialog box
 function addUser() {
-    var msg = '<form><div class="form-group"><label for="nuUserId">User:</label><select class="form-control" id="nuUserId">';
+    var msg = `
+<form>
+    <div class="form-group">
+        <label for="nuUserId">User:</label>
+        <select class="form-control" id="nuUserId">`;
 
     for (var i = 0; i < userSelect.length; i++) {
-        msg+= '<option value="' + userSelect[i]._id + '">' + userSelect[i].username + '</option>';
+        msg += '<option value="' + userSelect[i]._id + '">' + userSelect[i].username + '</option>';
     }
-    
-    msg += '</select></div><div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageUsers"><label class="form-check-label" for="nuPermManageUsers">Manage Users</label></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyDiagram"><label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyNotes"><label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermModifyFiles"><label class="form-check-label" for="nuPermModifyFiles">Modify Files</label></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermApiAccess"><label class="form-check-label" for="nuPermApiAccess">API Access</label></div></form>';
+
+    msg += `
+        </select>
+    </div>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="nuPermManageUsers">
+        <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
+    </div>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="nuPermModifyDiagram">
+        <label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label>
+    </div>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="nuPermModifyNotes">
+        <label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label>
+    </div>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="nuPermModifyFiles">
+        <label class="form-check-label" for="nuPermModifyFiles">Modify Files</label>
+    </div>
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="nuPermApiAccess">
+        <label class="form-check-label" for="nuPermApiAccess">API Access</label>
+    </div>
+</form>`;
 
     bootbox.dialog({
         message: msg,
@@ -293,16 +322,124 @@ function addUser() {
             confirm: {
                 label: 'Insert',
                 className: 'btn-primary',
-                callback: function() {
+                callback: function () {
                     var user = {};
                     user.user_id = $('#nuUserId').val();
-                    user.permissions = { manage_users: $('#nuPermManageUsers').is(":checked"),
-                        modify_diagram: $('#nuPermModifyDiagram').is(":checked"),
-                        modify_notes: $('#nuPermModifyNotes').is(":checked"),
-                        modify_files: $('#nuPermModifyFiles').is(":checked"),
-                        api_access: $('#nuPermApiAccess').is(":checked"),
-                    },
-                    socket.send(JSON.stringify({ act:'insert_user_mission', arg: user, msgId: msgHandler() }));
+                    user.permissions = {
+                            manage_users: $('#nuPermManageUsers').is(":checked"),
+                            modify_diagram: $('#nuPermModifyDiagram').is(":checked"),
+                            modify_notes: $('#nuPermModifyNotes').is(":checked"),
+                            modify_files: $('#nuPermModifyFiles').is(":checked"),
+                            api_access: $('#nuPermApiAccess').is(":checked"),
+                        },
+                        socket.send(JSON.stringify({
+                            act: 'insert_user_mission',
+                            arg: user,
+                            msgId: msgHandler()
+                        }));
+                }
+            },
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
+    });
+}
+
+// add event to event table dialog box
+function addEvent() {
+    // sort the objects
+    objectSelect.sort(sortByName);
+
+    var msg = `
+<form>
+    <div class="form-group row">
+        <label for="neDiscoveryTime" class="col-sm-4 col-form-label">Discovery Time:</label>
+        <div class="col-sm-8">
+            <div class="input-group date" id="neDiscoveryTime" data-target-input="nearest">
+                <input type="text" class="form-control datetimepicker-input" data-target="#neDiscoveryTime"/>
+                <div class="input-group-append" data-target="#neDiscoveryTime" data-toggle="datetimepicker">
+                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="neEventTime" class="col-sm-4 col-form-label">Event Time:</label>
+        <div class="col-sm-8">
+            <div class="input-group date" id="neEventTime" data-target-input="nearest">
+                <input type="text" class="form-control datetimepicker-input" data-target="#neEventTime"/>
+                <div class="input-group-append" data-target="#neEventTime" data-toggle="datetimepicker">
+                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="neSourceObject" class="col-sm-4 col-form-label">Source:</label>
+        <div class="col-sm-8">
+            <select class="form-control" id="neSourceObject">`;
+
+    for (var i = 0; i < objectSelect.length; i++) {
+        msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
+    }
+
+    msg += `
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="neDestObject" class="col-sm-4 col-form-label">Destination:</label>
+        <div class="col-sm-8">
+            <select class="form-control" id="neDestObject">`;
+
+    for (var i = 0; i < objectSelect.length; i++) {
+        msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
+    }
+
+    msg += `
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="neEventType" class="col-sm-4 col-form-label">Event Type:</label>
+        <div class="col-sm-8">
+            <input type="text" class="form-control" id="neEventType">
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="neShortDesc">Short Description:</label>
+        <textarea class="form-control" id="neShortDesc" rows="3"></textarea>        
+    </div>
+    <script type="text/javascript">
+        $(function () {
+            $('#neDiscoveryTime').datetimepicker();
+            $('#neEventTime').datetimepicker();
+        });
+    </script>
+</form>`;
+
+    bootbox.dialog({
+        message: msg,
+        title: 'Add Event',
+        buttons: {
+            confirm: {
+                label: 'Insert',
+                className: 'btn-primary',
+                callback: function () {
+                    var event = {};
+                    event.discovery_time = $('#neDiscoveryTime').datetimepicker('date').format();
+                    event.event_time = $('#neEventTime').datetimepicker('date').format();
+                    event.source_object = $('#neSourceObject').val();
+                    event.dest_object = $('#neDestObject').val();
+                    event.event_type = $('#neEventType').val();
+                    event.short_desc = $('#neShortDesc').val();
+                    socket.send(JSON.stringify({
+                        act: 'insert_event',
+                        arg: event,
+                        msgId: msgHandler()
+                    }));
                 }
             },
             cancel: {
@@ -314,37 +451,54 @@ function addUser() {
 }
 
 // READY!
-$(document).ready(function() {
+$(document).ready(function () {
     $('#modal-title').text('Please wait...!');
     $('#modal-body').html('<p>Loading COP, please wait...</p><img src="images/loading.gif"/>');
     $('#modal-footer').html('');
     //$('#modal').modal('show');
 
     // scrollbars
-    $('#toolsForm').overlayScrollbars({ className: "os-theme-light" });
-    $('#notesForm').overlayScrollbars({ className: "os-theme-light" });
-    $('#filesForm').overlayScrollbars({ className: "os-theme-light" });
-    $('#log').overlayScrollbars({ className: "os-theme-light" });
-    $('#general').overlayScrollbars({ className: "os-theme-light" });
-    $('#propObjectGroup').overlayScrollbars({ className: "os-theme-dark" });
+    $('#toolsForm').overlayScrollbars({
+        className: "os-theme-light"
+    });
+    $('#notesForm').overlayScrollbars({
+        className: "os-theme-light"
+    });
+    $('#filesForm').overlayScrollbars({
+        className: "os-theme-light"
+    });
+    $('#log').overlayScrollbars({
+        className: "os-theme-light"
+    });
+    $('#general').overlayScrollbars({
+        className: "os-theme-light"
+    });
+    $('#propObjectGroup').overlayScrollbars({
+        className: "os-theme-dark"
+    });
+    $('.tableBody').overlayScrollbars({
+        className: "os-theme-light"
+    });
 
     // start clocks
     startTime();
 
     // save last thing clicked
-    $(window).click(function(e) {
+    $(window).click(function (e) {
         lastClick = e.target;
     });
 
-    // chat notification sound
-    notifSound = new Audio('sounds/knock.mp3');
-
     // draggable / resizable modals
-    $('.modal-dialog').draggable({ handle: '.modal-header' });
-    $('.modal-content').resizable({ minHeight: 153, minWidth: 300});
+    $('.modal-dialog').draggable({
+        handle: '.modal-header'
+    });
+    $('.modal-content').resizable({
+        minHeight: 153,
+        minWidth: 300
+    });
 
     // prevent bootbox from reloading on submit / enter
-    $(document).on("submit", ".bootbox form", function(e) {
+    $(document).on("submit", ".bootbox form", function (e) {
         e.preventDefault();
         $(".bootbox .btn-primary").click();
     });
@@ -358,30 +512,43 @@ $(document).ready(function() {
         wsdb = new WebSocket('ws://' + window.location.host + '/mcscop/');
     }
     shareDBConnection = new ShareDB.Connection(wsdb);
-    wsdb.onopen = function() {
-        wsdb.send(JSON.stringify({act: 'stream', arg: ''}));
+    wsdb.onopen = function () {
+        wsdb.send(JSON.stringify({
+            act: 'stream',
+            arg: ''
+        }));
     };
 
     // ---------------------------- DIAGRAM SOCKET STUFF ----------------------------------
-    socket.onopen = function() {
-        setTimeout(function() {
+    socket.onopen = function () {
+        setTimeout(function () {
             $('#modal').modal('hide');
         }, 1000);
         $('#modal').modal('hide');
         socket.pingInterval = setInterval(function ping() {
-            socket.send(JSON.stringify({ act: 'ping', arg: '', msgId: msgHandler() }));
+            socket.send(JSON.stringify({
+                act: 'ping',
+                arg: '',
+                msgId: msgHandler()
+            }));
         }, 10000);
-        setTimeout(function() {
+        setTimeout(function () {
             console.log('connect');
             console.log('joining mission: ' + mission_id);
-            socket.send(JSON.stringify({ act:'join', arg: {mission_id: mission_id}, msgId: msgHandler() }));
+            socket.send(JSON.stringify({
+                act: 'join',
+                arg: {
+                    mission_id: mission_id
+                },
+                msgId: msgHandler()
+            }));
         }, 100);
     };
-    
+
     // message handler
-    socket.onmessage = function(msg) {
+    socket.onmessage = function (msg) {
         msg = JSON.parse(msg.data);
-        switch(msg.act) {
+        switch (msg.act) {
             // general
             case 'ack':
                 clearTimeout(pendingMsg[msg.arg]);
@@ -398,12 +565,21 @@ $(document).ready(function() {
                 $('#modal').removeData('bs.modal').modal({});
                 break;
 
-            // getters
+                // getters
             case 'join':
                 // objects
+
+                break;
+
+            case 'get_objects':
                 objectsLoaded = [];
-                var objects = msg.arg.objects;
+                objectSelect = [];
+                var objects = msg.arg;
                 for (var o in objects) {
+                    objectSelect.push({
+                        _id: objects[o]._id,
+                        name: objects[o].name.split('\n')[0]
+                    });
                     if (objects[o].type === 'icon' && SVGCache[objects[o].image] === undefined && objects[o].image !== undefined && objects[o].image !== null) {
                         SVGCache[objects[o].image] = null;
                         objectsLoaded.push(false);
@@ -411,22 +587,26 @@ $(document).ready(function() {
                     }
                 }
                 checkIfShapesCached(objects);
+                break;
 
-                // mission users                
-                settingsTabulator.setData(msg.arg.userSettings);
 
-                // notes
-                createNotesTree(msg.arg.notes);
+            case 'get_opnotes':
+                opnotesTabulator.setData(msg.arg);
+                break;
 
-                // chat
-                addChatMessage(msg.arg.chats, true);
+            case 'get_chats':
+                addChatMessage(msg.arg, true);
+                break;
+
+            case 'get_notes':
+                createNotesTree(msg.arg);
                 break;
 
             case 'get_users':
-                userSelect = userSelect.concat(msg.arg);
+                userSelect = msg.arg;
                 break;
 
-            // chat
+                // chat
             case 'bulk_chat':
                 addChatMessage(msg.arg, true);
                 break;
@@ -435,12 +615,30 @@ $(document).ready(function() {
                 addChatMessage(msg.arg);
                 break;
 
-            // files
+                // files
             case 'update_files':
                 $('#files').jstree('refresh');
                 break;
 
-            // notes
+                // events
+            case 'get_events':
+                eventsTabulator.setData(msg.arg);
+                break;
+
+            case 'insert_event':
+                eventsTabulator.addRow(msg.arg);
+                break;
+
+            case 'update_event':
+                console.log(msg);
+                eventsTabulator.updateRow(msg.arg._id, msg.arg);
+                break;
+
+            case 'delete_event':
+                eventsTabulator.deleteRow(msg.arg);
+                break;
+
+                // notes
             case 'insert_note':
                 $('#notes').jstree(true).create_node('#', msg.arg);
                 break;
@@ -457,22 +655,33 @@ $(document).ready(function() {
                     $('#notes').jstree(true).delete_node(node);
                 break;
 
-            // users
+                // users
+            case 'get_mission_users':
+                settingsTabulator.setData(msg.arg);
+                break;
+
             case 'insert_user_mission':
                 settingsTabulator.addRow(msg.arg);
                 break;
 
             case 'update_user_mission':
-                settingsTabulator.updateRow(msg.arg._id, msg.arg);    
+                settingsTabulator.updateRow(msg.arg._id, msg.arg);
                 break;
 
             case 'delete_user_mission':
                 settingsTabulator.deleteRow(msg.arg);
                 break;
 
-            // objects
+                // objects
             case 'change_object':
                 var o = msg.arg;
+                for (var i = 0; i < objectSelect.length; i++) {
+                    if (objectSelect[i]._id === o._id) {
+                        objectSelect[i].name = o.name.split('\n')[0];
+                        break;
+                    }
+                }
+
                 var selected = '';
                 for (var i = 0; i < canvas.getObjects().length; i++) {
                     if (canvas.item(i)._id === o._id) {
@@ -488,13 +697,13 @@ $(document).ready(function() {
                         if (o.type === 'icon') {
                             var old_children = [];
                             for (var k = 0; k < to.children.length; k++) {
-                                if (to.children[k].objType ===  'link')
+                                if (to.children[k].objType === 'link')
                                     old_children.push(to.children[k]);
                                 if (to.children[k].objType === 'name')
                                     canvas.remove(to.children[k]);
                             }
                             canvas.remove(to);
-                            cb = function() {
+                            cb = function () {
                                 for (k = 0; k < old_children.length; k++) {
                                     updateLink(old_children[k]);
                                 }
@@ -525,7 +734,7 @@ $(document).ready(function() {
                 }
                 break;
 
-           case 'move_object':
+            case 'move_object':
                 for (var h = 0; h < msg.arg.length; h++) {
                     var o = msg.arg[h];
                     for (var i = 0; i < canvas.getObjects().length; i++) {
@@ -547,11 +756,14 @@ $(document).ready(function() {
                                 if (canvas.getActiveObjects().length > 1 && canvas.getActiveObjects().indexOf(obj) > -1) {
                                     canvas.getActiveObject().removeWithUpdate(obj);
                                 }
-                                obj.set({left: o.x, top: o.y});
+                                obj.set({
+                                    left: o.x,
+                                    top: o.y
+                                });
                                 for (var j = 0; j < obj.children.length; j++) {
                                     if (obj.children[j].objType === 'name') {
                                         obj.children[j].set('top', tmod + obj.top + obj.height * obj.scaleY + 4);
-                                        obj.children[j].set('left', lmod + obj.left + (obj.width * obj.scaleX)/2);
+                                        obj.children[j].set('left', lmod + obj.left + (obj.width * obj.scaleX) / 2);
                                         obj.children[j].setCoords();
                                     } else if (obj.children[j].objType === 'link') {
                                         drawLink(obj.children[j]);
@@ -559,19 +771,19 @@ $(document).ready(function() {
                                 }
                                 obj.setCoords();
                             }
-                            if (o.z !== undefined && i !== o.z*2) {
-                                if (i < o.z*2) {
-                                    obj.moveTo((o.z)*2 + 1);
+                            if (o.z !== undefined && i !== o.z * 2) {
+                                if (i < o.z * 2) {
+                                    obj.moveTo((o.z) * 2 + 1);
                                     for (var k = 0; k < obj.children.length; k++) {
                                         if (obj.children[k].objType === 'name') {
                                             obj.children[k].moveTo(canvas.getObjects().indexOf(obj));
                                         }
                                     }
                                 } else {
-                                    obj.moveTo(o.z*2);
+                                    obj.moveTo(o.z * 2);
                                     for (var k = 0; k < obj.children.length; k++) {
                                         if (obj.children[k].objType === 'name') {
-                                            obj.children[k].moveTo(canvas.getObjects().indexOf(obj)+1);
+                                            obj.children[k].moveTo(canvas.getObjects().indexOf(obj) + 1);
                                         }
                                     }
                                 }
@@ -587,6 +799,7 @@ $(document).ready(function() {
             case 'insert_object':
                 for (var h = 0; h < msg.arg.length; h++) {
                     var o = msg.arg[h];
+                    objectSelect[objects[o]._id] = objects[o].name.split('\n')[0];
                     addObjectToCanvas(o, false);
                 }
                 updateMinimapBg();
@@ -594,6 +807,7 @@ $(document).ready(function() {
 
             case 'delete_object':
                 var _id = msg.arg;
+                delete objectSelect[_id];
                 for (var i = 0; i < canvas.getObjects().length; i++) {
                     if (canvas.item(i)._id == _id) {
                         var object = canvas.item(i);
@@ -615,7 +829,7 @@ $(document).ready(function() {
         }
     };
 
-    socket.onclose = function() {
+    socket.onclose = function () {
         canvas.clear();
         canvas.requestRenderAll();
         clearInterval(socket.pingInterval);
@@ -625,12 +839,15 @@ $(document).ready(function() {
         $('#modal-footer').html('');
         $('#modal-content').removeAttr('style');
         $('#modal-content').removeClass('modal-details');
-        $('#modal').removeData('bs.modal').modal({backdrop: 'static', keyboard: false});
+        $('#modal').removeData('bs.modal').modal({
+            backdrop: 'static',
+            keyboard: false
+        });
     };
 
     // ---------------------------- IMAGE PICKER ----------------------------------
     $('#propObjectGroup').tabs({
-        beforeActivate: function(e, u) {
+        beforeActivate: function (e, u) {
             $('#propType').val(u.newPanel.attr('id').split('-')[1]);
             if ($('#propType').val() === 'link')
                 $('#propFillColorSpan').hide();
@@ -638,20 +855,20 @@ $(document).ready(function() {
                 $('#propFillColorSpan').show();
         }
     });
-    $.each(['icon','shape','link'], function(i, v) {
+    $.each(['icon', 'shape', 'link'], function (i, v) {
         $('#prop-' + v).imagepicker({
-            hide_select : true,
-            initialized: function() {
+            hide_select: true,
+            initialized: function () {
                 if (!permissions.modify_diagram)
                     $("#propObjectGroup").find("div").unbind('click');
             },
-            selected : function() {
+            selected: function () {
                 if (!permissions.modify_diagram)
                     return;
                 if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
                     var obj = canvas.getActiveObject();
                     var oldZ = canvas.getObjects().indexOf(canvas.getActiveObject());
-                    obj.image = $(this).val().replace('.png','.svg');
+                    obj.image = $(this).val().replace('.png', '.svg');
                     var type = $(this).val().split('-')[2];
                     if (obj.objType !== type)
                         return;
@@ -666,48 +883,327 @@ $(document).ready(function() {
         });
     });
 
-    // ---------------------------- USERS TABLE ----------------------------------   
+    // ---------------------------- TABLES ----------------------------------   
     // bottom table tabs
-    $('#chatTab').click(function() { toggleTable('chat'); });
+    $('#chatTab').click(function () {
+        toggleTable('chat');
+    });
     if (permissions.manage_users) {
         $('#settingsTab').show();
         $('#settingsTabTag').show();
     }
-    $('#settingsTab').click(function() { toggleTable('settings'); });
 
-     $('#addUser').click(function() { addUser(); });
+    // attach events to tab buttons
+    $('#settingsTab').click(function () {
+        toggleTable('settings');
+    });
+    $('#eventsTab').click(function () {
+        toggleTable('events');
+    });
+    $('#opnotesTab').click(function () {
+        toggleTable('opnotes');
+    });
 
+    // attach events to add buttons
+    $('#addUser').click(function () {
+        addUser();
+    });
+    $('#addEvent').click(function () {
+        addEvent();
+    });
+    $('#addOpnote').click(function () {
+        addOpnote();
+    });
+
+    // settings table
     settingsTabulator = new Tabulator("#settingsTable", {
         layout: "fitColumns",
         index: '_id',
-        cellEdited: function(cell){
-            socket.send(JSON.stringify({ act: 'update_user_mission', arg: cell.getRow().getData(), msgId: msgHandler() }));
+        cellEdited: function (cell) {
+            socket.send(JSON.stringify({
+                act: 'update_user_mission',
+                arg: cell.getRow().getData(),
+                msgId: msgHandler()
+            }));
         },
-        columns: [
-            { title: '_id', field: '_id', visible: false },
-            { title: 'User ID', field: 'user_id', visible: false },
-            { title: 'Username', field: 'username' },
-            { title: 'Manage Users', field: 'permissions.manage_users', editor: 'tickCross', formatter: 'tickCross' },
-            { title: 'Modify Diagram', field: 'permissions.modify_diagram', editor: 'tickCross', formatter: 'tickCross' },
-            { title: 'Modify Notes', field: 'permissions.modify_notes', editor: 'tickCross', formatter: 'tickCross' },
-            { title: 'Modify Files', field: 'permissions.modify_files', editor: 'tickCross', formatter: 'tickCross' },
-            { title: 'API Access', field: 'permissions.api_access', editor: 'tickCross', formatter: 'tickCross' },
-            { headerSort:false, formatter: 'buttonCross', width: 40, align: 'center', cellClick:function(e, cell) {
-                socket.send(JSON.stringify({ act: 'delete_user_mission', arg: { _id: cell.getRow().getData()['_id'] }, msgId: msgHandler() }));
-            }},
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'User ID',
+                field: 'user_id',
+                visible: false
+            },
+            {
+                title: 'Username',
+                field: 'username'
+            },
+            {
+                title: 'Manage Users',
+                field: 'permissions.manage_users',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Diagram',
+                field: 'permissions.modify_diagram',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Notes',
+                field: 'permissions.modify_notes',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Files',
+                field: 'permissions.modify_files',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'API Access',
+                field: 'permissions.api_access',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    socket.send(JSON.stringify({
+                        act: 'delete_user_mission',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            },
+        ]
+    });
+
+    // events table
+    eventsTabulator = new Tabulator("#eventsTable", {
+        layout: "fitColumns",
+        index: '_id',
+        cellEdited: function (cell) {
+            socket.send(JSON.stringify({
+                act: 'update_event',
+                arg: cell.getRow().getData(),
+                msgId: msgHandler()
+            }));
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'User ID',
+                field: 'user_id',
+                visible: false
+            },
+            {
+                title: 'Discovery Time',
+                field: 'discovery_time'
+            },
+            {
+                title: 'Event Time',
+                field: 'event_time'
+            },
+            {
+                title: 'Source',
+                field: 'source_object',
+                editor: 'select',
+                editorParams: function () {
+                    objectSelect.sort(sortByName);
+
+                    var vals = {};
+                    for (var i = 0; i < objectSelect.length; i++) {
+                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    }
+                    return {
+                        values: vals
+                    }
+                },
+                formatter: function (cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== undefined && cell.getValue() !== '') {
+                        return objectSelect.find(obj => obj._id == cell.getValue()).name
+                    } else {
+                        return ""
+                    }
+                }
+            },
+            {
+                title: 'Destination',
+                field: 'dest_object',
+                editor: 'select',
+                editorParams: function () {
+                    objectSelect.sort(sortByName);
+
+                    var vals = {};
+                    for (var i = 0; i < objectSelect.length; i++) {
+                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    }
+                    return {
+                        values: vals
+                    }
+                },
+                formatter: function (cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== undefined && cell.getValue() !== '') {
+                        return objectSelect.find(obj => obj._id == cell.getValue()).name
+                    } else {
+                        return ""
+                    }
+                }
+            },
+            {
+                title: 'Type',
+                field: 'event_type',
+                editor: 'input'
+            },
+            {
+                title: 'Description',
+                field: 'short_desc',
+                editor: 'textarea'
+            },
+            {
+                title: 'User',
+                field: 'username'
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    socket.send(JSON.stringify({
+                        act: 'delete_event',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            }
+        ]
+    });
+
+    // opnotes table
+    opnotesTabulator = new Tabulator("#opnotesTable", {
+        layout: "fitColumns",
+        index: '_id',
+        cellEdited: function (cell) {
+            socket.send(JSON.stringify({
+                act: 'update_opnote',
+                arg: cell.getRow().getData(),
+                msgId: msgHandler()
+            }));
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'User ID',
+                field: 'user_id',
+                visible: false
+            },
+            {
+                title: 'Username',
+                field: 'username'
+            },
+            {
+                title: 'Manage Users',
+                field: 'permissions.manage_users',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Diagram',
+                field: 'permissions.modify_diagram',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Notes',
+                field: 'permissions.modify_notes',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'Modify Files',
+                field: 'permissions.modify_files',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                title: 'API Access',
+                field: 'permissions.api_access',
+                editor: 'tickCross',
+                formatter: 'tickCross',
+                align: 'center'
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    socket.send(JSON.stringify({
+                        act: 'delete_opnote',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            },
         ]
     });
 
     // ---------------------------- BUTTONS ----------------------------------
-    $('#zoomInButton').click(function() { zoomIn(); });
-    $('#zoomOutButton').click(function() { zoomOut(); });
-    $('#objectSearch').change(function() { objectSearch(this.value) });
-    $('#nextObjectSearch').click(function() { nextObjectSearch(); });
-    $('#prevObjectSearch').click(function() { prevObjectSearch(); });
-    $('#downloadEventsButton').click(function() { downloadEvents(); });
-    $('#downloadDiagramButton').click(function() { downloadDiagram(this); });
-    $('#downloadOpnotesButton').click(function() { downloadOpnotes(); });
-    
+    $('#zoomInButton').click(function () {
+        zoomIn();
+    });
+    $('#zoomOutButton').click(function () {
+        zoomOut();
+    });
+    $('#objectSearch').change(function () {
+        objectSearch(this.value)
+    });
+    $('#nextObjectSearch').click(function () {
+        nextObjectSearch();
+    });
+    $('#prevObjectSearch').click(function () {
+        prevObjectSearch();
+    });
+    $('#downloadEventsButton').click(function () {
+        downloadEvents();
+    });
+    $('#downloadDiagramButton').click(function () {
+        downloadDiagram(this);
+    });
+    $('#downloadOpnotesButton').click(function () {
+        downloadOpnotes();
+    });
+
     // ---------------------------- WINDOW MANAGER ----------------------------------
     windowManager = new WindowManager({
         container: "#windowPane",
@@ -774,17 +1270,26 @@ $(document).ready(function() {
     });
 
 
-    
+
     // make the diagram resizable
-    $("#diagramJumbo").resizable({ handles: 's', minHeight: 350 });
-    $("#bottomJumbo").resizable({ handles: 's', minHeight: 350 });
-    $("#toolbarBody").resizable({ handles: 'w', maxWidth: $('#diagramJumbo').width()-60 });
+    $("#diagramJumbo").resizable({
+        handles: 's',
+        minHeight: 350
+    });
+    $("#bottomJumbo").resizable({
+        handles: 's',
+        minHeight: 350
+    });
+    $("#toolbarBody").resizable({
+        handles: 'w',
+        maxWidth: $('#diagramJumbo').width() - 60
+    });
 
     // resize event to resize canvas and toolbars
-    $('#diagramJumbo').on('resize', function(event, ui) {
+    $('#diagramJumbo').on('resize', function (event, ui) {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            settings[activeToolbar] = Math.round($('#toolbarBody').width());
+        resizeTimer = setTimeout(function () {
+            settings.toolbar = Math.round($('#toolbarBody').width());
             settings.diagram = Math.round($('#diagramJumbo').height());
             updateSettings();
             resizeCanvas();
@@ -792,13 +1297,13 @@ $(document).ready(function() {
     });
 
     // on resize, resize the canvas
-    window.addEventListener('resize', function() {
+    window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
+        resizeTimer = setTimeout(function () {
             resizeCanvas();
         }, 100);
     }, false);
-    
+
     // capture enter key in chat input bar
     $("#messageInput").keypress(function (e) {
         var key = e.charCode || e.keyCode || 0;
@@ -809,7 +1314,7 @@ $(document).ready(function() {
     });
 
     // capture keys
-    window.addEventListener("keydown",function (e) {
+    window.addEventListener("keydown", function (e) {
         // copy
         if (lastClick === canvas.upperCanvasEl) {
             if (e.ctrlKey && (e.keyCode === 'c'.charCodeAt(0) || e.keyCode === 'C'.charCodeAt(0))) {
@@ -818,34 +1323,39 @@ $(document).ready(function() {
 
                 var x = 0;
                 var y = 0;
-                           
+
                 for (var i = 0; i < o.length; i++) {
                     if (o.length === 1) {
-                        x = 0 - o[i].width/2;
-                        y = 0 - o[i].height/2;
+                        x = 0 - o[i].width / 2;
+                        y = 0 - o[i].height / 2;
                     } else {
                         x = o[i].left;
                         y = o[i].top;
                     }
-                    canvasClipboard.push({ _id: o[i]._id, x: x, y: y, z: Math.round(canvas.getObjects().indexOf(o[i] / 2)) });
+                    canvasClipboard.push({
+                        _id: o[i]._id,
+                        x: x,
+                        y: y,
+                        z: Math.round(canvas.getObjects().indexOf(o[i] / 2))
+                    });
                 }
-            
-            // paste
+
+                // paste
             } else if (e.ctrlKey && (e.keyCode === 'v'.charCodeAt(0) || e.keyCode === 'V'.charCodeAt(0))) {
                 if (canvasClipboard.length > 0)
                     pasteObjects();
 
-            // delete
+                // delete
             } else if (e.keyCode === 46) {
                 if (canvas.getActiveObject())
-                   deleteObjectConfirm();
+                    deleteObjectConfirm();
 
-            // arrows
+                // arrows
             } else if (e.keyCode >= 37 && e.keyCode <= 40 && canvas.getActiveObject()) {
                 var o = canvas.getActiveObject();
                 if (objectMovingTimer)
                     window.clearTimeout(objectMovingTimer);
-                objectMovingTimer = setTimeout(function() {
+                objectMovingTimer = setTimeout(function () {
                     objectModified(o);
                 }, 1000);
                 switch (e.keyCode) {
@@ -866,8 +1376,8 @@ $(document).ready(function() {
                 o.setCoords();
                 canvas.requestRenderAll();
 
-            // search (ctrl + f)
-            } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) { 
+                // search (ctrl + f)
+            } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
                 e.preventDefault();
                 if (!$('#objectSearchBar').is(':visible')) {
                     $('#objectSearchBar').show().css('display', 'table');

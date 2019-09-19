@@ -4,15 +4,17 @@ html
     link(rel='icon', href='favicon.ico', type='image/x-icon')
     link(rel='stylesheet', href='css/jquery-ui.min.css')
     link(rel='stylesheet', href='css/OverlayScrollbars.min.css')
-    link(rel='stylesheet', href='css/tab_test.css')
+    link(rel='stylesheet', href='css/tabulator_custom.css')
     link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
+    link(rel='stylesheet', href='css/tempusdominus-bootstrap-4.min.css')
     link(rel='stylesheet', href='css/highlight.min.css')
     link(rel='stylesheet', href='css/image-picker.css')
     link(rel='stylesheet', href='css/quill.snow.css')
     link(rel='stylesheet', href='css/jstree.min.css')
     link(rel='stylesheet', href='css/palette-color-picker.css')
     link(rel='stylesheet', href='css/toastr.min.css')
-    link(rel='stylesheet', href='css/style.css')
+    link(rel='stylesheet', href='css/fa.css')
+    link(rel='stylesheet', href='css/style.css')    
 
   body
     div.container-fluid
@@ -43,6 +45,8 @@ html
             canvas#minimapCanvas
         div#toolbar
           div.vertNav.vertNavOutsideLeft#toolbarNav
+            div.vertTab.vertTabSm#toggleTab
+              a.openCloseIcon#toolbarButton
             div.vertTab#toolsTab
             div.vertTab#notesTab
             div.vertTab#filesTab
@@ -114,7 +118,7 @@ html
                     button.btn.btn-secondary#closeToolbarButton(type='button') Cancel
 
       div.jumbotron#bottomJumbo(style="overflow: visible")
-        div#tables
+        div.bottomContainer
           div#chat
             div#channels
               div.channel.channelSelected#channel-log #log
@@ -129,17 +133,35 @@ html
               div#channel-footer
                 input(type="text", name="messageInput")#messageInput.messageInput
 
-          div#settings(style="display: none;")
-            button.propButton.btn.btn-primary#addUser(type='button') Add User
-            table#settingsTable
+          div#settings.tableContainer(style="display: none;")
+            div.tableHeader
+              button.propButton.btn.btn-primary.tableButton#addUser(type='button') Add User
+            div.tableBody
+              table#settingsTable
+
+          div#events.tableContainer(style="display: none;")
+            div.tableHeader
+              button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
+            div.tableBody
+              table#eventsTable
+
+          div#opnotes.tableContainer(style="display: none;")
+            div.tableHeader
+              button.propButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
+            div.tableBody
+              table#opnotesTable
             
         div#tableNav.vertNavInsideRight
           div.vertNav
             div.vertTab.activeTab#chatTab
             div.vertTab#settingsTab(style='display: none;')
+            div.vertTab#eventsTab
+            div.vertTab#opnotesTab
             div.vertNav.click-through(style='position: absolute;')
               div.tabText.tab-float.rotated#chatTabTag CHAT
               div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
+              div.tabText.tab-float.rotated#eventsTabTag EVENTS
+              div.tabText.tab-float.rotated#opnotesTabTag OPNOTES
 
     div#windowPane.windowPane
 
@@ -154,7 +176,6 @@ script(type="template/text", id="details_template")
 script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
-script(src='js/jquery-ui-timepicker-addon.min.js')
 script(src='js/jquery.overlayScrollbars.min.js')
 script(src='js/fabric.min.js')
 script(src='js/toastr.min.js')
@@ -167,15 +188,17 @@ script(src='js/quill.min.js')
 script(src='js/image-picker.min.js')
 script(src='js/jstree.min.js')
 script(src='js/palette-color-picker.min.js')
+script(src='js/moment.min.js')
+script(src='js/tempusdominus-bootstrap-4.min.js')
 
-//script(src='js/bootstrap-window.js')
-//script(src='js/tabulator.js')
-//script(src='js/helpers.js')
-//script(src='js/toolbar.js')
-//script(src='js/notes.js')
-//script(src='js/files.js')
-//script(src='js/chat.js')
-//script(src='js/diagram.js')
-//script(src='js/cop.js')
+script(src='js/bootstrap-window.js')
+script(src='js/tabulator.js')
+script(src='js/helpers.js')
+script(src='js/toolbar.js')
+script(src='js/notes.js')
+script(src='js/files.js')
+script(src='js/chat.js')
+script(src='js/diagram.js')
+script(src='js/cop.js')
 
-script(src='js/cop.min.js')
+//script(src='js/cop.min.js')

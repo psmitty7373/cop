@@ -33,7 +33,14 @@ canvas {
     top: 0px;
 }
 
-h1, h2, h3, h4, .h1, .h2, .h3, .h4 {
+h1,
+h2,
+h3,
+h4,
+.h1,
+.h2,
+.h3,
+.h4 {
     margin-top: 10px
 }
 
@@ -47,7 +54,8 @@ table {
     font-size: 14px;
 }
 
-table.table-bordered.dataTable tbody th, table.table-bordered.dataTable tbody td {
+table.table-bordered.dataTable tbody th,
+table.table-bordered.dataTable tbody td {
     padding: 6px;
 }
 
@@ -179,9 +187,9 @@ td a {
 }
 
 #progressbarContainer {
-  -webkit-box-sizing: border-box;
-     -moz-box-sizing: border-box;
-          box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
     width: 100%;
     position: absolute;
     left: 0px;
@@ -189,7 +197,7 @@ td a {
     padding: 10px;
 }
 
-#addUser {
+.tableButton {
     margin-bottom: 5px;
 }
 
@@ -203,28 +211,25 @@ td a {
 
 .navbar {
     height: 36px;
-    min-height:32px !important
+    min-height: 32px !important
 }
 
-.navbar-nav > li > a {
-    padding-top:5px !important; padding-bottom:5px !important;
+.navbar-nav>li>a {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
 }
 
 #sizeObject {
     margin-bottom: 5px;
 }
 
-#tools, #files, #notes {
+#tools,
+#files,
+#notes {
     padding: 10px;
 }
 
-#tables {
-    height: 100%;
-    left: 0px;
-    right: 0px;
-}
-
-#chat, #settings {
+.bottomContainer {
     padding: 5px;
     padding-right: 36px;
     height: 100%;
@@ -261,7 +266,7 @@ td a {
     font-size: 12px;
     background: #ffffff;
     border: 1px solid transparent;
-    box-shadow: 0 0 2px rgba(0,0,0,.25);
+    box-shadow: 0 0 2px rgba(0, 0, 0, .25);
 }
 
 #foundCount {
@@ -335,7 +340,8 @@ td a {
     padding-left: 5px;
 }
 
-.vakata-context, .vakata-context ul {
+.vakata-context,
+.vakata-context ul {
     z-index: 15;
 }
 
@@ -346,7 +352,9 @@ td a {
     float: left;
 }
 
-#toolsForm, #notesForm, #filesForm {
+#toolsForm,
+#notesForm,
+#filesForm {
     height: 100%;
 }
 
@@ -361,8 +369,10 @@ td a {
 
 .canvas-container {
     width: 100% !important;
-    height: 100% !important;;
-    position: absolute !important;;
+    height: 100% !important;
+    ;
+    position: absolute !important;
+    ;
     left: 0px !important;
     top: 0px !important;
 }
@@ -376,14 +386,15 @@ td a {
     background-color: #00000017;
 }
 
-h1{
-    margin-top:0px;
+h1 {
+    margin-top: 0px;
 }
 
-.jstree-custom-folder{
+.jstree-custom-folder {
     background-image: url('../images/folder.png') !important;
     background-position: 0 !important;
 }
+
 .jstree-custom-file {
     background-image: url('../images/file.png') !important;
     background-position: 0 !important;
@@ -453,8 +464,12 @@ h1{
     stroke: #fff;
 }
 
-.ql-snow .ql-picker.ql-expanded .ql-picker-label {
+.ql-picker-label {
     color: #fff;
+}
+
+.ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-options {
+    z-index: 5;
 }
 
 .login-logo {
@@ -484,6 +499,7 @@ h1{
     padding: 15px 35px 45px;
     margin: 0 auto;
     background-color: #505050;
+
     .form-signin-heading {
         margin-bottom: 30px;
     }
@@ -639,10 +655,14 @@ h1{
     padding-top: 2px;
     padding-bottom: 2px;
     width: 35;
-    height: 100px;
+    height: 85px;
     border-bottom: 2px solid #224050;
     position: relative;
     z-index: 4;
+}
+
+.vertTabSm {
+    height: 35px;
 }
 
 .horizTab {
@@ -665,6 +685,19 @@ h1{
     opacity: 0.0;
 }
 
+.tableContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+}
+
+.tableBody {
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+}
+
 .tab-float {
     background: none;
     pointer-events: none;
@@ -672,7 +705,7 @@ h1{
 }
 
 #tabs-icon {
-    width:100%;
+    width: 100%;
     padding: 5px;
 }
 
@@ -698,32 +731,84 @@ h1{
     background-color: #303030;
 }
 
-#chatTabTag {
-    left: 20px;
-    top: 60px;
+.openCloseIcon {
+    width: 100%;
+    height: 100%;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
-#filesTabTag{
+.openCloseIcon:before,
+.openCloseIcon:after {
+    content: '';
+    display: inline-block;
+    height: 15px;
+    width: 2px;
+    background-color: white;
+    border-radius: 10px;
+    position: relative;
+    transition: 500ms ease-in-out transform;
+}
+
+.openCloseIcon:before {
+    transform: rotate(-45deg);
+    left: 16px;
+    top: 14px;
+}
+
+.openCloseIcon:after {
+    transform: rotate(45deg);
+    left: 14px;
+    top: 5px;
+}
+
+.openCloseIcon.open:before {
+    transform: translateY(-9px) rotate(-45deg);
+}
+
+.openCloseIcon.open:after {
+    transform: translateY(9px) rotate(45deg);
+}
+
+#chatTabTag {
+    left: 20px;
+    top: 50px;
+}
+
+#filesTabTag {
     left: 20px;
     top: 255px;
 }
 
 #notesTabTag {
     left: 20px;
-    top: 162px;
+    top: 175px;
 }
 
 #toolsTabTag {
     left: 20px;
-    top: 65px;
+    top: 90px;
 }
 
 #settingsTabTag {
     left: 20px;
-    top: 174px;
+    top: 150px;
 }
 
-#propStrokeColor, #propFillColor {
+#eventsTabTag {
+    left: 20px;
+    top: 225px;
+}
+
+#opnotesTabTag {
+    left: 20px;
+    top: 320px;
+}
+
+#propStrokeColor,
+#propFillColor {
     background-color: transparent;
 }
 
@@ -749,8 +834,8 @@ h1{
     height: 100%;
 }
 
-#toolbarBody[style]{
-  left:0 !important;
+#toolbarBody[style] {
+    left: 0 !important;
 }
 
 #toolbarBody {
@@ -775,8 +860,8 @@ h1{
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    max-width:90%;
-    max-height:90%;
+    max-width: 90%;
+    max-height: 90%;
     vertical-align: middle;
 }
 
@@ -799,5 +884,3 @@ h1{
 .windowPane .label+.label {
     margin-bottom: 0px;
 }
-
-

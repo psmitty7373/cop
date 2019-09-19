@@ -1,13 +1,12 @@
 // ---------------------------- Various Helper Functions  ----------------------------------
 //https://stackoverflow.com/questions/11832914/round-to-at-most-2-decimal-places-only-if-necessary
-Number.prototype.round = function(places) {
-    return +(Math.round(this + "e+" + places)  + "e-" + places);
+Number.prototype.round = function (places) {
+    return +(Math.round(this + "e+" + places) + "e-" + places);
 }
 
 // convert hex to rgb
-function rgba2rgb(hex, a)
-{
-    hex = hex.replace('#','');
+function rgba2rgb(hex, a) {
+    hex = hex.replace('#', '');
     var bigint = parseInt(hex, 16);
     var r = (bigint >> 16) & 255;
     var g = (bigint >> 8) & 255;
@@ -16,8 +15,8 @@ function rgba2rgb(hex, a)
     g1 = (1 - a) * 255 + a * g;
     b1 = (1 - a) * 255 + a * b;
     var bin = r1 << 16 | g1 << 8 | b1;
-    return (function(h){
-        return new Array(7-h.length).join("0")+h
+    return (function (h) {
+        return new Array(7 - h.length).join("0") + h
     })(bin.toString(16).toUpperCase())
 }
 
@@ -33,8 +32,7 @@ function addZero(i) {
 function msieversion() {
     var ua = window.navigator.userAgent;
     var msie = ua.indexOf("MSIE ");
-    if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./))
-    {
+    if (msie > 0 || !!navigator.userAgent.match(/Trident.*rv\:11\./)) {
         return true;
     } else { // If another browser,
         return false;
@@ -64,7 +62,7 @@ function JSONToCSVConvertor(JSONData, fileName) {
         return;
     }
     var fileName = "Result";
-    if(msieversion()){
+    if (msieversion()) {
         var IEwindow = window.open();
         IEwindow.document.write('sep=,\r\n' + CSV);
         IEwindow.document.close();
@@ -82,11 +80,10 @@ function JSONToCSVConvertor(JSONData, fileName) {
     }
 }
 
-function epochToDateString(value){
+function epochToDateString(value) {
     if (isNaN(value)) {
         return value;
-    }
-    else return(getDate(parseInt(value)));
+    } else return (getDate(parseInt(value)));
 }
 
 function getDate(value) {
@@ -95,11 +92,11 @@ function getDate(value) {
         date = new Date(value);
     else
         date = new Date();
-    return date.getFullYear() + '-' + addZero(date.getMonth()+1) + '-' + addZero(date.getDate()) + ' ' + addZero(date.getHours()) + ':' + addZero(date.getMinutes()) + ':' + addZero(date.getSeconds()) + '.' + date.getMilliseconds();
+    return date.getFullYear() + '-' + addZero(date.getMonth() + 1) + '-' + addZero(date.getDate()) + ' ' + addZero(date.getHours()) + ':' + addZero(date.getMinutes()) + ':' + addZero(date.getSeconds()) + '.' + date.getMilliseconds();
 }
 
 function dateStringToEpoch(value) {
     var parts = value.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d+)/);
-    var d = new Date(parts[1], parts[2]-1, parts[3], parts[4], parts[5], parts[6], parts[7]);
-    return(d.getTime());
+    var d = new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5], parts[6], parts[7]);
+    return (d.getTime());
 }

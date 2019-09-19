@@ -1,5 +1,10 @@
 // ---------------------------- Toolbar Stuff  ----------------------------------
 function toggleToolbar(mode) {
+    if (mode === null) {
+        toggleToolbar('tools');
+        return;
+    }
+
     if ($('#toolbarBody').width() === 0) {
         openToolbar(mode);
     } else {
@@ -11,15 +16,23 @@ function toggleToolbar(mode) {
 }
 
 function openToolbar(mode) {
-    if (toolbarState && mode == activeToolbar)
+    if (toolbarState && mode == activeToolbar) {
         return;
+    }
 
+    $('#toolbarButton').addClass('open');
     $('#' + activeToolbar + 'Tab').removeClass('activeTab');
-    $('#toolbarBody').animate({width: Math.max(10, Math.min($('#diagramJumbo').width()-60, settings[mode]))}, {duration: 100});
+    $('#' + mode + 'Tab').addClass('activeTab');
+    $('#toolbarBody').animate({
+        width: Math.max(10, Math.min($('#diagramJumbo').width() - 60, settings.toolbar))
+    }, {
+        duration: 100
+    });
+
     toolbarState = true;
     activeToolbar = mode;
-    $('#' + mode + 'Tab').addClass('activeTab');
-    switch(mode) {
+
+    switch (mode) {
         case 'tools':
             $('#toolsForm').show();
             $('#notesForm').hide();
@@ -29,15 +42,13 @@ function openToolbar(mode) {
             if (canvas.getActiveObject()) {
                 if (canvas.getActiveObjects().length > 1) {
                     $("#toolbarBody").addClass("disabledDiv");
-                }
-                else {
+                } else {
                     $("#toolbarBody").removeClass("disabledDiv");
                 }
 
                 if (permissions.modify_diagram) {
                     $('#toolbarTitle').html('Edit Object');
-                }
-                else {
+                } else {
                     $('#toolbarTitle').text('View Object');
                 }
 
@@ -63,7 +74,7 @@ function openToolbar(mode) {
                 $('#moveObject').show();
                 $('#propObjectGroup').tabs('enable', index);
                 $('#propObjectGroup').tabs('option', 'active', index);
-            // new object
+                // new object
             } else if (canvas.getActiveObject() === undefined || canvas.getActiveObject() === null) {
                 $("#toolbarBody").removeClass("disabledDiv");
                 $('#toolbarTitle').html('New Object');
@@ -103,11 +114,15 @@ function openToolbar(mode) {
 }
 
 function closeToolbar() {
-    if (activeToolbar)
+    if (activeToolbar) {
         $('#' + activeToolbar + 'Tab').removeClass('activeTab');
+    }
+    $('#toolbarButton').removeClass('open');
     toolbarState = false;
     $('#propName').blur();
-    $('#toolbarBody').animate({width: "0px"}, 200);
+    $('#toolbarBody').animate({
+        width: "0px"
+    }, 200);
 }
 
 // update the toolbox when a new icon is clicked
@@ -125,7 +140,23 @@ function updateSelection(options) {
                         $('#cancelLink').hide();
                         lastFillColor = $('#propFillColor').val();
                         lastFillColor = $('#propStrokeColor').val();
-                        socket.send(JSON.stringify({act: 'insert_object', arg: {name:$('#propName').val(), type: 'link', image: $('#prop-link').val().replace('.png','.svg'), stroke_color:$('#propStrokeColor').val(), fill_color:$('#propFillColor').val(), obj_a: firstNode._id, obj_b: o._id, x: 0, y: 0, z: 0, locked: $('#lockObject').is(':checked')}, msgId: msgHandler()}));
+                        socket.send(JSON.stringify({
+                            act: 'insert_object',
+                            arg: {
+                                name: $('#propName').val(),
+                                type: 'link',
+                                image: $('#prop-link').val().replace('.png', '.svg'),
+                                stroke_color: $('#propStrokeColor').val(),
+                                fill_color: $('#propFillColor').val(),
+                                obj_a: firstNode._id,
+                                obj_b: o._id,
+                                x: 0,
+                                y: 0,
+                                z: 0,
+                                locked: $('#lockObject').is(':checked')
+                            },
+                            msgId: msgHandler()
+                        }));
                         firstNode = null;
                         creatingLink = false;
                     }
@@ -147,9 +178,9 @@ function updateSelection(options) {
                             $('#propName').val(o.children[i].text);
                     }
                 }
-                
+
                 $('#propType').val(o.objType);
-                $('#prop-' + o.objType).val(o.image.replace('.svg','.png'));
+                $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
                 $('#prop-' + o.objType).data('picker').sync_picker_with_select();
                 if (toolbarState)
                     openToolbar('tools');
@@ -161,8 +192,14 @@ function updateSelection(options) {
 }
 
 function newNote() {
-    bootbox.prompt('Note name?', function(name) {
-        socket.send(JSON.stringify({act: 'insert_note', arg: {name: name}, msgId: msgHandler()}));
+    bootbox.prompt('Note name?', function (name) {
+        socket.send(JSON.stringify({
+            act: 'insert_note',
+            arg: {
+                name: name
+            },
+            msgId: msgHandler()
+        }));
     });
 }
 
@@ -185,7 +222,7 @@ function insertLink() {
 
 function cancelLink() {
     creatingLink = false;
-    showMessage('Link cancelled.',5);
+    showMessage('Link cancelled.', 5);
     $('#cancelLink').hide();
 }
 
@@ -243,7 +280,7 @@ function editDetails(id, name) {
         $('#modal-content').addClass('modal-details');
         if (!openDocs[id]) {
             openDocs[id] = shareDBConnection.get('sharedb', id);
-            openDocs[id].subscribe(function(err) {
+            openDocs[id].subscribe(function (err) {
                 if (openDocs[id].type === null) {
                     openDocs[id].create('', 'rich-text');
                 }
@@ -251,18 +288,23 @@ function editDetails(id, name) {
                 if (openDocs[id].type.name === 'rich-text') {
                     // create window
                     var w = windowManager.createWindow({
-                        sticky:  false,
+                        sticky: false,
                         title: name,
                         effect: 'none',
                         bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
-                        closeCallback: function() {
+                        closeCallback: function () {
                             openDocs[id].destroy();
                             delete openDocs[id];
-                        }    
+                        }
                     });
 
                     // make dragable
-                    w.$el.draggable({ handle: '.modal-header' }).children('.window-content').resizable({ minHeight: 153, minWidth: 300});
+                    w.$el.draggable({
+                        handle: '.modal-header'
+                    }).children('.window-content').resizable({
+                        minHeight: 153,
+                        minWidth: 300
+                    });
 
                     // start quill
                     var quill = new Quill('#object_details_' + id, {
@@ -271,7 +313,9 @@ function editDetails(id, name) {
                         modules: {
                             syntax: true,
                             toolbar: [
-                                [{ header: [1, 2, false] }],
+                                [{
+                                    header: [1, 2, false]
+                                }],
                                 ['bold', 'italic', 'underline'],
                                 ['link', 'image', 'code-block']
                             ]
@@ -280,17 +324,21 @@ function editDetails(id, name) {
 
                     quill.root.setAttribute('spellcheck', false)
                     quill.setContents(openDocs[id].data);
-                    quill.on('text-change', function(delta, oldDelta, source) {
+                    quill.on('text-change', function (delta, oldDelta, source) {
                         if (source !== 'user') return;
-                        openDocs[id].submitOp(delta, {source: quill});
+                        openDocs[id].submitOp(delta, {
+                            source: quill
+                        });
                     });
 
-                    openDocs[id].on('op', function(op, source) {
+                    openDocs[id].on('op', function (op, source) {
                         if (source === quill) return;
                         quill.updateContents(op);
                     });
 
-                    $('#object_details_' + id).overlayScrollbars({ className: "os-theme-dark" });
+                    $('#object_details_' + id).overlayScrollbars({
+                        className: "os-theme-dark"
+                    });
 
                 } else {
                     var disabled = ' disabled';
@@ -300,21 +348,28 @@ function editDetails(id, name) {
 
                     // create window
                     var w = windowManager.createWindow({
-                        sticky:  false,
+                        sticky: false,
                         title: name,
                         effect: 'none',
                         bodyContent: '<textarea id="object_details_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
-                        closeCallback: function() {
+                        closeCallback: function () {
                             openDocs[id].destroy();
                             delete openDocs[id];
-                        }    
+                        }
                     });
 
                     // set scrollbars
-                    w.$el.children('.object-details').overlayScrollbars({ className: "os-theme-dark" });
+                    w.$el.children('.object-details').overlayScrollbars({
+                        className: "os-theme-dark"
+                    });
 
                     // make dragable
-                    w.$el.draggable({ handle: '.modal-header' }).children('.window-content').resizable({ minHeight: 153, minWidth: 300});
+                    w.$el.draggable({
+                        handle: '.modal-header'
+                    }).children('.window-content').resizable({
+                        minHeight: 153,
+                        minWidth: 300
+                    });
 
                     var element = document.getElementById('object_details_' + id);
                     var binding = new StringBinding(element, openDocs[id]);
@@ -335,34 +390,55 @@ function insertObject() {
         var center = new fabric.Point(canvas.width / 2, canvas.height / 2);
         lastFillColor = $('#propFillColor').val();
         lastStrokeColor = $('#propStrokeColor').val();
-        socket.send(JSON.stringify({act: 'insert_object', arg:{name:$('#propName').val(), fill_color:$('#propFillColor').val(), stroke_color:$('#propStrokeColor').val(), locked: $('#lockObject').is(':checked'), image:$('#prop-' + $('#propType').val()).val().replace('.png','.svg'), type:$('#propType').val(), x: Math.round(center.x / canvas.getZoom() - settings.x / canvas.getZoom()), y: Math.round(center.y / canvas.getZoom() - settings.y / canvas.getZoom()), z: canvas.getObjects().length}, msgId: msgHandler()})); 
+        socket.send(JSON.stringify({
+            act: 'insert_object',
+            arg: {
+                name: $('#propName').val(),
+                fill_color: $('#propFillColor').val(),
+                stroke_color: $('#propStrokeColor').val(),
+                locked: $('#lockObject').is(':checked'),
+                image: $('#prop-' + $('#propType').val()).val().replace('.png', '.svg'),
+                type: $('#propType').val(),
+                x: Math.round(center.x / canvas.getZoom() - settings.x / canvas.getZoom()),
+                y: Math.round(center.y / canvas.getZoom() - settings.y / canvas.getZoom()),
+                z: canvas.getObjects().length
+            },
+            msgId: msgHandler()
+        }));
     }
 }
 
 // bottom table toggle
 function toggleTable(mode) {
+    if (mode === activeTable) {
+        return;
+    }
+    $('#' + activeTable).hide();
     $('#' + activeTable + 'Tab').removeClass('activeTab');
+    $('#' + mode).show();
     $('#' + mode + 'Tab').addClass('activeTab');
     activeTable = mode;
-    switch(mode) {
+
+    switch (mode) {
         case 'chat':
-            $('#chat').show();
-            $('#settings').hide();
-            if (firstChat) {
-                $('#log').scrollTop($('#log')[0].scrollHeight);
-                firstChat = false;
-            }
             break;
+
         case 'settings':
-            $('#chat').hide();
-            $('#settings').show();
             settingsTabulator.redraw();
+            break;
+
+        case 'events':
+            eventsTabulator.redraw();
+            break;
+
+        case 'opnotes':
+            opnotesTabulator.redraw();
             break;
     }
 }
 
 // READY!
-$(document).ready(function() {
+$(document).ready(function () {
     // bind buttons
     if (permissions.modify_diagram) {
         $('#propName').prop('disabled', false);
@@ -382,18 +458,39 @@ $(document).ready(function() {
     if (permissions.modify_notes) {
         $("#newNoteButton").prop('disabled', false);
     }
-    $('#propName').change(function() { updatePropName(this.value) });
-    $('#lockObject').change(function() { toggleObjectLock($('#lockObject').is(':checked')) });
-    $('#objectWidth').change(function() { setObjectSize(); });
-    $('#objectHeight').change(function() { setObjectSize(); });
+    $('#propName').change(function () {
+        updatePropName(this.value)
+    });
+    $('#lockObject').change(function () {
+        toggleObjectLock($('#lockObject').is(':checked'))
+    });
+    $('#objectWidth').change(function () {
+        setObjectSize();
+    });
+    $('#objectHeight').change(function () {
+        setObjectSize();
+    });
     $('#closeToolbarButton').click(closeToolbar);
     $('#cancelLinkButton').click(cancelLink);
-    $('#editDetailsButton').click(function() { editDetails(); });
-    $('#newNoteButton').click(function() { newNote(); });
+    $('#editDetailsButton').click(function () {
+        editDetails();
+    });
+    $('#newNoteButton').click(function () {
+        newNote();
+    });
 
     // toolbar tabs
-    $('#toolsTab').click(function() { toggleToolbar('tools'); });
-    $('#notesTab').click(function() { toggleToolbar('notes'); });
-    $('#filesTab').click(function() { toggleToolbar('files'); });
-    
+    $('#toolbarButton').click(function () {
+        toggleToolbar(activeToolbar);
+    });
+    $('#toolsTab').click(function () {
+        toggleToolbar('tools');
+    });
+    $('#notesTab').click(function () {
+        toggleToolbar('notes');
+    });
+    $('#filesTab').click(function () {
+        toggleToolbar('files');
+    });
+
 });

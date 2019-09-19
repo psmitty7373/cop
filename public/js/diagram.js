@@ -1,6 +1,6 @@
 // ---------------------------- FABRIC CANVASES ----------------------------------
-MAXWIDTH=2000;
-MAXHEIGHT=2000;
+MAXWIDTH = 2000;
+MAXHEIGHT = 2000;
 fabric.Object.prototype.originX = 'left';
 fabric.Object.prototype.originY = 'top';
 //fabric.Group.prototype.hasControls = false;
@@ -43,7 +43,7 @@ fabric.util.addListener(canvas.upperCanvasEl, 'dblclick', function (e) {
                 }
             }
             $('#propType').val(o.objType);
-            $('#prop-' + o.objType).val(o.image.replace('.svg','.png'));
+            $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
             $('#prop-' + o.objType).data('picker').sync_picker_with_select();
             openToolbar('tools');
         }
@@ -130,7 +130,7 @@ fabric.Object.prototype.getBoundingBox = function () {
         default:
             minX = this.left;
             minY = this.top;
-            maxX = this.left + this.width; 
+            maxX = this.left + this.width;
             maxY = this.top + this.height;
     }
     return {
@@ -142,7 +142,7 @@ fabric.Object.prototype.getBoundingBox = function () {
 }
 
 // called after a selection is made on the canvas
-canvas.on('selection:created', function(options) {
+canvas.on('selection:created', function (options) {
     if (canvas.getActiveObjects().length > 1) {
         closeToolbar();
         for (var i = options.selected.length - 1; i >= 0; i--) {
@@ -154,7 +154,7 @@ canvas.on('selection:created', function(options) {
 });
 
 // ---------------------------- Canvas Events  ----------------------------------
-canvas.on('object:rotating', function(options) {
+canvas.on('object:rotating', function (options) {
     var step = 5;
     options.target.set({
         angle: Math.round(options.target.angle / step) * step,
@@ -162,17 +162,17 @@ canvas.on('object:rotating', function(options) {
 });
 
 // called when an object is moving on the canvas
-canvas.on('object:moving', function(options) {
+canvas.on('object:moving', function (options) {
     objectMoving(options.target, 2);
 });
 
-canvas.on('object:scaling', function(options) {
+canvas.on('object:scaling', function (options) {
     var o = options.target;
     var tmod = 0;
     var lmod = 0;
     if (canvas.getActiveObjects().length > 1) {
-        tmod = options.target.top + options.target.height/2;
-        lmod = options.target.left + options.target.width/2;
+        tmod = options.target.top + options.target.height / 2;
+        lmod = options.target.left + options.target.width / 2;
     }
     $('#objectWidth').val(Math.round(o.width * o.scaleX));
     $('#objectHeight').val(Math.round(o.height * o.scaleY));
@@ -183,7 +183,7 @@ canvas.on('object:scaling', function(options) {
         for (var j = 0; j < o[i].children.length; j++) {
             if (o[i].children[j].objType === 'name') {
                 o[i].children[j].set('top', o[i].top + tmod + o[i].height * o[i].scaleY + 4);
-                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX)/2);
+                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX) / 2);
                 o[i].children[j].setCoords();
             } else if (o[i].children[j].objType === 'link') {
                 drawLink(o[i].children[j]);
@@ -192,23 +192,23 @@ canvas.on('object:scaling', function(options) {
     }
 });
 
-canvas.on('object:modified', function(options) {
+canvas.on('object:modified', function (options) {
     objectModified(options.target);
 });
 
 // called when an existing selection is changed on the canvas (ie more icons added / removed)
-canvas.on('selection:updated', function(options) {
+canvas.on('selection:updated', function (options) {
     updateSelection(options);
 });
 
 // called when an object is selected
-canvas.on('object:selected', function(options) {
+canvas.on('object:selected', function (options) {
     updateSelection(options);
 });
 
 // called before everything on the canvas is deslected
-canvas.on('before:selection:cleared', function(options) {
-    if (!updatingObject)// && canvas.getActiveObjects().length < 1)
+canvas.on('before:selection:cleared', function (options) {
+    if (!updatingObject) // && canvas.getActiveObjects().length < 1)
         closeToolbar();
 });
 
@@ -232,8 +232,8 @@ function objectMoving(o, snap) {
     var tmod = 0;
     var lmod = 0;
     if (canvas.getActiveObjects().length > 1) {
-        tmod = o.top + o.height/2;
-        lmod = o.left + o.width/2;
+        tmod = o.top + o.height / 2;
+        lmod = o.left + o.width / 2;
     }
     drawAlignmentGuides(o, snap);
     o = canvas.getActiveObjects();
@@ -242,7 +242,7 @@ function objectMoving(o, snap) {
         for (var j = 0; j < o[i].children.length; j++) {
             if (o[i].children[j].objType === 'name') {
                 o[i].children[j].set('top', o[i].top + tmod + o[i].height * o[i].scaleY + 4);
-                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX)/2);
+                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX) / 2);
                 o[i].children[j].setCoords();
             } else if (o[i].children[j].objType === 'link') {
                 drawLink(o[i].children[j]);
@@ -255,14 +255,23 @@ function objectModified(o) {
     var tmod = 0;
     var lmod = 0;
     if (o.objType === 'icon') {
-        o.set({scaleX: Math.round(o.width * o.scaleX) / o.width, scaleY: Math.round(o.height * o.scaleY) / o.height});
+        o.set({
+            scaleX: Math.round(o.width * o.scaleX) / o.width,
+            scaleY: Math.round(o.height * o.scaleY) / o.height
+        });
     } else if (o.objType === 'shape') {
-        o.set({width: Math.round(o.width), height: Math.round(o.height)});
+        o.set({
+            width: Math.round(o.width),
+            height: Math.round(o.height)
+        });
     }
-    o.set({left: Math.round(o.left), top: Math.round(o.top)});
+    o.set({
+        left: Math.round(o.left),
+        top: Math.round(o.top)
+    });
     if (canvas.getActiveObjects().length > 1) {
-        tmod = o.top + o.height/2;
-        lmod = o.left + o.width/2;
+        tmod = o.top + o.height / 2;
+        lmod = o.left + o.width / 2;
     }
 
     // remove the guides
@@ -279,19 +288,46 @@ function objectModified(o) {
     for (var i = 0; i < o.length; i++) {
         var z = canvas.getObjects().indexOf(o[i]) / 2;
         if (o[i].objType === 'link')
-            args.push({_id: o[i]._id, x:0, y:0, z: z, scale_x:0, scale_y: 0, rot: 0});
+            args.push({
+                _id: o[i]._id,
+                x: 0,
+                y: 0,
+                z: z,
+                scale_x: 0,
+                scale_y: 0,
+                rot: 0
+            });
         else if (o[i].objType === 'icon') {
-            args.push({_id: o[i]._id, x: lmod + o[i].left, y: tmod + o[i].top, z: z, scale_x: o[i].scaleX, scale_y: o[i].scaleY, rot: o[i].angle});
-        }
-        else if (o[i].objType === 'shape')
-            args.push({_id: o[i]._id, x: lmod + o[i].left, y: tmod + o[i].top, z: z, scale_x: o[i].width, scale_y: o[i].height, rot: o[i].angle});
+            args.push({
+                _id: o[i]._id,
+                x: lmod + o[i].left,
+                y: tmod + o[i].top,
+                z: z,
+                scale_x: o[i].scaleX,
+                scale_y: o[i].scaleY,
+                rot: o[i].angle
+            });
+        } else if (o[i].objType === 'shape')
+            args.push({
+                _id: o[i]._id,
+                x: lmod + o[i].left,
+                y: tmod + o[i].top,
+                z: z,
+                scale_x: o[i].width,
+                scale_y: o[i].height,
+                rot: o[i].angle
+            });
     }
 
     // update minimap
     updateMinimapBg();
 
     // send changes to db
-    socket.send(JSON.stringify({act: 'move_object', arg: args, msgId: msgHandler()}));
+    socket.send(JSON.stringify({
+        act: 'move_object',
+        arg: args,
+        msgId: msgHandler()
+    }));
 }
 
 // updates the two sides of all links
@@ -316,7 +352,7 @@ function updateLink(link) {
             if (jo.children.indexOf(link) === -1)
                 jo.children.push(link);
             foundFrom = true;
-        } else if  (!foundTo && jo._id == link.toId) {
+        } else if (!foundTo && jo._id == link.toId) {
             link.toObj = jo;
             if (jo.children.indexOf(link) === -1)
                 jo.children.push(link);
@@ -330,13 +366,23 @@ function updateLink(link) {
 }
 
 function setObjectLock(o, l) {
-    o.set({hasControls: !l, lockMovementX: l, lockMovementY: l, lockScalingX: l, lockScalingY: l, lockRotation: 0});
+    o.set({
+        hasControls: !l,
+        lockMovementX: l,
+        lockMovementY: l,
+        lockScalingX: l,
+        lockScalingY: l,
+        lockRotation: 0
+    });
 }
 
 function getObjectCenter(o) {
     var x = (o.width * o.scaleX) / 2 + o.left;
     var y = (o.height * o.scaleY) / 2 + o.top;
-    return {x: x, y:y};
+    return {
+        x: x,
+        y: y
+    };
 }
 
 function startPan(event) {
@@ -347,11 +393,11 @@ function startPan(event) {
     var y0 = event.screenY;
     canvas.isDragging = true;
     canvas.selection = false;
+
     function continuePan(event) {
         var x = event.screenX,
             y = event.screenY;
-        if (x - x0 != 0 || y - y0 != 0)
-        {
+        if (x - x0 != 0 || y - y0 != 0) {
             var deltaX = x - x0;
             var deltaY = y - y0;
             var zoom = canvas.getZoom();
@@ -363,7 +409,10 @@ function startPan(event) {
                 deltaY = Math.round(MAXHEIGHT * zoom - canvas.viewportTransform[5]);
             else if (canvas.viewportTransform[5] - canvas.height + deltaY < -MAXHEIGHT * zoom)
                 deltaY = Math.round(-MAXHEIGHT * zoom - canvas.viewportTransform[5] + canvas.height);
-            canvas.relativePan({ x: deltaX, y: deltaY});
+            canvas.relativePan({
+                x: deltaX,
+                y: deltaY
+            });
             x0 = x;
             y0 = y;
             settings.x = Math.round(canvas.viewportTransform[4]);
@@ -372,6 +421,7 @@ function startPan(event) {
             updateMinimap();
         }
     }
+
     function stopPan(event) {
         canvas.isDragging = false;
         canvas.selection = true;
@@ -419,7 +469,7 @@ function drawAlignmentGuides(o, snap) {
                             objType: 'guide',
                             stroke: '#66bfff',
                             strokeColor: '#66bfff',
-                            strokeDashArray: [2,2],
+                            strokeDashArray: [2, 2],
                             strokeWidth: 1,
                             selectable: false,
                             evented: false
@@ -442,7 +492,7 @@ function drawAlignmentGuides(o, snap) {
                         objType: 'guide',
                         stroke: '#bf66ff',
                         strokeColor: '#bf66ff',
-                        strokeDashArray: [2,2],
+                        strokeDashArray: [2, 2],
                         strokeWidth: 1,
                         selectable: false,
                         evented: false
@@ -463,7 +513,7 @@ function drawAlignmentGuides(o, snap) {
                         objType: 'guide',
                         stroke: '#bf66ff',
                         strokeColor: '#bf66ff',
-                        strokeDashArray: [2,2],
+                        strokeDashArray: [2, 2],
                         strokeWidth: 1,
                         selectable: false,
                         evented: false
@@ -488,7 +538,7 @@ function drawAlignmentGuides(o, snap) {
                             objType: 'guide',
                             stroke: '#66bfff',
                             strokeColor: '#66bfff',
-                            strokeDashArray: [2,2],
+                            strokeDashArray: [2, 2],
                             strokeWidth: 1,
                             selectable: false,
                             evented: false
@@ -511,7 +561,7 @@ function drawAlignmentGuides(o, snap) {
                         objType: 'guide',
                         stroke: '#bf66ff',
                         strokeColor: '#bf66ff',
-                        strokeDashArray: [2,2],
+                        strokeDashArray: [2, 2],
                         strokeWidth: 1,
                         selectable: false,
                         evented: false
@@ -533,7 +583,7 @@ function drawAlignmentGuides(o, snap) {
                         objType: 'guide',
                         stroke: '#bf66ff',
                         strokeColor: '#bf66ff',
-                        strokeDashArray: [2,2],
+                        strokeDashArray: [2, 2],
                         strokeWidth: 1,
                         selectable: false,
                         evented: false
@@ -546,7 +596,9 @@ function drawAlignmentGuides(o, snap) {
     }
     if (hAlignedObjects.length > 1) {
         hAlignedObjects.push(o);
-        hAlignedObjects.sort(function(a,b) {return (a.left > b.left) ? 1 : ((b.left <= a.left) ? -1 : 0);} );
+        hAlignedObjects.sort(function (a, b) {
+            return (a.left > b.left) ? 1 : ((b.left <= a.left) ? -1 : 0);
+        });
         var idx = hAlignedObjects.indexOf(o);
         var alignedIcons = null;
         // right
@@ -571,13 +623,45 @@ function drawAlignmentGuides(o, snap) {
         }
         if (alignedIcons && !guides.hSGuide) {
             var hSGuide = [];
-            var line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y + 10], { objType: 'guide', stroke: '#ff1111', strokeColor: '#ff1111', strokeDashArray: [2,2], strokeWidth: 2, selectable: false, evented: false });
+            var line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y + 10], {
+                objType: 'guide',
+                stroke: '#ff1111',
+                strokeColor: '#ff1111',
+                strokeDashArray: [2, 2],
+                strokeWidth: 2,
+                selectable: false,
+                evented: false
+            });
             hSGuide.push(line);
-            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[1]]).x, getObjectCenter(hAlignedObjects[alignedIcons[1]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[1]]).x, getObjectCenter(hAlignedObjects[alignedIcons[1]]).y + 10], { objType: 'guide', stroke: '#ff1111', strokeColor: '#ff1111', strokeDashArray: [2,2], strokeWidth: 2, selectable: false, evented: false });
+            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[1]]).x, getObjectCenter(hAlignedObjects[alignedIcons[1]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[1]]).x, getObjectCenter(hAlignedObjects[alignedIcons[1]]).y + 10], {
+                objType: 'guide',
+                stroke: '#ff1111',
+                strokeColor: '#ff1111',
+                strokeDashArray: [2, 2],
+                strokeWidth: 2,
+                selectable: false,
+                evented: false
+            });
             hSGuide.push(line);
-            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y + 10], { objType: 'guide', stroke: '#ff1111', strokeColor: '#ff1111', strokeDashArray: [2,2], strokeWidth: 2, selectable: false, evented: false });
+            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y - 10, getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y + 10], {
+                objType: 'guide',
+                stroke: '#ff1111',
+                strokeColor: '#ff1111',
+                strokeDashArray: [2, 2],
+                strokeWidth: 2,
+                selectable: false,
+                evented: false
+            });
             hSGuide.push(line);
-            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y, getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y], { objType: 'guide', stroke: '#ff1111', strokeColor: '#ff1111', strokeDashArray: [2,2], strokeWidth: 2, selectable: false, evented: false });
+            line = new fabric.Line([getObjectCenter(hAlignedObjects[alignedIcons[0]]).x, getObjectCenter(hAlignedObjects[alignedIcons[0]]).y, getObjectCenter(hAlignedObjects[alignedIcons[2]]).x, getObjectCenter(hAlignedObjects[alignedIcons[2]]).y], {
+                objType: 'guide',
+                stroke: '#ff1111',
+                strokeColor: '#ff1111',
+                strokeDashArray: [2, 2],
+                strokeWidth: 2,
+                selectable: false,
+                evented: false
+            });
             hSGuide.push(line);
             guides.hSGuide = new fabric.Group(hSGuide);
             canvas.add(guides.hSGuide);
@@ -624,10 +708,19 @@ function drawLinks() {
     }
     for (var i = 0; i < tempLinks.length; i++) {
         if (tempLinks[i].objType === 'link') {
-            tempLinks[i].set({ 'x1': tempLinks[i].getObjectCenter(from).x, 'y1': tempLinks[i].getObjectCenter(from).y });
-            tempLinks[i].set({ 'x2': tempLinks[i].getObjectCenter(to).x, 'y2': tempLinks[i].getObjectCenter(to).y });
+            tempLinks[i].set({
+                'x1': tempLinks[i].getObjectCenter(from).x,
+                'y1': tempLinks[i].getObjectCenter(from).y
+            });
+            tempLinks[i].set({
+                'x2': tempLinks[i].getObjectCenter(to).x,
+                'y2': tempLinks[i].getObjectCenter(to).y
+            });
         } else if (tempLinks[i].objType === 'shape') {
-            tempLinks[i].set({top: tempLinks[i].dad.top - 7.5, left: tempLinks[i].dad.left - 7.5});
+            tempLinks[i].set({
+                top: tempLinks[i].dad.top - 7.5,
+                left: tempLinks[i].dad.left - 7.5
+            });
         }
     }
 }
@@ -637,16 +730,27 @@ function drawLink(link) {
     if (link.toObj && link.fromObj) {
         var fromAbs = link.fromObj.calcTransformMatrix();
         var toAbs = link.toObj.calcTransformMatrix();
-        link.set({ 'x1': fromAbs[4], 'y1': fromAbs[5] });
-        link.set({ 'x2': toAbs[4], 'y2': toAbs[5] });
+        link.set({
+            'x1': fromAbs[4],
+            'y1': fromAbs[5]
+        });
+        link.set({
+            'x2': toAbs[4],
+            'y2': toAbs[5]
+        });
         link.setCoords();
         for (var j = 0; j < link.children.length; j++) {
             if (link.children[j].objType === 'name') {
-                link.children[j].set({ 'left': getObjectCenter(link).x, 'top': getObjectCenter(link).y });
-                var angle = Math.atan2((link.y1 - link.y2), (link.x1 - link.x2)) * (180/Math.PI);
-                if(Math.abs(angle) > 90)
+                link.children[j].set({
+                    'left': getObjectCenter(link).x,
+                    'top': getObjectCenter(link).y
+                });
+                var angle = Math.atan2((link.y1 - link.y2), (link.x1 - link.x2)) * (180 / Math.PI);
+                if (Math.abs(angle) > 90)
                     angle += 180;
-                link.children[j].set({'angle': angle});
+                link.children[j].set({
+                    'angle': angle
+                });
                 link.children[j].setCoords();
             }
         }
@@ -668,7 +772,7 @@ function objectSearch(s) {
 
 function nextObjectSearch() {
     if (objectSearchResults.length > 0) {
-        objectSearchPtr ++;
+        objectSearchPtr++;
         if (objectSearchPtr >= objectSearchResults.length || objectSearchPtr < 0)
             objectSearchPtr = 0;
         $('#foundCount').text(objectSearchPtr + 1 + '/' + objectSearchResults.length);
@@ -682,7 +786,7 @@ function nextObjectSearch() {
 
 function prevObjectSearch() {
     if (objectSearchResults.length > 0) {
-        objectSearchPtr --;
+        objectSearchPtr--;
         if (objectSearchPtr < 0)
             objectSearchPtr = objectSearchResults.length - 1;
         $('#foundCount').text(objectSearchPtr + 1 + '/' + objectSearchResults.length);
@@ -733,7 +837,10 @@ function zoomOut() {
     else if (canvas.viewportTransform[5] - canvas.height < -MAXHEIGHT * zoom)
         deltaY = Math.round(-MAXHEIGHT * zoom - canvas.viewportTransform[5] + canvas.height);
     if (deltaX !== 0 || deltaY !== 0)
-        canvas.relativePan({ x: deltaX, y: deltaY});
+        canvas.relativePan({
+            x: deltaX,
+            y: deltaY
+        });
     updateMinimap();
 }
 
@@ -741,7 +848,7 @@ function addObjectToCanvas(o, selected, cb) {
     if (o.type === 'link') {
         if (o.stroke_color === '') // don't allow links to disappear
             o.stroke_color = '#000000';
-        var line = new fabric.Line([0,0,0,0], {
+        var line = new fabric.Line([0, 0, 0, 0], {
             _id: o._id,
             objType: 'link',
             image: o.image,
@@ -779,12 +886,12 @@ function addObjectToCanvas(o, selected, cb) {
         line.children = [name];
         canvas.add(line);
         canvas.add(name);
-        line.moveTo(o.z*2);
-        name.moveTo(o.z*2+1);
+        line.moveTo(o.z * 2);
+        name.moveTo(o.z * 2 + 1);
         updateLink(line);
     } else if (o.type === 'icon' && o.image !== undefined && o.image !== null) {
-        getIcon(o.image, function() {
-            SVGCache[o.image].clone(function(shape) {
+        getIcon(o.image, function () {
+            SVGCache[o.image].clone(function (shape) {
                 var name;
                 shape.set({
                     fill: o.fill_color,
@@ -838,7 +945,7 @@ function addObjectToCanvas(o, selected, cb) {
                     fill: '#eeeeee',
                     fontSize: 12,
                     fontFamily: 'lato',
-                    left: o.x + (shape.width * shape.scaleX)/2,
+                    left: o.x + (shape.width * shape.scaleX) / 2,
                     top: o.y + shape.height * shape.scaleY + 4
                 });
                 shape.children = [name];
@@ -848,8 +955,8 @@ function addObjectToCanvas(o, selected, cb) {
                     canvas.setActiveObject(shape);
                 else if (selected === 'group')
                     canvas.getActiveObject().addWithUpdate(shape);
-                shape.moveTo(o.z*2);
-                name.moveTo(o.z*2+1);
+                shape.moveTo(o.z * 2);
+                name.moveTo(o.z * 2 + 1);
                 if (cb)
                     cb();
             });
@@ -885,7 +992,7 @@ function addObjectToCanvas(o, selected, cb) {
             shape = new fabric.Ellipse({
                 rx: o.scale_x / 2,
                 ry: o.scale_y / 2,
-                angle: o.rot, 
+                angle: o.rot,
                 fill: o.fill_color,
                 stroke: o.stroke_color,
                 strokeWidth: 2,
@@ -919,7 +1026,7 @@ function addObjectToCanvas(o, selected, cb) {
             fill: '#000000',
             fontSize: 10,
             fontFamily: 'verdana',
-            left: o.x + (shape.width * shape.scaleX)/2,
+            left: o.x + (shape.width * shape.scaleX) / 2,
             top: o.y + shape.height * shape.scaleY + 4
         });
         shape.children = [name];
@@ -929,8 +1036,8 @@ function addObjectToCanvas(o, selected, cb) {
             canvas.setActiveObject(shape);
         else if (selected === 'group')
             canvas.getActiveObjects().addWithUpdate(shape);
-        shape.moveTo(o.z*2);
-        name.moveTo(o.z*2+1);
+        shape.moveTo(o.z * 2);
+        name.moveTo(o.z * 2 + 1);
     }
     objectsLoaded.pop();
 }
@@ -969,7 +1076,7 @@ function setObjectSize() {
             for (var j = 0; j < o.children.length; j++) {
                 if (o.children[j].objType === 'name') {
                     o.children[j].set('top', o.top + o.height * o.scaleY + 4);
-                    o.children[j].set('left', o.left + (o.width * o.scaleX)/2);
+                    o.children[j].set('left', o.left + (o.width * o.scaleX) / 2);
                     o.children[j].setCoords();
                 }
             }
@@ -981,7 +1088,14 @@ function setObjectSize() {
 // send object deletions to db
 function deleteObject() {
     if (canvas.getActiveObject()._id) {
-        socket.send(JSON.stringify({act: 'delete_object', arg: { _id:canvas.getActiveObject()._id, type:canvas.getActiveObject().objType }, msgId: msgHandler()}));
+        socket.send(JSON.stringify({
+            act: 'delete_object',
+            arg: {
+                _id: canvas.getActiveObject()._id,
+                type: canvas.getActiveObject().objType
+            },
+            msgId: msgHandler()
+        }));
     }
 }
 
@@ -990,27 +1104,72 @@ function pasteObjects() {
     var center = new fabric.Point(canvas.width / 2, canvas.height / 2);
     var args = [];
     for (var i = 0; i < canvasClipboard.length; i++) {
-        args.push({ _id: canvasClipboard[i]._id, x: Math.round(center.x / canvas.getZoom() - settings.x / canvas.getZoom()) + canvasClipboard[i].x, y: Math.round(center.y / canvas.getZoom() - settings.y / canvas.getZoom()) + canvasClipboard[i].y, z: canvas.getObjects().length + canvasClipboard[i].z});
+        args.push({
+            _id: canvasClipboard[i]._id,
+            x: Math.round(center.x / canvas.getZoom() - settings.x / canvas.getZoom()) + canvasClipboard[i].x,
+            y: Math.round(center.y / canvas.getZoom() - settings.y / canvas.getZoom()) + canvasClipboard[i].y,
+            z: canvas.getObjects().length + canvasClipboard[i].z
+        });
     }
-    socket.send(JSON.stringify({act: 'paste_object', arg: args,  msgId: msgHandler()}));
+    socket.send(JSON.stringify({
+        act: 'paste_object',
+        arg: args,
+        msgId: msgHandler()
+    }));
 }
 
 // move objects up / down on canvas
 function moveToZ(o, z) {
     if (o) {
         if (o.objType === 'link')
-            socket.send(JSON.stringify({act: 'move_object', arg: [{_id: o._id, scale_x: 0, scale_y: 0, x: 0, y: 0, z: z, rot: 0}], msgId: msgHandler()}));
+            socket.send(JSON.stringify({
+                act: 'move_object',
+                arg: [{
+                    _id: o._id,
+                    scale_x: 0,
+                    scale_y: 0,
+                    x: 0,
+                    y: 0,
+                    z: z,
+                    rot: 0
+                }],
+                msgId: msgHandler()
+            }));
         else if (o.objType === 'icon')
-            socket.send(JSON.stringify({act: 'move_object', arg: [{_id: o._id, x: o.left, y: o.top, z: z, scale_x: o.scaleX, scale_y: o.scaleY, rot: o.angle}], msgId: msgHandler()}));
+            socket.send(JSON.stringify({
+                act: 'move_object',
+                arg: [{
+                    _id: o._id,
+                    x: o.left,
+                    y: o.top,
+                    z: z,
+                    scale_x: o.scaleX,
+                    scale_y: o.scaleY,
+                    rot: o.angle
+                }],
+                msgId: msgHandler()
+            }));
         else if (o.objType === 'shape')
-            socket.send(JSON.stringify({act: 'move_object', arg: [{_id: o._id, x: o.left, y: o.top, z: z, scale_x: o.width, scale_y: o.height, rot: o.angle}], msgId: msgHandler()}));
+            socket.send(JSON.stringify({
+                act: 'move_object',
+                arg: [{
+                    _id: o._id,
+                    x: o.left,
+                    y: o.top,
+                    z: z,
+                    scale_x: o.width,
+                    scale_y: o.height,
+                    rot: o.angle
+                }],
+                msgId: msgHandler()
+            }));
     }
 }
 
 function moveToFront() {
     var zTop = canvas.getObjects().length - tempLinks.length - 2;
     var o = canvas.getActiveObject();
-    moveToZ(o, zTop/2);
+    moveToZ(o, zTop / 2);
 }
 
 function moveToBack() {
@@ -1051,10 +1210,14 @@ function changeObject(o) {
     tempObj.image = o.image;
     tempObj.locked = o.locked;
     tempObj.name = '';
-    for (var i=0; i < o.children.length; i++) {
+    for (var i = 0; i < o.children.length; i++) {
         if (o.children[i].objType === 'name') {
             tempObj.name = o.children[i].text;
         }
     }
-    socket.send(JSON.stringify({act: 'change_object', arg: tempObj, msgId: msgHandler()}));
+    socket.send(JSON.stringify({
+        act: 'change_object',
+        arg: tempObj,
+        msgId: msgHandler()
+    }));
 }
