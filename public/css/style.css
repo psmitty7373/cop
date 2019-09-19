@@ -331,6 +331,10 @@ td a {
     background: #4A5664;
 }
 
+.timelineButton {
+    float: right;
+}
+
 #channel-panes {
     width: auto;
     height: 100%;
@@ -714,6 +718,7 @@ h1 {
 .tableTitle {
     margin: 0px;
     line-height: 1.7;
+    float: left;
 }
 
 .tableButton {
@@ -736,6 +741,16 @@ h1 {
 #tabs-icon {
     width: 100%;
     padding: 5px;
+}
+
+.taskbarButton {
+    min-width: 100px;
+    width: fit-content;
+    background-color: #444;
+    padding-left: 10px;
+    padding-right: 10px;
+    float: left;
+    margin-right: 5px;
 }
 
 #bottomJumbo {

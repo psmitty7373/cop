@@ -38,7 +38,7 @@ async function create_user() {
         try {
             hash = await bcrypt.hash(process.argv[2], 10);
             var api = crypto.randomBytes(32).toString('hex');
-            var user = { username: 'admin', name: 'admin', password: hash, permissions: { manage_users: true, manage_missions: true}, api: api, avatar: '', deleted: false };
+            var user = { username: 'admin', name: 'admin', password: hash, is_admin: true, api: api, avatar: '', deleted: false };
             var row = await mdb.collection('users').findOne({ username: 'admin' });
             if (!row) {
                 await mdb.collection('users').insertOne(user);

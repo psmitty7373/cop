@@ -144,6 +144,12 @@ html
             div.tableHeader
               button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
               h4.tableTitle Events
+              div.timelineButton
+                a.btn.btn-secondary(href="#", style='margin-right: 5px')
+                  i.fa.fa-left-big#timelineBack
+                a.btn.btn-secondary(href="#")
+                  i.fa.fa-right-big#timelineForward
+               
             div.tableBody
               table#eventsTable
 

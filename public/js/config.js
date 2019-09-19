@@ -2,11 +2,9 @@ var socket;
 var pendingMsg = [];
 var msgId = 0;
 
-if (!permissions)
-    permissions = {
-        manage_users: false,
-        manage_missions: false
-    };
+if (typeof(is_admin) === 'undefined' || is_admin === null) {
+    is_admin = false;
+}
 
 function showModal(title, body, footer) {
     $('#modal-title').text(title);
@@ -130,8 +128,7 @@ function newUser() {
     var msg = '<form><div class="form-group row"><label for="nuUsername" class="col-sm-2 col-form-label">Username</label><div class="col-sm-10"><input type="text" class="form-control" id="nuUsername" value=""></div></div>';
     msg += '<div class="form-group row"><label for="nuName" class="col-sm-2 col-form-label">Name</label><div class="col-sm-10"><input type="text" class="form-control" id="nuName" value=""></div></div>';
     msg += '<div class="form-group row"><label for="nuPassword" class="col-sm-2 col-form-label">Password</label><div class="col-sm-10"><input type="password" class="form-control" id="nuPassword" placeholder="Password"></div></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageUsers"><label class="form-check-label" for="nuPermManageUsers">Manage Users</label></div>';
-    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuPermManageMissions"><label class="form-check-label" for="nuPermManageMissions">Manage Missions</label></div></form>';
+    msg += '<div class="form-check"><input type="checkbox" class="form-check-input" id="nuIsAdmin"><label class="form-check-label" for="nuIsAdmin">Admin?</label></div></form>';
 
     bootbox.dialog({
         message: msg,
@@ -145,10 +142,7 @@ function newUser() {
                     user.username = $('#nuUsername').val();
                     user.name = $('#nuName').val();
                     user.password = $('#nuPassword').val();
-                    user.permissions = {
-                        manage_users: $('#nuPermManageUsers').is(":checked"),
-                        manage_missions: $('#nuPermManageMissions').is(":checked")
-                    }
+                    user.is_admin = $('#nuIsAdmin').is(":checked");
                     socket.send(JSON.stringify({
                         act: 'insert_user',
                         arg: user,
@@ -169,7 +163,7 @@ $(document).ready(function () {
     document.body.addEventListener('dragover', f, false);
     document.body.addEventListener('drop', f, false);
 
-    if (permissions.manage_users) {
+    if (is_admin) {
         $('#usersJumbotron').show();
     }
 
@@ -200,7 +194,7 @@ $(document).ready(function () {
         }, 10000);
         setTimeout(function () {
             console.log('connect');
-            if (permissions.manage_users) {
+            if (is_admin) {
                 socket.send(JSON.stringify({
                     act: 'config',
                     arg: '',
@@ -258,14 +252,19 @@ $(document).ready(function () {
     $('#newUser').click(function () {
         newUser();
     });
-    if (permissions.manage_users) {
+    if (is_admin) {
         usersTabulator = new Tabulator("#usersTable", {
             layout: "fitColumns",
             index: '_id',
             cellEdited: function (cell) {
+                var row = cell.getRow().getData();
+                delete row.api;
+                delete row.username;
+                delete row.avatar;
+                delete row.deleted;
                 socket.send(JSON.stringify({
                     act: 'update_user',
-                    arg: cell.getRow().getData(),
+                    arg: row,
                     msgId: msgHandler()
                 }));
             },
@@ -300,15 +299,8 @@ $(document).ready(function () {
                     editor: 'input'
                 },
                 {
-                    title: 'Manage Missions',
-                    field: 'permissions.manage_missions',
-                    editor: 'tickCross',
-                    formatter: 'tickCross',
-                    align: 'center'
-                },
-                {
-                    title: 'Manage Users',
-                    field: 'permissions.manage_users',
+                    title: 'Is Admin?',
+                    field: 'is_admin',
                     editor: 'tickCross',
                     formatter: 'tickCross',
                     align: 'center'
@@ -322,7 +314,7 @@ $(document).ready(function () {
                         socket.send(JSON.stringify({
                             act: 'delete_user',
                             arg: {
-                                user_id: cell.getRow().getData()['_id']
+                                _id: cell.getRow().getData()['_id']
                             },
                             msgId: msgHandler()
                         }));

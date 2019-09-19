@@ -696,7 +696,7 @@ var WindowManager = null;
         });
 
         if (this.options.container) {
-            window_object.setWindowTab($('<span class="label label-default">' + window_object.getTitle() + '<button class="pane-close">x</button></span>'));
+            window_object.setWindowTab($('<div class="taskbarButton"><span class="label label-default">' + window_object.getTitle() + '<button class="pane-close">x</button></span></div>'));
             window_object.getWindowTab().find('.pane-close').on('click', function (event) {
                 var blocker = window_object.getBlocker();
                 if (!blocker) {

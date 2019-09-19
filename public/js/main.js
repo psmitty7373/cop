@@ -2,11 +2,9 @@ var socket;
 var pendingMsg = [];
 var msgId = 0;
 
-if (!permissions)
-    permissions = {
-        manage_users: false,
-        manage_missions: false
-    };
+if (typeof(is_admin) === 'undefined' || is_admin === null) {
+    is_admin = false;
+}
 
 function deleteRowConfirm(table, id) {
     $('#modal-title').text('Are you sure?');
@@ -176,6 +174,8 @@ $(document).ready(function () {
         layout: "fitColumns",
         index: '_id',
         cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            delete row.username;
             socket.send(JSON.stringify({
                 act: 'update_mission',
                 arg: cell.getRow().getData(),
@@ -191,12 +191,12 @@ $(document).ready(function () {
                 title: 'Mission Name',
                 field: 'name',
                 editable: function () {
-                    return permissions.manage_missions;
+                    return is_admin;
                 },
                 editor: 'input'
             },
             {
-                title: 'Owner',
+                title: 'Creator',
                 field: 'username'
             },
             {
@@ -210,8 +210,7 @@ $(document).ready(function () {
             },
         ]
     });
-    if (permissions.manage_missions) {
-        $('#newMission').show();
+    if (is_admin) {
         missionsTabulator.addColumn({
             headerSort: false,
             formatter: 'buttonCross',
@@ -221,7 +220,7 @@ $(document).ready(function () {
                 socket.send(JSON.stringify({
                     act: 'delete_mission',
                     arg: {
-                        mission_id: cell.getRow().getData()['_id']
+                        _id: cell.getRow().getData()['_id']
                     },
                     msgId: msgHandler()
                 }));

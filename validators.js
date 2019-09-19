@@ -11,7 +11,7 @@ const insert_chat = {
         },
     },
     required: ['text', 'channel'],
-    additionalProperties: true
+    additionalProperties: false
 }
 
 const get_old_chats = {
@@ -45,27 +45,21 @@ const insert_user = {
             type: 'string',
             maxLength: 64
         },
-        permissions: {
-            type: 'object',
-            properties: {
-                manage_users: {
-                    type: 'boolean'
-                },
-                manage_missions: {
-                    type: 'boolean'
-                }
-            },
-            required: ['manage_users', 'manage_missions'],
-            additionalProperties: false
+        is_admin: {
+            type: 'boolean'
         }
     },
-    required: ['username', 'name', 'password'],
-    additionalProperties: true
+    required: ['username', 'name', 'password', 'is_admin'],
+    additionalProperties: false
 }
 
 const update_user = {
     type: 'object',
     properties: {
+        _id: {
+            type: 'string',
+            pattern: '^[a-fA-F0-9]{24}$'
+        },
         name: {
             type: 'string',
             maxLength: 64
@@ -74,21 +68,12 @@ const update_user = {
             type: 'string',
             maxLength: 64
         },
-        permissions: {
-            type: 'object',
-            properties: {
-                manage_users: {
-                    type: 'boolean'
-                },
-                manage_missions: {
-                    type: 'boolean'
-                }
-            },
-            required: ['manage_users', 'manage_missions'],
-            additionalProperties: false
+        is_admin: {
+            type: 'boolean'
         }
     },
-    additionalProperties: true
+    required: ['_id'],
+    additionalProperties: false
 }
 
 const insert_mission = {
@@ -100,19 +85,23 @@ const insert_mission = {
         }
     },
     required: ['name'],
-    additionalProperties: true
+    additionalProperties: false
 }
 
 const update_mission = {
     type: 'object',
     properties: {
+        _id: {
+            type: 'string',
+            pattern: '^[a-fA-F0-9]{24}$'
+        },
         name: {
             type: 'string',
             maxLength: 64
         }
     },
-    required: ['name'],
-    additionalProperties: true
+    required: ['_id', 'name'],
+    additionalProperties: false
 }
 
 const insert_user_mission = {
@@ -146,13 +135,17 @@ const insert_user_mission = {
         }
     },
     required: ['user_id', 'permissions'],
-    additionalProperties: true
+    additionalProperties: false
 }
 
 const update_user_mission = {
     type: 'object',
     properties: {
         _id: {
+            type: 'string',
+            pattern: '^[a-fA-F0-9]{24}$'
+        },
+        user_id: {
             type: 'string',
             pattern: '^[a-fA-F0-9]{24}$'
         },
@@ -180,7 +173,7 @@ const update_user_mission = {
         }
     },
     required: ['_id', 'permissions'],
-    additionalProperties: true
+    additionalProperties: false
 }
 
 const insert_note = {
@@ -192,7 +185,7 @@ const insert_note = {
         }
     },
     required: ['name'],
-    additionalProperties: true
+    additionalProperties: false
 }
 
 const rename_note = {
@@ -208,7 +201,7 @@ const rename_note = {
         },
     },
     required: ['id', 'name'],
-    additionalProperties: true
+    additionalProperties: false
 };
 
 const insert_event = {
@@ -248,7 +241,7 @@ const insert_event = {
         },
     },
     required: ['event_time', 'discovery_time'],
-    additionalProperties: true
+    additionalProperties: false
 };
 
 const update_event = {
@@ -292,7 +285,7 @@ const update_event = {
         },
     },
     required: ['_id', 'event_time', 'discovery_time'],
-    additionalProperties: true
+    additionalProperties: false
 };
 
 const insert_opnote = {
@@ -302,10 +295,11 @@ const insert_opnote = {
             type: 'string',
             pattern: '^$|^[a-fA-F0-9]{24}$'
         },
-        event_time: {
-            type: 'number'
+        opnote_time: {
+            type: 'string',
+            pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[012][0-9]:[0-9][0-9]:[0-9][0-9]-[012][0-9]:[0-9][0-9]$'
         },
-        source_object: {
+        target: {
             type: 'string',
             maxLength: 1024
         },
@@ -318,8 +312,8 @@ const insert_opnote = {
             maxLength: 1024 * 512
         }
     },
-    required: ['event_time', 'source_object', 'tool', 'action'],
-    additionalProperties: true
+    required: ['opnote_time', 'target', 'tool', 'action'],
+    additionalProperties: false
 };
 
 const update_opnote = {
@@ -333,10 +327,11 @@ const update_opnote = {
             type: 'string',
             pattern: '^$|^[a-fA-F0-9]{24}$'
         },
-        event_time: {
-            type: 'number'
+        opnote_time: {
+            type: 'string',
+            pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[012][0-9]:[0-9][0-9]:[0-9][0-9]-[012][0-9]:[0-9][0-9]$'
         },
-        source_object: {
+        target: {
             type: 'string',
             maxLength: 1024
         },
@@ -349,8 +344,8 @@ const update_opnote = {
             maxLength: 1024 * 512
         }
     },
-    required: ['_id', 'event_time', 'source_object', 'tool', 'action'],
-    additionalProperties: true
+    required: ['_id', 'opnote_time', 'target', 'tool', 'action'],
+    additionalProperties: false
 };
 
 const insert_object = {
@@ -515,7 +510,7 @@ const delete_row = {
         }
     },
     required: ['_id'],
-    additionalProperties: true
+    additionalProperties: false
 };
 
 module.exports = {

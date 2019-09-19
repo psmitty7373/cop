@@ -124,7 +124,7 @@ function addChatMessage(messages, bulk, scroll) {
     if (scroll) {
         setTimeout(function() {
             $('#log').overlayScrollbars().scroll($('#log').overlayScrollbars().scroll().max.y);
-        }, 500);
+        }, 100);
     }
 }
 

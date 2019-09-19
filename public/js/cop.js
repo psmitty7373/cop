@@ -388,8 +388,7 @@ function addEvent() {
     <div class="form-group row">
         <label for="neSourceObject" class="col-sm-4 col-form-label">Source:</label>
         <div class="col-sm-8">
-            <select class="form-control" id="neSourceObject">
-                <option value=""></option>`;
+            <select class="form-control" id="neSourceObject">`;
 
     for (var i = 0; i < objectSelect.length; i++) {
         msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
@@ -402,8 +401,7 @@ function addEvent() {
     <div class="form-group row">
         <label for="neDestObject" class="col-sm-4 col-form-label">Destination:</label>
         <div class="col-sm-8">
-            <select class="form-control" id="neDestObject">
-                <option value=""></option>`;
+            <select class="form-control" id="neDestObject">`;
 
     for (var i = 0; i < objectSelect.length; i++) {
         msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
@@ -461,6 +459,74 @@ function addEvent() {
     });
 }
 
+function addOpnote() {
+    // sort the objects
+    objectSelect.sort(sortByName);
+
+    var msg = `
+<form>
+    <div class="form-group row">
+        <label for="noTime" class="col-sm-4 col-form-label">Opnote Time:</label>
+        <div class="col-sm-8">
+            <div class="input-group date" id="noTime" data-target-input="nearest">
+                <input type="text" class="form-control datetimepicker-input" data-target="#noTime"/>
+                <div class="input-group-append" data-target="#noTime" data-toggle="datetimepicker">
+                    <div class="input-group-text"><i class="fa fa-calendar"></i></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="noTarget" class="col-sm-4 col-form-label">Target:</label>
+        <div class="col-sm-8">
+            <input type="text" class="form-control" id="noTarget">
+        </div>
+    </div>
+    <div class="form-group row">
+        <label for="noTool" class="col-sm-4 col-form-label">Tool:</label>
+        <div class="col-sm-8">
+            <input type="text" class="form-control" id="noTool">
+        </div>
+    </div>
+    <div class="form-group">
+        <label for="noAction">Action:</label>
+        <textarea class="form-control" id="noAction" rows="3"></textarea>        
+    </div>
+    <script type="text/javascript">
+        $(function () {
+            $('#noTime').datetimepicker({ defaultDate: moment() });
+        });
+    </script>
+</form>`;
+
+    bootbox.dialog({
+        message: msg,
+        title: 'Add Opnote',
+        buttons: {
+            confirm: {
+                label: 'Insert',
+                className: 'btn-primary',
+                callback: function () {
+                    var opnote = {};
+                    opnote.opnote_time = $('#noTime').datetimepicker('date').format();
+                    opnote.target = $('#noTarget').val();
+                    opnote.tool = $('#noTool').val();
+                    opnote.action = $('#noAction').val();
+                    socket.send(JSON.stringify({
+                        act: 'insert_opnote',
+                        arg: opnote,
+                        msgId: msgHandler()
+                    }));
+                }
+            },
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
+    });
+}
+
 var dateEditor = function (cell, onRendered, success, cancel) {
     var editor = document.createElement("input");
     editor.setAttribute('id','dateTimePicker');
@@ -493,13 +559,14 @@ var dateEditor = function (cell, onRendered, success, cancel) {
         window.removeEventListener("scroll", successFunc, true);
         $('#dateTimePicker').datetimepicker('date', $('#dateTimePicker').val());
         success($('#dateTimePicker').datetimepicker('date').format());
+        console.log('destroy');
         $('#dateTimePicker').datetimepicker('destroy');
     }
 
     editor.addEventListener("change", successFunc);
     editor.addEventListener("blur", successFunc);
     // remove on scroll also
-    window.addEventListener("scroll", successFunc, true);
+    //window.addEventListener("scroll", successFunc, true);
 
     return editor;
 }
@@ -685,6 +752,24 @@ $(document).ready(function () {
 
             case 'delete_event':
                 eventsTabulator.deleteRow(msg.arg);
+                break;
+
+            // opnotes
+            case 'get_events':
+                eventsTabulator.setData(msg.arg);
+                break;
+
+            case 'insert_opnote':
+                console.log(msg);
+                opnotesTabulator.addRow(msg.arg);
+                break;
+
+            case 'update_opnote':
+                opnotesTabulator.updateRow(msg.arg._id, msg.arg);
+                break;
+
+            case 'delete_opnote':
+                opnotesTabulator.deleteRow(msg.arg);
                 break;
 
                 // notes
@@ -975,9 +1060,11 @@ $(document).ready(function () {
         layout: "fitColumns",
         index: '_id',
         cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            delete row.username;
             socket.send(JSON.stringify({
                 act: 'update_user_mission',
-                arg: cell.getRow().getData(),
+                arg: row,
                 msgId: msgHandler()
             }));
         },
@@ -1065,7 +1152,8 @@ $(document).ready(function () {
         cellEdited: function (cell) {
             var row = cell.getRow().getData();
             row = cleanupRow(row);
-
+            delete row.username;
+            delete row.user_id;
             socket.send(JSON.stringify({
                 act: 'update_event',
                 arg: row,
@@ -1075,11 +1163,6 @@ $(document).ready(function () {
         columns: [{
                 title: '_id',
                 field: '_id',
-                visible: false
-            },
-            {
-                title: 'User ID',
-                field: 'user_id',
                 visible: false
             },
             {
@@ -1175,9 +1258,13 @@ $(document).ready(function () {
         layout: "fitColumns",
         index: '_id',
         cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            row = cleanupRow(row);
+            delete row.username;
+            delete row.user_id;
             socket.send(JSON.stringify({
                 act: 'update_opnote',
-                arg: cell.getRow().getData(),
+                arg: row,
                 msgId: msgHandler()
             }));
         },
@@ -1187,48 +1274,28 @@ $(document).ready(function () {
                 visible: false
             },
             {
-                title: 'User ID',
-                field: 'user_id',
-                visible: false
+                title: 'Opnote Time',
+                field: 'opnote_time',
+                editor: dateEditor
             },
             {
-                title: 'Username',
+                title: 'Target',
+                field: 'target',
+                editor: 'input'
+            },
+            {
+                title: 'Tool',
+                field: 'tool',
+                editor: 'input'
+            },
+            {
+                title: 'Action',
+                field: 'action',
+                editor: 'textarea'
+            },
+            {
+                title: 'User',
                 field: 'username'
-            },
-            {
-                title: 'Manage Users',
-                field: 'permissions.manage_users',
-                editor: 'tickCross',
-                formatter: 'tickCross',
-                align: 'center'
-            },
-            {
-                title: 'Modify Diagram',
-                field: 'permissions.modify_diagram',
-                editor: 'tickCross',
-                formatter: 'tickCross',
-                align: 'center'
-            },
-            {
-                title: 'Modify Notes',
-                field: 'permissions.modify_notes',
-                editor: 'tickCross',
-                formatter: 'tickCross',
-                align: 'center'
-            },
-            {
-                title: 'Modify Files',
-                field: 'permissions.modify_files',
-                editor: 'tickCross',
-                formatter: 'tickCross',
-                align: 'center'
-            },
-            {
-                title: 'API Access',
-                field: 'permissions.api_access',
-                editor: 'tickCross',
-                formatter: 'tickCross',
-                align: 'center'
             },
             {
                 headerSort: false,

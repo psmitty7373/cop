@@ -131,7 +131,7 @@ function sendToRoom(room, msg, selfSocket, permRequired) {
     if (rooms.get(room)) {
         rooms.get(room).forEach((socket) => {
             if (socket && socket.readyState === socket.OPEN) {
-                if (socket !== selfSocket && (!permRequired || socket.cop_permissions[permRequired])) {
+                if (socket !== selfSocket) { // TODO: FIX && (!permRequired || socket.cop_permissions[permRequired])) {
                     socket.send(msg);
                 }
             }
@@ -256,7 +256,7 @@ ws.on('connection', function (socket, req) {
                     socket.loggedin = data.loggedin;
                     socket.user_id = data.user_id;
                     socket.username = data.username;
-                    socket.cop_permissions = data.cop_permissions;
+                    socket.is_admin = data.is_admin;
                     socket.mission_permissions = data.mission_permissions;
                     setupSocket(socket);
                 } catch (e) {
@@ -358,7 +358,7 @@ async function insertUser(socket, user) {
     new_values.api = crypto.randomBytes(32).toString('hex');
     new_values.avatar = '';
     new_values.deleted = false;
-    new_values.permissions = user.permissions;
+    new_values.is_admin = user.is_admin;
     try {
         var res = await mdb.collection('users').insertOne(new_values);
         res.ops[0].password = '';
@@ -380,17 +380,15 @@ async function insertUser(socket, user) {
 // update user
 async function updateUser(socket, user) {
     if (user.name === 'admin') {
-        user.permissions = {
-            manage_users: true,
-            manage_missions: true
-        }; // make sure admin always has all permissions
+        user.is_admin = true; // make sure admin is always... admin
+        
     }
     var new_values = {};
     if (user.password && user.password !== '') {
         new_values.password = await bcrypt.hash(user.password, 10);
     }
     new_values.name = user.name;
-    new_values.permissions = user.permissions;
+    new_values.is_admin = user.is_admin;
     try {
         var res = await mdb.collection('users').updateOne({
             _id: ObjectID(user._id)
@@ -405,6 +403,14 @@ async function updateUser(socket, user) {
                 act: 'update_user',
                 arg: user
             }));
+            if (new_values.password) {
+                socket.send(JSON.stringify({
+                    act: 'error',
+                    arg: {
+                        text: 'Password changed!'
+                    }
+                }));
+            }
         } else {
             socket.send(JSON.stringify({
                 act: 'error',
@@ -1143,6 +1149,155 @@ async function deleteNote(socket, note) {
 }
 // ------------------------------------------------------------------------------------------------------------------- /NOTES
 
+// OPNOTES -------------------------------------------------------------------------------------------------------------------
+async function getOpnotes(socket) {
+    try {
+        var opnotes = await mdb.collection('opnotes').aggregate([
+            {
+                $match: { mission_id: ObjectID(socket.mission_id), deleted: { $ne: true }}
+            },{
+                $sort: { opnote_time: 1 }
+            },{
+                $lookup: {
+                    from: 'users',
+                    localField: 'user_id',
+                    foreignField: '_id',
+                    as: 'username'
+                },
+            },{
+                $project: {
+                    _id: 1,
+                    opnote_time: 1,
+                    target: 1,
+                    tool: 1,
+                    action: 1,
+                    user_id: 1,
+                    username: '$username.username'
+                }
+            }
+        ]).toArray();
+        socket.send(JSON.stringify({
+            act: 'get_opnotes',
+            arg: opnotes
+        }))
+    } catch (err) {
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error getting opnotes.'
+            }
+        }));
+        console.log(err);
+    }
+}
+
+// insert opnote
+async function insertOpnote(socket, opnote) {
+    try {
+        opnote.user_id = socket.user_id;
+        opnote.target = xssFilters.inHTMLData(opnote.target);
+        opnote.tool = xssFilters.inHTMLData(opnote.tool);
+        opnote.action = xssFilters.inHTMLData(opnote.action);
+
+        var new_values = { mission_id: ObjectID(socket.mission_id), event_id: null, opnote_time: opnote.opnote_time, target: opnote.target, tool: opnote.tool, action: opnote.action, user_id: ObjectID(opnote.user_id), deleted: false };
+
+        if (ObjectID.isValid(opnote.event_id)) {
+            new_values.event_id = ObjectID(opnote.event_id);
+        }
+
+        var res = await mdb.collection('opnotes').insertOne(new_values);
+        
+        opnote._id = new_values._id;
+        opnote.username = socket.username;
+        insertLogEvent(socket, 'Created opnote: ' + opnote.action + ' ID: ' + opnote._id + '.');
+        sendToRoom(socket.room, JSON.stringify({act: 'insert_opnote', arg: opnote}));
+
+    } catch (err) {
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error: inserting opnote.'
+            }
+        }));
+        console.log(err);
+    }
+}
+
+async function updateOpnote(socket, opnote) {
+    try {
+        opnote.target = xssFilters.inHTMLData(opnote.target);
+        opnote.tool = xssFilters.inHTMLData(opnote.tool);
+        opnote.action = xssFilters.inHTMLData(opnote.action);
+
+        var new_values = { $set: { opnote_time: opnote.opnote_time, event_id: null, target: opnote.target, tool: opnote.tool, action: opnote.action } };
+
+        if (ObjectID.isValid(opnote.event_id))
+            new_values.$set.event_id = ObjectID(opnote.event_id);
+        console.log(opnote);
+        var res = await mdb.collection('opnotes').updateOne({ _id: ObjectID(opnote._id) }, new_values);
+        if (res.result.ok === 1) {
+            opnote.username = socket.username;
+            insertLogEvent(socket, 'Modified event: ' + opnote.action + ' ID: ' + opnote._id + '.');
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'update_opnote',
+                arg: opnote
+            }));
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Error: updating opnote.'
+                }
+            }));
+        }
+    } catch (err) {
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error: updating opnote.'
+            }
+        }));
+        console.log(err);
+    }
+}
+
+// delete opnote
+async function deleteOpnote(socket, opnote) {
+    try {
+        var res = await mdb.collection('opnotes').updateOne({
+            _id: ObjectID(opnote)
+        }, {
+            $set: {
+                deleted: true
+            }
+        });
+        if (res.result.ok === 1) {
+            insertLogEvent(socket, 'Deleted opnote ID: ' + opnote + '.');
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'delete_opnote',
+                arg: opnote
+            }));
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Error: deleting opnote.'
+                }
+            }));
+        }
+    } catch (err) {
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error: deleting opnote.'
+            }
+        }));
+        console.log(err);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------------------------- /OPNOTES
+
 // EVENTS -------------------------------------------------------------------------------------------------------------------
 // get events
 async function getEvents(socket) {
@@ -1168,7 +1323,6 @@ async function getEvents(socket) {
         }, {
             $project: {
                 _id: 1,
-                mission_id: 1,
                 event_time: 1,
                 discovery_time: 1,
                 event_type: 1,
@@ -1177,8 +1331,6 @@ async function getEvents(socket) {
                 source_port: 1,
                 dest_port: 1,
                 short_desc: 1,
-                assignment: 1,
-                user_id: 1,
                 username: '$username.username'
             }
         }]).toArray();
@@ -1347,58 +1499,7 @@ async function deleteEvent(socket, event) {
 
 // ------------------------------------------------------------------------------------------------------------------- /EVENTS
 
-// OPNOTES -------------------------------------------------------------------------------------------------------------------
-async function getOpnotes(socket) {
-    try {
-        var opnotes = await mdb.collection('opnotes').aggregate([{
-            $match: {
-                mission_id: ObjectID(socket.mission_id),
-                deleted: {
-                    $ne: true
-                }
-            }
-        }, {
-            $sort: {
-                event_time: 1
-            }
-        }, {
-            $lookup: {
-                from: 'users',
-                localField: 'user_id',
-                foreignField: '_id',
-                as: 'username'
-            },
-        }, {
-            $project: {
-                _id: 1,
-                event_id: 1,
-                mission_id: 1,
-                evt: 1,
-                event_time: 1,
-                source_object: 1,
-                tool: 1,
-                action: 1,
-                user_id: 1,
-                username: '$username.username'
-            }
-        }]).toArray();
-        socket.send(JSON.stringify({
-            act: 'get_opnotes',
-            arg: opnotes
-        }))
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error getting opnotes.'
-            }
-        }));
-        console.log(err);
-    }
-}
-
-// ------------------------------------------------------------------------------------------------------------------- /OPNOTES
-
+// -------------------------------------------------------------------------------------------------------------------
 async function setupSocket(socket) {
     if (!socket.loggedin) {
         socket.close();
@@ -1480,23 +1581,25 @@ async function setupSocket(socket) {
                     break;
 
                 case 'insert_mission':
-                    if (socket.cop_permissions.manage_missions && ajv.validate(validators.insert_mission, msg.arg)) {
+                    if (ajv.validate(validators.insert_mission, msg.arg)) {
                         insertMission(socket, msg.arg);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
                                 text: 'Permission denied or invalid data.'
                             }
                         }));
-                        console.log('[!] inert_mission failed.');
+                        console.log('[!] insert_mission failed.');
                     }
                     break;
 
                 case 'update_mission':
-                    if (socket.cop_permissions.manage_missions && ajv.validate(validators.update_mission, msg.arg)) {
+                    if (socket.is_admin && ajv.validate(validators.update_mission, msg.arg)) {
                         updateMission(socket, msg.arg);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1508,9 +1611,10 @@ async function setupSocket(socket) {
                     break;
 
                 case 'delete_mission':
-                    if (socket.cop_permissions.manage_missions && ajv.validate(validators.delete_row, msg.arg)) {
-                        deleteMission(socket, msg.arg.mission_id);
+                    if (socket.is_admin && ajv.validate(validators.delete_row, msg.arg)) {
+                        deleteMission(socket, msg.arg._id);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1525,9 +1629,10 @@ async function setupSocket(socket) {
                     // USERS -------------------------------------------------------------------------------------------------------------------
                     // get users
                 case 'get_users':
-                    if (socket.cop_permissions.manage_users) {
+                    if (socket.is_admin) {
                         getUsers(socket);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1539,9 +1644,10 @@ async function setupSocket(socket) {
                     break;
 
                 case 'insert_user':
-                    if (socket.cop_permissions.manage_users && ajv.validate(validators.insert_user, msg.arg)) {
+                    if (socket.is_admin && ajv.validate(validators.insert_user, msg.arg)) {
                         insertUser(socket, msg.arg);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1553,9 +1659,10 @@ async function setupSocket(socket) {
                     break;
 
                 case 'update_user':
-                    if (socket.cop_permissions.manage_users && ajv.validate(validators.update_user, msg.arg)) {
+                    if (socket.is_admin && ajv.validate(validators.update_user, msg.arg)) {
                         updateUser(socket, msg.arg);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1567,9 +1674,10 @@ async function setupSocket(socket) {
                     break;
 
                 case 'delete_user':
-                    if (socket.cop_permissions.manage_users && ajv.validate(validators.delete_row, msg.arg)) {
-                        deleteUser(socket, msg.arg.user_id);
+                    if (socket.is_admin && ajv.validate(validators.delete_row, msg.arg)) {
+                        deleteUser(socket, msg.arg._id);
                     } else {
+                        console.log(msg.arg, ajv.errors);
                         socket.send(JSON.stringify({
                             act: 'error',
                             arg: {
@@ -1590,6 +1698,7 @@ async function setupSocket(socket) {
                                 if (ajv.validate(validators.insert_chat, msg.arg)) {
                                     insertChat(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
@@ -1604,6 +1713,7 @@ async function setupSocket(socket) {
                                 if (ajv.validate(validators.get_old_chats, msg.arg)) {
                                     getOldChats(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
@@ -1620,6 +1730,7 @@ async function setupSocket(socket) {
                                 if (socket.mission_permissions[socket.mission_id].manage_users && ajv.validate(validators.insert_user_mission, msg.arg)) {
                                     insertUserMission(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
@@ -1634,6 +1745,7 @@ async function setupSocket(socket) {
                                 if (socket.mission_permissions[socket.mission_id].manage_users && ajv.validate(validators.update_user_mission, msg.arg)) {
                                     updateUserMission(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
@@ -1648,6 +1760,7 @@ async function setupSocket(socket) {
                                 if (socket.mission_permissions[socket.mission_id].manage_users && ajv.validate(validators.delete_row, msg.arg)) {
                                     deleteUserMission(socket, msg.arg._id);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
@@ -1663,37 +1776,46 @@ async function setupSocket(socket) {
                             case 'insert_note':
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.insert_note, msg.arg)) {
                                     insertNote(socket, msg.arg);
-                                } else
+                                } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] insert_note failed.')
+                                }
                                 break;
 
                             case 'rename_note':
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.rename_note, msg.arg)) {
                                     renameNote(socket, msg.arg);
-                                } else
+                                } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] rename_note failed.')
+                                }
                                 break;
 
                             case 'delete_note':
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.delete_row, msg.arg)) {
                                     deleteNote(socket, msg.arg._id);
-                                } else
+                                } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] delete_note failed.')
+                                }
                                 break;
                                 // ------------------------------------------------------------------------------------------------------------------- / NOTES
 
@@ -2097,16 +2219,17 @@ async function setupSocket(socket) {
 
                                 // EVENTS -------------------------------------------------------------------------------------------------------------------
                             case 'insert_event':
-                                console.log(msg.arg);
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.insert_event, msg.arg)) {
                                     insertEvent(socket, msg.arg);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] insert_event failed.');
                                 }
                                 break;
 
@@ -2121,6 +2244,7 @@ async function setupSocket(socket) {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] update_event failed.');
                                 }
                                 break;
 
@@ -2128,15 +2252,64 @@ async function setupSocket(socket) {
                                 if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.delete_row, msg.arg)) {
                                     deleteEvent(socket, msg.arg._id);
                                 } else {
+                                    console.log(msg.arg, ajv.errors);
                                     socket.send(JSON.stringify({
                                         act: 'error',
                                         arg: {
                                             text: 'Error: Permission denied or invalid data.'
                                         }
                                     }));
+                                    console.log('[!] delete_event failed.');
                                 }
                                 break;
                                 // ------------------------------------------------------------------------------------------------------------------- /EVENTS
+
+                            // OPNOTES -------------------------------------------------------------------------------------------------------------------
+                            case 'insert_opnote':
+                                    if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.insert_opnote, msg.arg)) {
+                                        insertOpnote(socket, msg.arg);
+                                    } else {
+                                        console.log(msg.arg, ajv.errors);
+                                        socket.send(JSON.stringify({
+                                            act: 'error',
+                                            arg: {
+                                                text: 'Error: Permission denied or invalid data.'
+                                            }
+                                        }));
+                                        console.log('[!] insert_opnote failed.');
+                                    }
+                                    break;
+    
+                                case 'update_opnote':
+                                    if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.update_opnote, msg.arg)) {
+                                        updateOpnote(socket, msg.arg);
+                                    } else {
+                                        console.log(msg.arg, ajv.errors);
+                                        socket.send(JSON.stringify({
+                                            act: 'error',
+                                            arg: {
+                                                text: 'Error: Permission denied or invalid data.'
+                                            }
+                                        }));
+                                        console.log('[!] update_opnote failed.');
+                                    }
+                                    break;
+    
+                                case 'delete_opnote':
+                                    if (socket.mission_permissions[socket.mission_id].modify_notes && ajv.validate(validators.delete_row, msg.arg)) {
+                                        deleteOpnote(socket, msg.arg._id);
+                                    } else {
+                                        console.log(msg.arg, ajv.errors);
+                                        socket.send(JSON.stringify({
+                                            act: 'error',
+                                            arg: {
+                                                text: 'Error: Permission denied or invalid data.'
+                                            }
+                                        }));
+                                        console.log('[!] delete_opnote failed.');
+                                    }
+                                    break;
+                                    // ------------------------------------------------------------------------------------------------------------------- /OPNOTES
                         }
                     }
             }
@@ -2154,7 +2327,7 @@ app.get('/', function (req, res) {
     if (req.session.loggedin) {
         res.render('index', {
             title: 'ctfcop',
-            permissions: JSON.stringify(req.session.cop_permissions)
+            is_admin: JSON.stringify(req.session.is_admin)
         });
     } else {
         res.redirect('login');
@@ -2266,11 +2439,11 @@ app.get('/config', function (req, res) {
         profile.username = req.session.username;
         profile.name = req.session.name;
         profile.user_id = req.session.user_id;
-        profile.permissions = JSON.stringify(req.session.cop_permissions);
+        profile.is_admin = JSON.stringify(req.session.is_admin);
         res.render('config', {
             title: 'ctfcop',
             profile: profile,
-            permissions: JSON.stringify(req.session.cop_permissions)
+            is_admin: JSON.stringify(req.session.is_admin)
         });
     } else {
         res.redirect('login');
@@ -2285,69 +2458,109 @@ app.get('/cop', function (req, res) {
     var icons = [];
     var shapes = [];
     var links = [];
-    var mission_permissions = null;
     if (req.session.loggedin) {
         if (req.query.mission !== undefined && req.query.mission && ObjectID.isValid(req.query.mission)) {
-            mdb.collection('missions').aggregate([{
-                $match: {
-                    _id: ObjectID(req.query.mission),
-                    'mission_users.user_id': ObjectID(req.session.user_id),
-                    deleted: {
-                        $ne: true
-                    }
-                }
-            }, {
-                $unwind: '$mission_users'
-            }, {
-                $match: {
-                    'mission_users.user_id': ObjectID(req.session.user_id)
-                }
-            }, {
-                $project: {
-                    name: 1,
-                    permissions: '$mission_users.permissions',
-                }
-            }]).toArray(function (err, row) {
-                if (row && row.length > 0) {
-                    fs.readdir('./public/images/icons', function (err, icons) {
-                        fs.readdir('./public/images/shapes', function (err, shapes) {
-                            fs.readdir('./public/images/links', function (err, links) {
-                                var mission_name = row[0].name;
-                                if (req.session.username === 'admin')
-                                    mission_permissions = {
-                                        manage_users: true,
-                                        modify_diagram: true,
-                                        modify_notes: true,
-                                        modify_files: true,
-                                        api_access: true
-                                    }; //admin has all permissions
-                                else
-                                    mission_permissions = row[0].permissions;
+            try {
+                if (req.session.username === 'admin' || req.session.is_admin) {
+                    mdb.collection('missions').aggregate([{
+                        $match: {
+                            _id: ObjectID(req.query.mission),
+                            deleted: {
+                                $ne: true
+                            }
+                        }
+                    }]).toArray(function (err, row) {
+                        if (row && row.length > 0) {
+                            fs.readdir('./public/images/icons', function (err, icons) {
+                                fs.readdir('./public/images/shapes', function (err, shapes) {
+                                    fs.readdir('./public/images/links', function (err, links) {
+                                        var mission_name = row[0].name;
+                                        req.session.mission_permissions[req.query.mission] = {
+                                            manage_users: true,
+                                            modify_diagram: true,
+                                            modify_notes: true,
+                                            modify_files: true,
+                                            api_access: true
+                                        }; //admin has all permissions
 
-                                req.session.mission_permissions[req.query.mission] = mission_permissions;
-
-                                if (req.session.username === 'admin' || (mission_permissions && mission_permissions !== '')) // always let admin in
-                                    res.render('cop', {
-                                        title: 'ctfcop - ' + mission_name,
-                                        permissions: JSON.stringify(mission_permissions),
-                                        mission_name: mission_name,
-                                        user_id: req.session.user_id,
-                                        username: req.session.username,
-                                        icons: icons.filter(getPNGs),
-                                        shapes: shapes.filter(getPNGs),
-                                        links: links.filter(getPNGs)
+                                        res.render('cop', {
+                                            title: 'ctfcop - ' + mission_name,
+                                            permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                            mission_name: mission_name,
+                                            user_id: req.session.user_id,
+                                            username: req.session.username,
+                                            icons: icons.filter(getPNGs),
+                                            shapes: shapes.filter(getPNGs),
+                                            links: links.filter(getPNGs)
+                                        });
                                     });
-                                else
-                                    res.redirect('login');
+                                });
                             });
-                        });
+                        } else {
+                            res.redirect('login');
+                            if (err)
+                                console.log(err);
+                        }
+
                     });
-                } else {
-                    res.redirect('login');
-                    if (err)
-                        console.log(err);
                 }
-            });
+                else {
+                    mdb.collection('missions').aggregate([{
+                        $match: {
+                            _id: ObjectID(req.query.mission),
+                            'mission_users.user_id': ObjectID(req.session.user_id),
+                            deleted: {
+                                $ne: true
+                            }
+                        }
+                    }, {
+                        $unwind: '$mission_users'
+                    }, {
+                        $match: {
+                            'mission_users.user_id': ObjectID(req.session.user_id)
+                        }
+                    }, {
+                        $project: {
+                            name: 1,
+                            permissions: '$mission_users.permissions',
+                        }
+                    }]).toArray(function (err, row) {
+                        if (row && row.length > 0) {
+                            fs.readdir('./public/images/icons', function (err, icons) {
+                                fs.readdir('./public/images/shapes', function (err, shapes) {
+                                    fs.readdir('./public/images/links', function (err, links) {
+                                        var mission_name = row[0].name;
+                                        req.session.mission_permissions[req.query.mission] = row[0].permissions;
+
+                                        if (req.session.mission_permissions[req.query.mission]) { // always let admin in
+                                            res.render('cop', {
+                                                title: 'ctfcop - ' + mission_name,
+                                                permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                                mission_name: mission_name,
+                                                user_id: req.session.user_id,
+                                                username: req.session.username,
+                                                icons: icons.filter(getPNGs),
+                                                shapes: shapes.filter(getPNGs),
+                                                links: links.filter(getPNGs)
+                                            });
+                                        }
+                                        else {
+                                            res.redirect('login');
+                                        }
+                                    });
+                                });
+                            });
+                        } else {
+                            res.redirect('login');
+                            if (err)
+                                console.log(err);
+                        }
+                    });
+                }
+            } catch (err) {
+                console.log(err);
+                res.redirect('login');
+            }
         } else {
             res.redirect('../');
         }
@@ -2370,7 +2583,7 @@ app.post('/login', function (req, res) {
                         req.session.name = row.name;
                         req.session.username = row.username;
                         req.session.loggedin = true;
-                        req.session.cop_permissions = row.permissions;
+                        req.session.is_admin = row.is_admin;
                         req.session.mission_permissions = {};
                         res.redirect('login');
                     } else {
@@ -2596,7 +2809,7 @@ app.post('/upload', upload.any(), function (req, res) {
 });
 
 app.post('/avatar', upload.any(), function (req, res) {
-    if (!req.session.loggedin || (!req.session.cop_permissions.manage_users && req.session.user_id !== req.body.id)) {
+    if (!req.session.loggedin || (!req.session.is_admin && req.session.user_id !== req.body.id)) {
         res.end('ERR28');
         return;
     }
