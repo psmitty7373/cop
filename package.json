@@ -36,5 +36,8 @@
   "bugs": {
     "url": "https://github.com/psmitty7373/mcscop/issues"
   },
-  "homepage": "https://github.com/psmitty7373/mcscop#readme"
+  "homepage": "https://github.com/psmitty7373/mcscop#readme",
+  "optionalDependencies": {
+    "bufferutil": "^4.0.1"
+  }
 }
