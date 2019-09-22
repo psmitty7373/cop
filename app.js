@@ -48,7 +48,7 @@ app.use(session({
     saveUninitialized: true,
     resave: true,
     store: new mongostore({
-        url: 'mongodb://localhost/ctfcop',
+        url: 'mongodb://localhost/cop',
         mongoOptions: {
             useNewUrlParser: true,
             useUnifiedTopology: true,
@@ -72,7 +72,7 @@ if (cspEnabled) {
 
 // connect to mongo
 var mdb;
-const mongoclient = mongodb.connect('mongodb://localhost/ctfcop', {
+const mongoclient = mongodb.connect('mongodb://localhost/cop', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     reconnectTries: Number.MAX_VALUE,
@@ -86,12 +86,12 @@ const mongoclient = mongodb.connect('mongodb://localhost/ctfcop', {
             socket.close();
         });
     });
-    mdb = database.db('ctfcop');
+    mdb = database.db('cop');
 });
 
 // sharedb-mongo connection
 const sdb = require('sharedb-mongo')({ mongo: function(callback) {
-    mongodb.connect('mongodb://localhost:27017/ctfcop', {
+    mongodb.connect('mongodb://localhost:27017/cop', {
         useNewUrlParser: true,
         useUnifiedTopology: true,
         reconnectTries: Number.MAX_VALUE,
@@ -2649,7 +2649,7 @@ async function setupSocket(socket) {
 app.get('/', function (req, res) {
     if (req.session.loggedin) {
         res.render('index', {
-            title: 'ctfcop',
+            title: 'cop',
             is_admin: JSON.stringify(req.session.is_admin)
         });
     } else {
@@ -2762,7 +2762,7 @@ app.get('/config', function (req, res) {
         profile.user_id = req.session.user_id;
         profile.is_admin = JSON.stringify(req.session.is_admin);
         res.render('config', {
-            title: 'ctfcop',
+            title: 'cop',
             profile: profile,
             is_admin: JSON.stringify(req.session.is_admin)
         });
@@ -2805,7 +2805,7 @@ app.get('/cop', function (req, res) {
                                         }; //admin has all permissions
 
                                         res.render('cop', {
-                                            title: 'ctfcop - ' + mission_name,
+                                            title: 'cop - ' + mission_name,
                                             permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
                                             mission_name: mission_name,
                                             user_id: req.session.user_id,
@@ -2855,7 +2855,7 @@ app.get('/cop', function (req, res) {
 
                                         if (req.session.mission_permissions[req.query.mission]) { // always let admin in
                                             res.render('cop', {
-                                                title: 'ctfcop - ' + mission_name,
+                                                title: 'cop - ' + mission_name,
                                                 permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
                                                 mission_name: mission_name,
                                                 user_id: req.session.user_id,
@@ -2909,7 +2909,7 @@ app.post('/login', function (req, res) {
                         res.redirect('login');
                     } else {
                         res.render('login', {
-                            title: 'ctfcop',
+                            title: 'cop',
                             message: 'Invalid username or password.'
                         });
                     }
@@ -2919,14 +2919,14 @@ app.post('/login', function (req, res) {
                     console.log(err);
                 }
                 res.render('login', {
-                    title: 'ctfcop',
+                    title: 'cop',
                     message: 'Invalid username or password.'
                 });
             }
         });
     } else {
         res.render('login', {
-            title: 'ctfcop',
+            title: 'cop',
             message: 'Invalid username or password.'
         });
     }
@@ -2938,7 +2938,7 @@ app.get('/login', function (req, res) {
         res.redirect('.');
     } else {
         res.render('login', {
-            title: 'ctfcop Login'
+            title: 'cop Login'
         });
     }
 });

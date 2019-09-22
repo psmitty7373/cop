@@ -6,11 +6,11 @@ var mdb;
 
 (async function() {
     try {
-        mc = await MongoClient.connect('mongodb://localhost/ctfcop', {
+        mc = await MongoClient.connect('mongodb://localhost/cop', {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });
-        mdb = mc.db('ctfcop')
+        mdb = mc.db('cop')
         if (await set_user_unique())
             await create_user();
         process.exit();
