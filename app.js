@@ -1064,7 +1064,7 @@ async function insertFile(socket, dir) {
                             }
                         })); 
                         console.log('[!] Error making directory.');
-                        onsole.log(err);
+                        console.log(err);
                         return;
                     }
                     // create new path
@@ -1077,7 +1077,7 @@ async function insertFile(socket, dir) {
                                 }
                             }));
                             console.log('[!] Error making directory.');
-                            onsole.log(err);
+                            console.log(err);
                         }
                         else {
                             fs.stat(fullpath, function (err, s) {
