@@ -1093,13 +1093,17 @@ async function insertFile(socket, dir) {
                                     return;
                                 }
                                 insertLogEvent(socket, 'Created directory: ' + newdir + '.');
+                                var parent = parentstat.ino;
+                                if (dir.dst === '/') {
+                                    parent = '.';
+                                }
                                 sendToRoom(socket.room, JSON.stringify({
                                     act: 'insert_file',
                                     arg: {
                                         _id: s.ino,
                                         name: newdir,
                                         type: 'dir',
-                                        parent: parentstat.ino
+                                        parent: parent
                                     }
                                 }));
                             });
@@ -1297,9 +1301,9 @@ async function getNotes(socket) {
                 deleted: {
                     $ne: true
                 },
-                type: {
-                    $ne: 'link'
-                }
+                //type: {
+                //    $ne: 'link'
+                //}
             }]
         },{ projection: projection }).sort({
             name: 1
@@ -3002,6 +3006,10 @@ app.post('/upload', upload.any(), function (req, res) {
                     if (err) {
                         res.status(500).send('Error: Permission denied or invalid data.');
                     } else {
+                        var parent = dirstat.ino;
+                        if (req.body.dir === '/') {
+                            parent = '.';
+                        }
                         res.send('{}');
                         sendToRoom(req.body.mission_id, JSON.stringify({
                             act: 'insert_file',
@@ -3009,7 +3017,7 @@ app.post('/upload', upload.any(), function (req, res) {
                                 _id: s.ino,
                                 name: file.originalname,
                                 type: 'file',
-                                parent: dirstat.ino,                            
+                                parent: parent
                             }
                         }));
                     }

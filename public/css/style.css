@@ -394,6 +394,10 @@ td a {
     top: 0px !important;
 }
 
+.jstree-anchor {
+    width: 100%;
+}
+
 .jstree-default .jstree-wholerow-clicked {
     background-color: transparent;
     background: transparent;
@@ -510,21 +514,10 @@ h1 {
     padding: 15px 35px 45px;
     margin: 0 auto;
     background-color: #505050;
-
-    .form-signin-heading {
-        margin-bottom: 30px;
-    }
 }
 
-.form-control {
-    position: relative;
-    font-size: 14px;
-    height: auto;
-    @include box-sizing(border-box);
-
-    &:focus {
-        z-index: 2;
-    }
+.form-signin-heading {
+    margin-bottom: 30px;
 }
 
 #minimap {

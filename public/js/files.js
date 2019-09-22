@@ -118,6 +118,9 @@ $(document).ready(function () {
                         base: "#",
                         isLeaf: false
                     },
+                    a_attr: {
+                        class: 'droppable'
+                    },
                     children : []
                 }]
             },

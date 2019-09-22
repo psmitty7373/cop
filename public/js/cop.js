@@ -587,7 +587,8 @@ $(document).ready(function () {
         className: "os-theme-light"
     });
     $('#filesForm').overlayScrollbars({
-        className: "os-theme-light"
+        className: "os-theme-light",
+        overflowBehavior: { x: 'hidden' }
     });
     $('#log').overlayScrollbars({
         className: "os-theme-light"
