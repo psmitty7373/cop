@@ -16,19 +16,18 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http').Server(app);
 const session = require('express-session');
-const MongoClient = require('mongodb').MongoClient;
-const MongoStore = require('connect-mongo')(session);
+const mongodb = require('mongodb');
+const mongostore = require('connect-mongo')(session);
 const multer = require('multer');
-const ObjectID = require('mongodb').ObjectID;
+const objectid = require('mongodb').ObjectID;
 const path = require('path');
 const ShareDB = require('sharedb');
 const richText = require('rich-text');
-
 const rooms = new Map();
 const upload = multer({
     dest: './temp_uploads'
 });
-const WebSocketJSONStream = require('websocket-json-stream');
+const wsjsonstream = require('websocket-json-stream');
 const xssFilters = require('xss-filters');
 const wss = require('ws');
 const ws = new wss.Server({
@@ -41,13 +40,22 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+
+// session-mongodb connection
 app.use(session({
     secret: 'ProtextTheCybxers',
     name: 'session',
     saveUninitialized: true,
     resave: true,
-    store: new MongoStore({
+    store: new mongostore({
         url: 'mongodb://localhost/ctfcop',
+        mongoOptions: {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            reconnectTries: Number.MAX_VALUE,
+            autoReconnect: true,
+            wtimeout: 5000
+        },
         host: 'localhost',
         collection: 'sessions',
         autoReconnect: true,
@@ -62,12 +70,9 @@ if (cspEnabled) {
     });
 }
 
-// setup ajv json validation
-const ajv = new Ajv();
-
 // connect to mongo
 var mdb;
-MongoClient.connect('mongodb://localhost/ctfcop', {
+const mongoclient = mongodb.connect('mongodb://localhost/ctfcop', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     reconnectTries: Number.MAX_VALUE,
@@ -84,7 +89,16 @@ MongoClient.connect('mongodb://localhost/ctfcop', {
     mdb = database.db('ctfcop');
 });
 
-const sdb = require('sharedb-mongo')('mongodb://localhost:27017/ctfcop');
+// sharedb-mongo connection
+const sdb = require('sharedb-mongo')({ mongo: function(callback) {
+    mongodb.connect('mongodb://localhost:27017/ctfcop', {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        reconnectTries: Number.MAX_VALUE,
+        autoReconnect: true,
+        wtimeout: 5000
+    }, callback);
+}});
 
 // start sharedb
 ShareDB.types.register(richText.type);
@@ -97,6 +111,9 @@ const backend = new ShareDB({
 backend.use('receive', function (r, c) {
     c();
 });
+
+// setup ajv json validation
+const ajv = new Ajv();
 
 Array.prototype.move = function (old_index, new_index) {
     if (new_index >= this.length) {
@@ -145,8 +162,8 @@ async function insertLogEvent(socket, message, channel) {
         channel = 'log';
     var timestamp = (new Date).getTime();
     var log = {
-        mission_id: ObjectID(socket.mission_id),
-        user_id: ObjectID(socket.user_id),
+        mission_id: objectid(socket.mission_id),
+        user_id: objectid(socket.user_id),
         channel: channel,
         text: message,
         timestamp: timestamp,
@@ -209,7 +226,7 @@ const pingInterval = setInterval(function ping() {
 async function getObjects(socket) {
     try {
         var objects = await mdb.collection('objects').find({
-            mission_id: ObjectID(socket.mission_id),
+            mission_id: objectid(socket.mission_id),
             deleted: {
                 $ne: true
             }
@@ -317,7 +334,7 @@ async function updateUser(socket, user) {
     new_values.is_admin = user.is_admin;
     try {
         var res = await mdb.collection('users').updateOne({
-            _id: ObjectID(user._id)
+            _id: objectid(user._id)
         }, {
             $set: new_values
         });
@@ -360,7 +377,7 @@ async function updateUser(socket, user) {
 async function deleteUser(socket, user) {
     try {
         var res = await mdb.collection('users').updateOne({
-            _id: ObjectID(user)
+            _id: objectid(user)
         }, {
             $set: {
                 deleted: true
@@ -440,13 +457,13 @@ async function insertMission(socket, mission) {
     mission.name = xssFilters.inHTMLData(mission.name);
     var mission = {
         name: mission.name,
-        user_id: ObjectID(socket.user_id),
+        user_id: objectid(socket.user_id),
         mission_users: [],
         deleted: false
     };
     mission.mission_users[0] = {
-        _id: ObjectID(null),
-        user_id: ObjectID(socket.user_id),
+        _id: objectid(null),
+        user_id: objectid(socket.user_id),
         permissions: {
             manage_users: true,
             modify_diagram: true,
@@ -483,7 +500,7 @@ async function updateMission(socket, mission) {
     };
     try {
         var res = await mdb.collection('missions').updateOne({
-            _id: ObjectID(mission._id)
+            _id: objectid(mission._id)
         }, new_values);
         if (res.result.ok === 1) {
             sendToRoom(socket.room, JSON.stringify({
@@ -513,7 +530,7 @@ async function updateMission(socket, mission) {
 async function deleteMission(socket, mission) {
     try {
         var res = await mdb.collection('missions').updateOne({
-            _id: ObjectID(mission)
+            _id: objectid(mission)
         }, {
             $set: {
                 deleted: true
@@ -553,7 +570,7 @@ async function getChats(socket) {
         for (var i = 0; i < channels.length; i++) {
             var rows = await mdb.collection('chats').aggregate([{
                 $match: {
-                    mission_id: ObjectID(socket.mission_id),
+                    mission_id: objectid(socket.mission_id),
                     channel: channels[i],
                     deleted: {
                         $ne: true
@@ -619,8 +636,8 @@ async function insertChat(socket, chat) {
     chat.text = xssFilters.inHTMLData(chat.text);
     chat.timestamp = (new Date).getTime();
     var chat_row = {
-        mission_id: ObjectID(socket.mission_id),
-        user_id: ObjectID(socket.user_id),
+        mission_id: objectid(socket.mission_id),
+        user_id: objectid(socket.user_id),
         channel: chat.channel,
         text: chat.text,
         timestamp: chat.timestamp,
@@ -648,7 +665,7 @@ async function getOldChats(socket, request) {
     try {
         var rows = await mdb.collection('chats').aggregate([{
             $match: {
-                mission_id: ObjectID(socket.mission_id),
+                mission_id: objectid(socket.mission_id),
                 channel: request.channel,
                 timestamp: {
                     $lt: parseInt(request.start_from)
@@ -716,7 +733,7 @@ async function getMissionUsers(socket) {
     try {
         var users = await mdb.collection('missions').aggregate([{
             $match: {
-                _id: ObjectID(socket.mission_id),
+                _id: objectid(socket.mission_id),
                 deleted: {
                     $ne: true
                 }
@@ -763,19 +780,19 @@ async function getMissionUsers(socket) {
 async function insertUserMission(socket, user) {
     try {
         var count = await mdb.collection('missions').count({
-            _id: ObjectID(socket.mission_id),
-            'mission_users.user_id': ObjectID(user.user_id)
+            _id: objectid(socket.mission_id),
+            'mission_users.user_id': objectid(user.user_id)
         });
 
         // don't let the user make the same user setting over again
         if (count === 0) {
             var new_values = {
-                _id: ObjectID(null),
-                user_id: ObjectID(user.user_id),
+                _id: objectid(null),
+                user_id: objectid(user.user_id),
                 permissions: user.permissions
             };
             var res = await mdb.collection('missions').updateOne({
-                _id: ObjectID(socket.mission_id)
+                _id: objectid(socket.mission_id)
             }, {
                 $push: {
                     mission_users: new_values
@@ -783,7 +800,7 @@ async function insertUserMission(socket, user) {
             });
             if (res.result.ok === 1) {
                 var user = await mdb.collection('users').findOne({
-                    _id: ObjectID(user.user_id),
+                    _id: objectid(user.user_id),
                     deleted: {
                         $ne: true
                     }
@@ -825,7 +842,7 @@ async function updateUserMission(socket, user) {
     try {
         var rows = await mdb.collection('missions').aggregate([{
             $match: {
-                _id: ObjectID(socket.mission_id),
+                _id: objectid(socket.mission_id),
                 deleted: {
                     $ne: true
                 }
@@ -835,26 +852,26 @@ async function updateUserMission(socket, user) {
         }, {
             $match: {
                 'mission_users._id': {
-                    $ne: ObjectID(user._id)
+                    $ne: objectid(user._id)
                 },
-                'mission_users.user_id': ObjectID(user.user_id)
+                'mission_users.user_id': objectid(user.user_id)
             }
         }]).toArray();
 
         if (rows.length == 0) {
             var new_values = {
-                'mission_users.$.user_id': ObjectID(user.user_id),
+                'mission_users.$.user_id': objectid(user.user_id),
                 'mission_users.$.permissions': user.permissions
             };
             var res = await mdb.collection('missions').updateOne({
-                _id: ObjectID(socket.mission_id),
-                'mission_users._id': ObjectID(user._id)
+                _id: objectid(socket.mission_id),
+                'mission_users._id': objectid(user._id)
             }, {
                 $set: new_values
             });
             if (res.result.ok === 1) {
                 var ouser = await mdb.collection('users').findOne({
-                    _id: ObjectID(user.user_id),
+                    _id: objectid(user.user_id),
                     deleted: {
                         $ne: true
                     }
@@ -896,11 +913,11 @@ async function updateUserMission(socket, user) {
 async function deleteUserMission(socket, _id) {
     try {
         var res = await mdb.collection('missions').findOneAndUpdate({
-            _id: ObjectID(socket.mission_id)
+            _id: objectid(socket.mission_id)
         }, {
             $pull: {
                 mission_users: {
-                    _id: ObjectID(_id)
+                    _id: objectid(_id)
                 }
             }
         });
@@ -1252,7 +1269,7 @@ async function getNotes(socket) {
 
         var notes = await mdb.collection('notes').find({
             $and: [{
-                mission_id: ObjectID(socket.mission_id)
+                mission_id: objectid(socket.mission_id)
             }, {
                 deleted: {
                     $ne: true
@@ -1268,7 +1285,7 @@ async function getNotes(socket) {
 
         var objects = await mdb.collection('objects').find({
             $and: [{
-                mission_id: ObjectID(socket.mission_id)
+                mission_id: objectid(socket.mission_id)
             }, {
                 deleted: {
                     $ne: true
@@ -1308,7 +1325,7 @@ async function getNotes(socket) {
 async function insertNote(socket, note) {
     note.name = xssFilters.inHTMLData(note.name);
     var note_row = {
-        mission_id: ObjectID(socket.mission_id),
+        mission_id: objectid(socket.mission_id),
         name: note.name,
         deleted: false
     };
@@ -1343,7 +1360,7 @@ async function renameNote(socket, note) {
     };
     try {
         var res = await mdb.collection('notes').updateOne({
-            _id: ObjectID(note.id)
+            _id: objectid(note.id)
         }, new_values);
         insertLogEvent(socket, 'Renamed note: ' + note.id + ' to: ' + note.name + '.');
         sendToRoom(socket.room, JSON.stringify({
@@ -1367,7 +1384,7 @@ async function renameNote(socket, note) {
 async function deleteNote(socket, note) {
     try {
         var res = mdb.collection('notes').updateOne({
-            _id: ObjectID(note)
+            _id: objectid(note)
         }, {
             $set: {
                 deleted: true
@@ -1395,11 +1412,11 @@ async function deleteObject(socket, object) {
     try {
         var query = {
             $or: [{
-                _id: ObjectID(object)
+                _id: objectid(object)
             }, {
-                obj_a: ObjectID(object)
+                obj_a: objectid(object)
             }, {
-                obj_b: ObjectID(object)
+                obj_b: objectid(object)
             }]
         };
         var o_rows = await mdb.collection('objects').find(query, {
@@ -1408,7 +1425,7 @@ async function deleteObject(socket, object) {
 
         async.each(o_rows, function (row, callback) {
             mdb.collection('objects').updateOne({
-                _id: ObjectID(row._id)
+                _id: objectid(row._id)
             }, {
                 $set: {
                     deleted: true
@@ -1425,7 +1442,7 @@ async function deleteObject(socket, object) {
         }, async function (err) {
             var rows = await mdb.collection('objects').find({
                 $and: [{
-                    mission_id: ObjectID(socket.mission_id)
+                    mission_id: objectid(socket.mission_id)
                 }, {
                     deleted: {
                         $ne: true
@@ -1445,7 +1462,7 @@ async function deleteObject(socket, object) {
                     }
                 };
                 mdb.collection('objects').updateOne({
-                    _id: ObjectID(item)
+                    _id: objectid(item)
                 }, new_values, function (err, result) {
                     if (err)
                         callback(err)
@@ -1471,7 +1488,7 @@ async function getOpnotes(socket) {
     try {
         var opnotes = await mdb.collection('opnotes').aggregate([
             {
-                $match: { mission_id: ObjectID(socket.mission_id), deleted: { $ne: true }}
+                $match: { mission_id: objectid(socket.mission_id), deleted: { $ne: true }}
             },{
                 $sort: { opnote_time: 1 }
             },{
@@ -1516,10 +1533,10 @@ async function insertOpnote(socket, opnote) {
         opnote.tool = xssFilters.inHTMLData(opnote.tool);
         opnote.action = xssFilters.inHTMLData(opnote.action);
 
-        var new_values = { mission_id: ObjectID(socket.mission_id), event_id: null, opnote_time: opnote.opnote_time, target: opnote.target, tool: opnote.tool, action: opnote.action, user_id: ObjectID(opnote.user_id), deleted: false };
+        var new_values = { mission_id: objectid(socket.mission_id), event_id: null, opnote_time: opnote.opnote_time, target: opnote.target, tool: opnote.tool, action: opnote.action, user_id: objectid(opnote.user_id), deleted: false };
 
-        if (ObjectID.isValid(opnote.event_id)) {
-            new_values.event_id = ObjectID(opnote.event_id);
+        if (objectid.isValid(opnote.event_id)) {
+            new_values.event_id = objectid(opnote.event_id);
         }
 
         var res = await mdb.collection('opnotes').insertOne(new_values);
@@ -1548,10 +1565,10 @@ async function updateOpnote(socket, opnote) {
 
         var new_values = { $set: { opnote_time: opnote.opnote_time, event_id: null, target: opnote.target, tool: opnote.tool, action: opnote.action } };
 
-        if (ObjectID.isValid(opnote.event_id))
-            new_values.$set.event_id = ObjectID(opnote.event_id);
+        if (objectid.isValid(opnote.event_id))
+            new_values.$set.event_id = objectid(opnote.event_id);
         console.log(opnote);
-        var res = await mdb.collection('opnotes').updateOne({ _id: ObjectID(opnote._id) }, new_values);
+        var res = await mdb.collection('opnotes').updateOne({ _id: objectid(opnote._id) }, new_values);
         if (res.result.ok === 1) {
             opnote.username = socket.username;
             insertLogEvent(socket, 'Modified event: ' + opnote.action + ' ID: ' + opnote._id + '.');
@@ -1582,7 +1599,7 @@ async function updateOpnote(socket, opnote) {
 async function deleteOpnote(socket, opnote) {
     try {
         var res = await mdb.collection('opnotes').updateOne({
-            _id: ObjectID(opnote)
+            _id: objectid(opnote)
         }, {
             $set: {
                 deleted: true
@@ -1621,7 +1638,7 @@ async function getEvents(socket) {
     try {
         var events = await mdb.collection('events').aggregate([{
             $match: {
-                mission_id: ObjectID(socket.mission_id),
+                mission_id: objectid(socket.mission_id),
                 deleted: {
                     $ne: true
                 }
@@ -1677,7 +1694,7 @@ async function insertEvent(socket, event) {
         event.username = socket.username;
 
         var evt = {
-            mission_id: ObjectID(socket.mission_id),
+            mission_id: objectid(socket.mission_id),
             event_time: event.event_time,
             discovery_time: event.discovery_time,
             source_object: null,
@@ -1686,20 +1703,20 @@ async function insertEvent(socket, event) {
             dest_port: event.dest_port,
             event_type: event.event_type,
             short_desc: event.short_desc,
-            user_id: ObjectID(socket.user_id),
+            user_id: objectid(socket.user_id),
             deleted: false
         };
 
-        if (event.source_object && ObjectID.isValid(event.source_object)) {
-            evt.source_object = ObjectID(event.source_object);
+        if (event.source_object && objectid.isValid(event.source_object)) {
+            evt.source_object = objectid(event.source_object);
         }
 
-        if (event.dest_object && ObjectID.isValid(event.dest_object)) {
-            evt.dest_object = ObjectID(event.dest_object);
+        if (event.dest_object && objectid.isValid(event.dest_object)) {
+            evt.dest_object = objectid(event.dest_object);
         }
 
-        if (event.assignment && ObjectID.isValid(event.assignment)) {
-            evt.assignment = ObjectID(event.assignment);
+        if (event.assignment && objectid.isValid(event.assignment)) {
+            evt.assignment = objectid(event.assignment);
         }
 
         var res = await mdb.collection('events').insertOne(evt);
@@ -1743,15 +1760,15 @@ async function updateEvent(socket, event) {
             }
         };
 
-        if (event.source_object && ObjectID.isValid(event.source_object))
-            new_values.$set.source_object = ObjectID(event.source_object);
-        if (event.dest_object && ObjectID.isValid(event.dest_object))
-            new_values.$set.dest_object = ObjectID(event.dest_object);
-        if (event.assignment && ObjectID.isValid(event.assignment))
-            new_values.$set.assignment = ObjectID(event.assignment);
+        if (event.source_object && objectid.isValid(event.source_object))
+            new_values.$set.source_object = objectid(event.source_object);
+        if (event.dest_object && objectid.isValid(event.dest_object))
+            new_values.$set.dest_object = objectid(event.dest_object);
+        if (event.assignment && objectid.isValid(event.assignment))
+            new_values.$set.assignment = objectid(event.assignment);
 
         var res = await mdb.collection('events').updateOne({
-            _id: ObjectID(event._id)
+            _id: objectid(event._id)
         }, new_values);
         if (res.result.ok === 1) {
             insertLogEvent(socket, 'Modified event: ' + event.event_type + ' ID: ' + event._id + '.');
@@ -1783,7 +1800,7 @@ async function updateEvent(socket, event) {
 async function deleteEvent(socket, event) {
     try {
         var res = await mdb.collection('events').updateOne({
-            _id: ObjectID(event)
+            _id: objectid(event)
         }, {
             $set: {
                 deleted: true
@@ -1837,7 +1854,7 @@ async function setupSocket(socket) {
         if (msg.act && socket.loggedin) {
             switch (msg.act) {
                 case 'stream':
-                    var stream = new WebSocketJSONStream(socket);
+                    var stream = new wsjsonstream(socket);
                     socket.type = 'sharedb';
                     backend.listen(stream);
                     break;
@@ -2009,7 +2026,7 @@ async function setupSocket(socket) {
 
                 default:
                     // mission commands
-                    if (socket.mission_id && ObjectID.isValid(socket.mission_id) && socket.user_id && ObjectID.isValid(socket.user_id)) {
+                    if (socket.mission_id && objectid.isValid(socket.mission_id) && socket.user_id && objectid.isValid(socket.user_id)) {
                         switch (msg.act) {
                             // CHATS -------------------------------------------------------------------------------------------------------------------
                             case 'insert_chat':
@@ -2192,7 +2209,7 @@ async function setupSocket(socket) {
                                     async.eachOf(msg.arg, function (o, index, callback) {
                                         if (ajv.validate(validators.paste_object, o)) {
                                             mdb.collection('objects').findOne({
-                                                _id: ObjectID(o._id),
+                                                _id: objectid(o._id),
                                                 type: {
                                                     $ne: 'link'
                                                 },
@@ -2201,7 +2218,7 @@ async function setupSocket(socket) {
                                                 }
                                             }, function (err, row) {
                                                 if (row) {
-                                                    row._id = ObjectID(null);
+                                                    row._id = objectid(null);
                                                     row.z = o.z;
                                                     row.x = o.x;
                                                     row.y = o.y;
@@ -2256,13 +2273,13 @@ async function setupSocket(socket) {
 
                                     // get object count for new z
                                     mdb.collection('objects').count({
-                                        mission_id: ObjectID(socket.mission_id)
+                                        mission_id: objectid(socket.mission_id)
                                     }, function (err, count) {
                                         if (!err) {
                                             var new_object;
                                             if (o.type === 'icon' || o.type === 'shape')
                                                 new_object = {
-                                                    mission_id: ObjectID(socket.mission_id),
+                                                    mission_id: objectid(socket.mission_id),
                                                     type: o.type,
                                                     name: o.name,
                                                     fill_color: o.fill_color,
@@ -2279,13 +2296,13 @@ async function setupSocket(socket) {
                                                 };
                                             else if (o.type === 'link')
                                                 new_object = {
-                                                    mission_id: ObjectID(socket.mission_id),
+                                                    mission_id: objectid(socket.mission_id),
                                                     type: o.type,
                                                     name: o.name,
                                                     stroke_color: o.stroke_color,
                                                     image: o.image,
-                                                    obj_a: ObjectID(o.obj_a),
-                                                    obj_b: ObjectID(o.obj_b),
+                                                    obj_a: objectid(o.obj_a),
+                                                    obj_b: objectid(o.obj_b),
                                                     z: 0,
                                                     locked: o.locked,
                                                     deleted: false
@@ -2297,7 +2314,7 @@ async function setupSocket(socket) {
                                                     if (o.type === 'link') {
                                                         mdb.collection('objects').find({
                                                             $and: [{
-                                                                mission_id: ObjectID(socket.mission_id)
+                                                                mission_id: objectid(socket.mission_id)
                                                             }, {
                                                                 deleted: {
                                                                     $ne: true
@@ -2317,7 +2334,7 @@ async function setupSocket(socket) {
                                                                     }
                                                                 };
                                                                 mdb.collection('objects').updateOne({
-                                                                    _id: ObjectID(item)
+                                                                    _id: objectid(item)
                                                                 }, new_values, function (err, result) {
                                                                     if (err)
                                                                         callback(err);
@@ -2393,7 +2410,7 @@ async function setupSocket(socket) {
                                         }
                                     };
                                     mdb.collection('objects').updateOne({
-                                        _id: ObjectID(o._id)
+                                        _id: objectid(o._id)
                                     }, new_values, function (err, result) {
                                         if (!err) {
                                             insertLogEvent(socket, 'Modified object: ' + o.name + ' ID: ' + o._id + '.');
@@ -2421,7 +2438,7 @@ async function setupSocket(socket) {
                                     var args = []; // for x/y moves
                                     var args_broadcast = []; // for z moves... to everyone
                                     mdb.collection('objects').find({
-                                        mission_id: ObjectID(socket.mission_id),
+                                        mission_id: objectid(socket.mission_id),
                                         deleted: {
                                             $ne: true
                                         }
@@ -2447,7 +2464,7 @@ async function setupSocket(socket) {
                                                                 }
                                                             };
                                                             mdb.collection('objects').updateOne({
-                                                                _id: ObjectID(item)
+                                                                _id: objectid(item)
                                                             }, new_values, function (err, result) {
                                                                 if (err)
                                                                     callback(err);
@@ -2477,7 +2494,7 @@ async function setupSocket(socket) {
                                                             }
                                                         };
                                                         mdb.collection('objects').updateOne({
-                                                            _id: ObjectID(o._id)
+                                                            _id: objectid(o._id)
                                                         }, new_values, function (err, result) {
                                                             if (err)
                                                                 callback(err)
@@ -2647,7 +2664,7 @@ app.get('/logout', function (req, res) {
 
 app.post('/api/alert', function (req, res) {
     msg = {};
-    if (!req.body.mission_id || !ObjectID.isValid(req.body.mission_id) || !req.body.api || !req.body.channel || !req.body.text) {
+    if (!req.body.mission_id || !objectid.isValid(req.body.mission_id) || !req.body.api || !req.body.channel || !req.body.text) {
         res.end('ERR');
         return;
     }
@@ -2668,8 +2685,8 @@ app.post('/api/alert', function (req, res) {
 
             mdb.collection('missions').aggregate([{
                 $match: {
-                    _id: ObjectID(req.body.mission_id),
-                    'mission_users.user_id': ObjectID(msg.user_id),
+                    _id: objectid(req.body.mission_id),
+                    'mission_users.user_id': objectid(msg.user_id),
                     deleted: {
                         $ne: true
                     }
@@ -2678,7 +2695,7 @@ app.post('/api/alert', function (req, res) {
                 $unwind: '$mission_users'
             }, {
                 $match: {
-                    'mission_users.user_id': ObjectID(msg.user_id)
+                    'mission_users.user_id': objectid(msg.user_id)
                 }
             }, {
                 $project: {
@@ -2719,7 +2736,7 @@ app.post('/api/:table', async function (req, res) {
     if (req.params.table !== undefined && req.params.table === 'change_password') {
         var hash = await bcrypt.hash(req.body.newpass, 10);
         mdb.collection('users').updateOne({
-            _id: ObjectID(req.session.user_id)
+            _id: objectid(req.session.user_id)
         }, {
             $set: {
                 password: hash
@@ -2763,12 +2780,12 @@ app.get('/cop', function (req, res) {
     var shapes = [];
     var links = [];
     if (req.session.loggedin) {
-        if (req.query.mission !== undefined && req.query.mission && ObjectID.isValid(req.query.mission)) {
+        if (req.query.mission !== undefined && req.query.mission && objectid.isValid(req.query.mission)) {
             try {
                 if (req.session.username === 'admin' || req.session.is_admin) {
                     mdb.collection('missions').aggregate([{
                         $match: {
-                            _id: ObjectID(req.query.mission),
+                            _id: objectid(req.query.mission),
                             deleted: {
                                 $ne: true
                             }
@@ -2811,8 +2828,8 @@ app.get('/cop', function (req, res) {
                 else {
                     mdb.collection('missions').aggregate([{
                         $match: {
-                            _id: ObjectID(req.query.mission),
-                            'mission_users.user_id': ObjectID(req.session.user_id),
+                            _id: objectid(req.query.mission),
+                            'mission_users.user_id': objectid(req.session.user_id),
                             deleted: {
                                 $ne: true
                             }
@@ -2821,7 +2838,7 @@ app.get('/cop', function (req, res) {
                         $unwind: '$mission_users'
                     }, {
                         $match: {
-                            'mission_users.user_id': ObjectID(req.session.user_id)
+                            'mission_users.user_id': objectid(req.session.user_id)
                         }
                     }, {
                         $project: {
@@ -3015,7 +3032,7 @@ app.post('/avatar', upload.any(), function (req, res) {
             });
         }, function () {
             mdb.collection('users').updateOne({
-                _id: ObjectID(req.body.id)
+                _id: objectid(req.body.id)
             }, {
                 $set: {
                     avatar: req.body.id + '.png'
