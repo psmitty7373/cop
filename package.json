@@ -14,11 +14,11 @@
     "express-session": "^1.16.2",
     "multer": "^1.4.2",
     "pug": "^2.0.4",
+    "recursive-readdir": "^2.2.2",
     "rich-text": "^4.0.0",
     "sharedb": "^1.0.0-beta.13",
     "sharedb-mongo": "^1.0.0-beta.6",
     "sharedb-string-binding": "^1.0.0",
-    "toastr": "^2.1.4",
     "websocket-json-stream": "^0.0.3",
     "ws": "^7.1",
     "xss-filters": "^1.2.7"

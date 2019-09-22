@@ -20,6 +20,7 @@ function toggleToolbar(toolbar) {
     }
 }
 
+// set toolbar for editing
 function toolbarEditObject() {
     if (activeSubToolbar === 'editObject')
         return;
@@ -38,7 +39,7 @@ function toolbarEditObject() {
 
     $('#propNameGroup').show();
     $('#propObjectGroup').show();
-    $('#editDetailsButton').show();
+    $('#editNotesButton').show();
     $('#deleteObjectButton').show();
     $('#insertObjectButton').hide();
     $('#newObjectButton').show();
@@ -63,6 +64,7 @@ function toolbarEditObject() {
     activeSubToolbar = 'editObject';
 }
 
+// set toolbar for new objects
 function toolbarNewObject() {
     if (activeSubToolbar === 'newObject')
         return;
@@ -84,7 +86,7 @@ function toolbarNewObject() {
     $('#propObjectGroup').tabs('option', 'active', 0);
     $('#moveObject').hide();
     $('#newObjectButton').hide();
-    $('#editDetailsButton').hide();
+    $('#editNotesButton').hide();
     $('#deleteObjectButton').hide();
     $('#insertObjectButton').show();
 
@@ -92,20 +94,19 @@ function toolbarNewObject() {
 }
 
 function openToolbar(toolbar) {
-    if (toolbarState && toolbar == activeToolbar) {
-        return;
-    }
-
     $('#toolbarButton').addClass('open');
     $('#' + activeToolbar + 'Tab').removeClass('activeTab');
     $('#' + toolbar + 'Tab').addClass('activeTab');
-    $('#toolbarBody').animate({
-        width: Math.max(10, Math.min($('#diagramJumbo').width() - 60, settings.toolbar))
-    }, {
-        duration: 100
-    });
 
-    toolbarState = true;
+    if (!toolbarState) {
+        $('#toolbarBody').animate({
+            width: Math.max(10, Math.min($('#diagramJumbo').width() - 60, settings.toolbar))
+        }, {
+            duration: 100
+        });
+        toolbarState = true;
+    }
+
     activeToolbar = toolbar;
 
     switch (toolbar) {
@@ -117,10 +118,8 @@ function openToolbar(toolbar) {
             // editing an object
             if (canvas.getActiveObject()) {
                 toolbarEditObject();
-
             // new object
             } else if (canvas.getActiveObject() === undefined || canvas.getActiveObject() === null) {
-               
                 toolbarNewObject();
             }
             break;
@@ -145,7 +144,6 @@ function closeToolbar() {
     }
     $('#toolbarButton').removeClass('open');
     toolbarState = false;
-    $('#propName').blur();
     $('#toolbarBody').animate({
         width: "0px"
     }, 200);
@@ -153,68 +151,78 @@ function closeToolbar() {
 
 // update the toolbox when a new icon is clicked
 function updateSelection(options) {
-    var o = options.target;
-    if (o && canvas.getActiveObject()) {
-        if (o.objType !== undefined) {
-            if (creatingLink) {
-                if ((o.objType === 'icon' || o.objType === 'shape') && firstNode !== o) {
-                    if (firstNode === null) {
-                        firstNode = o;
-                        showMessage('Click on a second node to complete the link.');
-                    } else {
-                        showMessage('Link created.', 5);
-                        $('#cancelLink').hide();
-                        lastFillColor = $('#propFillColor').val();
-                        lastFillColor = $('#propStrokeColor').val();
-                        socket.send(JSON.stringify({
-                            act: 'insert_object',
-                            arg: {
-                                name: $('#propName').val(),
-                                type: 'link',
-                                image: $('#prop-link').val().replace('.png', '.svg'),
-                                stroke_color: $('#propStrokeColor').val(),
-                                fill_color: $('#propFillColor').val(),
-                                obj_a: firstNode._id,
-                                obj_b: o._id,
-                                x: 0,
-                                y: 0,
-                                z: 0,
-                                locked: $('#lockObject').is(':checked')
-                            },
-                            msgId: msgHandler()
-                        }));
-                        firstNode = null;
-                        creatingLink = false;
+    if (options) {
+        var o = options.target;
+        if (o && canvas.getActiveObject()) {
+            if (o.objType !== undefined) {
+                // creating a link
+                if (creatingLink) {
+                    if ((o.objType === 'icon' || o.objType === 'shape') && firstNode !== o) {
+                        if (firstNode === null) {
+                            firstNode = o;
+                            showMessage('Click on a second node to complete the link.');
+                        } else {
+                            showMessage('Link created.', 5);
+                            $('#cancelLink').hide();
+                            lastFillColor = $('#propFillColor').val();
+                            lastFillColor = $('#propStrokeColor').val();
+                            socket.send(JSON.stringify({
+                                act: 'insert_object',
+                                arg: {
+                                    name: $('#propName').val(),
+                                    type: 'link',
+                                    image: $('#prop-link').val().replace('.png', '.svg'),
+                                    stroke_color: $('#propStrokeColor').val(),
+                                    fill_color: $('#propFillColor').val(),
+                                    obj_a: firstNode._id,
+                                    obj_b: o._id,
+                                    x: 0,
+                                    y: 0,
+                                    z: 0,
+                                    locked: $('#lockObject').is(':checked')
+                                },
+                                msgId: msgHandler()
+                            }));
+                            firstNode = null;
+                            creatingLink = false;
+                        }
                     }
-                }
-            } else {
-                toolbarEditObject();
-                $('#propID').val(o._id);
-                $('#propFillColor').val(o.fill);
-                $('#propFillColor').data('paletteColorPickerPlugin').reload();
-                $('#propStrokeColor').val(o.stroke);
-                $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
-                $('#objectWidth').val(Math.round(o.width * o.scaleX));
-                $('#objectHeight').val(Math.round(o.height * o.scaleY));
-                $('#lockObject').prop('checked', o.locked);
-                $('#propName').val('');
 
-                if (o.children !== undefined) {
-                    for (var i = 0; i < o.children.length; i++) {
-                        if (o.children[i].objType === 'name')
-                            $('#propName').val(o.children[i].text);
+                // selecting an object
+                } else {
+                    $('#propType').val(o.objType);
+                    $('#propID').val(o._id);
+                    $('#propFillColor').val(o.fill);
+                    $('#propFillColor').data('paletteColorPickerPlugin').reload();
+                    $('#propStrokeColor').val(o.stroke);
+                    $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
+                    $('#objectWidth').val(Math.round(o.width * o.scaleX));
+                    $('#objectHeight').val(Math.round(o.height * o.scaleY));
+                    $('#lockObject').prop('checked', o.locked);
+                    $('#propName').val('');
+
+                    if (o.children !== undefined) {
+                        for (var i = 0; i < o.children.length; i++) {
+                            if (o.children[i].objType === 'name')
+                                $('#propName').val(o.children[i].text);
+                        }
                     }
-                }
 
-                $('#propType').val(o.objType);
-                $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
-                $('#prop-' + o.objType).data('picker').sync_picker_with_select();
-                if (toolbarState)
-                    openToolbar('tools');
-                if (options.e && options.e.ctrlKey)
-                    editDetails();
+                    $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
+                    $('#prop-' + o.objType).data('picker').sync_picker_with_select();
+                    if (toolbarState)
+                        openToolbar('tools');
+                    if (options.e && options.e.ctrlKey)
+                        editDetails();
+
+                    toolbarEditObject();
+                }
             }
         }
+
+    // selected nothing, set toolbar for new object
+    } else {
+        toolbarNewObject();
     }
 }
 
@@ -253,6 +261,7 @@ function cancelLink() {
     $('#cancelLink').hide();
 }
 
+// change colors
 function updatePropFillColor(color) {
     var o = canvas.getActiveObject();
     if (o) {
@@ -271,28 +280,34 @@ function updatePropStrokeColor(color) {
     }
 }
 
+// rename object
 function updatePropName(name) {
     var o = canvas.getActiveObject();
     if (o) {
         for (var i = 0; i < o.children.length; i++) {
-            if (o.children[i].objType === 'name')
+            if (o.children[i].objType === 'name' && o.children[i].text !== name) {
                 o.children[i].text = name;
+                changeObject(o);
+                canvas.requestRenderAll();
+                break;
+            }
         }
-        changeObject(o);
-        canvas.requestRenderAll();
     }
 }
 
 function editDetails(id, name) {
     var rw = false;
-    if (!name)
+    if (!name) {
         name = '';
+    }
     if (!id && canvas.getActiveObject()) {
-        if (permissions.modify_notes)
+        if (permissions.modify_notes) {
             rw = true;
-        id = 'm-' + mission_id + 'd-' + canvas.getActiveObject()._id;
-        if (canvas.getActiveObject().name_val)
+        }
+        id = canvas.getActiveObject()._id;
+        if (canvas.getActiveObject().name_val) {
             name = canvas.getActiveObject().name_val.split('\n')[0];
+        }
     } else {
         if (permissions.modify_notes)
             rw = true;
@@ -309,6 +324,7 @@ function editDetails(id, name) {
             openDocs[id] = shareDBConnection.get('sharedb', id);
             openDocs[id].subscribe(function (err) {
                 if (openDocs[id].type === null) {
+                    console.log('create');
                     openDocs[id].create('', 'rich-text');
                 }
                 if (err) throw err;
@@ -332,6 +348,21 @@ function editDetails(id, name) {
                         minHeight: 153,
                         minWidth: 300
                     });
+
+                    /*
+
+                    // start codemirror
+                    var editor = CodeMirror.fromTextArea(document.getElementById('object_details_' + id), {
+                        mode: 'javascript',
+                        lineNumbers: true
+                    });
+
+                    ShareDBCodeMirror.attachDocToCodeMirror(openDocs[id], editor, {
+                        key: 'content',
+                        verbose: true
+                      });
+
+                    */
 
                     // start quill
                     var quill = new Quill('#object_details_' + id, {
@@ -398,9 +429,9 @@ function editDetails(id, name) {
                         minWidth: 300
                     });
 
-                    var element = document.getElementById('object_details_' + id);
-                    var binding = new StringBinding(element, openDocs[id]);
-                    binding.setup();
+                    //var element = document.getElementById('object_details_' + id);
+                    //var binding = new StringBinding(element, openDocs[id]);
+                    //binding.setup();
                 }
             });
         } else
@@ -408,9 +439,8 @@ function editDetails(id, name) {
     }
 }
 
-// send inesert message for inserted objects
+// send insert message for inserted objects
 function insertObject() {
-    closeToolbar();
     if ($('#propType').val() === 'link')
         insertLink();
     else {
@@ -433,6 +463,7 @@ function insertObject() {
             msgId: msgHandler()
         }));
     }
+    updateSelection();
 }
 
 // bottom table toggle
@@ -486,6 +517,7 @@ $(document).ready(function () {
         $("#newNoteButton").prop('disabled', false);
     }
     $('#propName').change(function () {
+        console.log('change', this.value);
         updatePropName(this.value)
     });
     $('#lockObject').change(function () {
@@ -497,9 +529,8 @@ $(document).ready(function () {
     $('#objectHeight').change(function () {
         setObjectSize();
     });
-    $('#closeToolbarButton').click(closeToolbar);
     $('#cancelLinkButton').click(cancelLink);
-    $('#editDetailsButton').click(function () {
+    $('#editNotesButton').click(function () {
         editDetails();
     });
     $('#newNoteButton').click(function () {

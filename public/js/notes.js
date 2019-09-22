@@ -1,74 +1,145 @@
-// ---------------------------- NOTES TREE ----------------------------------
-function createNotesTree(arg) {
+function addNotes(notes) {
+    for (var i = 0; i < notes.length; i++) {
+        var node = { id: notes[i]._id, text: notes[i].name, icon: 'jstree-file', type: notes[i].type, li_attr: { isLeaf: true } };
+        var parent = 'notes';
+        if (notes[i].type === 'object') {
+            parent = 'objects';
+        }
+        $('#notes').jstree().create_node(parent, node);
+    }
+}
+
+
+$(document).ready(function () {
     $('#notes')
         .on('select_node.jstree', function (e, data) {
             var name = '';
             if (data.node && data.node.text)
                 name = data.node.text;
             if (data.node.li_attr.isLeaf) {
-                editDetails('m-' + mission_id + '-n-' + data.selected[0], name);
+                editDetails(data.selected[0], name);
             }
         }).jstree({
             'core': {
                 'check_callback': true,
-                'data': arg
+                'data': [{
+                    id: "/",
+                    text: "/",
+                    icon: "jstree-folder",
+                    state: {
+                        opened: true,
+                        disabled: false,
+                        selected: false
+                    },
+                    li_attr: {
+                        base: "#",
+                        isLeaf: false
+                    },
+                    children : [{
+                        id: "notes",
+                        text: "notes",
+                        icon: "jstree-folder",
+                        state: {
+                            opened: true,
+                            disabled: false,
+                            selected: false
+                        },
+                        li_attr: {
+                            base: "/",
+                            isLeaf: false
+                        },
+                        children : []
+                    },{
+                        id: "objects",
+                        text: "objects",
+                        icon: "jstree-folder",
+                        state: {
+                            opened: true,
+                            disabled: false,
+                            selected: false
+                        },
+                        li_attr: {
+                            base: "/",
+                            isLeaf: false
+                        },
+                        children : []
+                    }]
+                }]
             },
             'plugins': ['wholerow', 'contextmenu'],
             'contextmenu': {
                 'select_node': false,
                 'items': function (node) {
-                    return {
-                        'newnote': {
+                    if (!node.li_attr.isLeaf) {
+                        if (node.id === 'notes') {
+                            return { renamenote: {
+                                'separator_before': false,
+                                'separator_after': false,
+                                'label': 'New Note',
+                                'action': function (obj) {
+                                    var _node = node;
+                                    bootbox.prompt('Note name?', function (name) {
+                                        socket.send(JSON.stringify({
+                                            act: 'insert_note',
+                                            arg: {
+                                                name: name
+                                            },
+                                            msgId: msgHandler()
+                                        }));
+                                    });
+                                }
+                            }};
+                        }
+                        return {};
+                    }
+                    else {
+                        var menu = { 'open': {
                             'separator_before': false,
                             'separator_after': false,
-                            'label': 'New Note',
+                            'label': 'Open',
                             'action': function (obj) {
                                 var _node = node;
-                                bootbox.prompt('Note name?', function (name) {
+                            }
+                        }};
+
+                        if (node.parent === 'notes') {
+                            menu.renamenote = {
+                                'separator_before': false,
+                                'separator_after': false,
+                                'label': 'Rename',
+                                'action': function (obj) {
+                                    var _node = node;
+                                    bootbox.prompt('Rename note to?', function (name) {
+                                        socket.send(JSON.stringify({
+                                            act: 'rename_note',
+                                            arg: {
+                                                _id: node.id,
+                                                name: name
+                                            },
+                                            msgId: msgHandler()
+                                        }));
+                                    });
+                                }
+                            };
+
+                            menu.del = {
+                                'separator_before': false,
+                                'separator_after': false,
+                                'label': 'Delete Note',
+                                'action': function (obj) {
                                     socket.send(JSON.stringify({
-                                        act: 'insert_note',
+                                        act: 'delete_note',
                                         arg: {
-                                            name: name
+                                            _id: node.id
                                         },
                                         msgId: msgHandler()
                                     }));
-                                });
-                            }
-                        },
-                        'renamenote': {
-                            'separator_before': false,
-                            'separator_after': false,
-                            'label': 'Rename',
-                            'action': function (obj) {
-                                var _node = node;
-                                bootbox.prompt('Rename note to?', function (name) {
-                                    socket.send(JSON.stringify({
-                                        act: 'rename_note',
-                                        arg: {
-                                            id: node.id,
-                                            name: name
-                                        },
-                                        msgId: msgHandler()
-                                    }));
-                                });
-                            }
-                        },
-                        'del': {
-                            'separator_before': false,
-                            'separator_after': false,
-                            'label': 'Delete Note',
-                            'action': function (obj) {
-                                socket.send(JSON.stringify({
-                                    act: 'delete_note',
-                                    arg: {
-                                        _id: node.id
-                                    },
-                                    msgId: msgHandler()
-                                }));
+                                }
                             }
                         }
+                        return menu;
                     }
                 }
             }
         });
-}
+});

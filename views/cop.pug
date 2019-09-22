@@ -103,18 +103,19 @@ html
                         input(type="checkbox", value="0" disabled)#lockObject
                         | Locked?
                     div#sizeObject.input-group
-                      input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
+                      div.col-sm-4
+                        input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
                       span.input-group-addon x
-                      input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
+                      div.col-sm-4
+                        input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
                     button.propButton.btn.btn-secondary#moveUp(type='button' disabled) Up
                     button.propButton.btn.btn-secondary#moveDown(type='button' disabled) Down
                     button.propButton.btn.btn-secondary#moveToFront(type='button' disabled) Front
                     button.propButton.btn.btn-secondary#moveToBack(type='button' disabled) Back
                 div.form-group#makeObject
                     button.propButton.btn.btn-primary#insertObjectButton(type='button' disabled) Insert
-                    button.propButton.btn.btn-info#editDetailsButton(type='button') Details
+                    button.propButton.btn.btn-info#editNotesButton(type='button') Object Notes
                     button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
-                    button.btn.btn-secondary#closeToolbarButton(type='button') Cancel
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer

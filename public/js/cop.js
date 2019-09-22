@@ -140,6 +140,7 @@ function loadSettings() {
     var dc = decodeURIComponent(document.cookie);
     settings = JSON.parse(dc.split('mcscop-settings=')[1]);
     $('#diagramJumbo').height(settings.diagram);
+    $('#bottomJumbo').height(settings.tables);
     canvas.setZoom(settings.zoom);
     canvas.relativePan({
         x: settings.x,
@@ -697,10 +698,12 @@ $(document).ready(function () {
                 objectSelect = [{ _id: '', name: '' }];
                 var objects = msg.arg;
                 for (var o in objects) {
-                    objectSelect.push({
-                        _id: objects[o]._id,
-                        name: objects[o].name.split('\n')[0]
-                    });
+                    if (objects[o].type !== 'link' && objects[o].name !== '') {
+                        objectSelect.push({
+                            _id: objects[o]._id,
+                            name: objects[o].name.split('\n')[0]
+                        });
+                    }
                     if (objects[o].type === 'icon' && SVGCache[objects[o].image] === undefined && objects[o].image !== undefined && objects[o].image !== null) {
                         SVGCache[objects[o].image] = null;
                         objectsLoaded.push(false);
@@ -730,11 +733,6 @@ $(document).ready(function () {
 
             case 'chat':
                 addChatMessage(msg.arg);
-                break;
-
-                // files
-            case 'update_files':
-                $('#files').jstree('refresh');
                 break;
 
                 // events
@@ -772,25 +770,44 @@ $(document).ready(function () {
                 opnotesTabulator.deleteRow(msg.arg);
                 break;
 
+                // files
+            case 'get_files':
+                addFiles(msg.arg);
+                break;
+
+            case 'insert_file':
+                addFiles([msg.arg]);
+                break;
+
+            case 'move_file':
+                var node = $('#files').jstree(true).get_node(msg.arg._id);
+                if (node && node.text !== msg.arg.name) {
+                    $('#files').jstree(true).rename_node(msg.arg._id, msg.arg.name);
+                }
+                if (node && node.parent !== msg.arg.parent) {
+                    $('#files').jstree(true).move_node(msg.arg._id, msg.arg.parent);
+                }
+                break;
+    
+            case 'delete_file':
+                $('#files').jstree(true).delete_node(msg.arg);
+                break;
+
                 // notes
             case 'get_notes':
-                createNotesTree(msg.arg);
+                addNotes(msg.arg);
                 break;
 
             case 'insert_note':
-                $('#notes').jstree(true).create_node('#', msg.arg);
+                addNotes([msg.arg]);
                 break;
 
             case 'rename_note':
-                var node = $('#notes').jstree(true).get_node(msg.arg.id, true);
-                if (node)
-                    $('#notes').jstree(true).rename_node(node, msg.arg.name);
+                $('#notes').jstree(true).rename_node(msg.arg.id, msg.arg.name);
                 break;
 
             case 'delete_note':
-                var node = $('#notes').jstree(true).get_node(msg.arg, true);
-                if (node)
-                    $('#notes').jstree(true).delete_node(node);
+                $('#notes').jstree(true).delete_node(msg.arg);
                 break;
 
                 // users
@@ -814,7 +831,12 @@ $(document).ready(function () {
             case 'change_object':
                 var o = msg.arg;
                 for (var i = 0; i < objectSelect.length; i++) {
-                    if (objectSelect[i]._id === o._id) {
+                    // change name
+                    if (objectSelect[i]._id === o._id && objectSelect[i].name !== o.name.split('\n')[0]) {
+                        var node = $('#notes').jstree(true).get_node(msg.arg, true);
+                        if (node) {
+                            $('#notes').jstree().rename_node(o._id, o.name.split('\n')[0]);
+                        }                        
                         objectSelect[i].name = o.name.split('\n')[0];
                         break;
                     }
@@ -937,7 +959,10 @@ $(document).ready(function () {
             case 'insert_object':
                 for (var h = 0; h < msg.arg.length; h++) {
                     var o = msg.arg[h];
-                    objectSelect.push({ _id: o._id, name: o.name.split('\n')[0] });
+                    if (o.objType !== 'link') {
+                        objectSelect.push({ _id: o._id, name: o.name.split('\n')[0] });
+                        addNotes([{ _id: o._id, name: o.name.split('\n')[0], type: 'object' }]);
+                    }
                     addObjectToCanvas(o, false);
                 }
                 updateMinimapBg();
@@ -945,8 +970,9 @@ $(document).ready(function () {
 
             case 'delete_object':
                 var _id = msg.arg;
-                for (var i = 0; i < objectSelect.length; i++) {
-                    
+                var node = $('#notes').jstree(true).get_node(_id, true);
+                if (node) {
+                    $('#notes').jstree(true).delete_node(node);
                 }
                 for (var i = 0; i < canvas.getObjects().length; i++) {
                     if (canvas.item(i)._id == _id) {
@@ -1192,9 +1218,14 @@ $(document).ready(function () {
                 },
                 formatter: function (cell, formatterParams, onRendered) {
                     if (cell.getValue() !== undefined && cell.getValue()) {
-                        return objectSelect.find(obj => obj._id == cell.getValue()).name
+                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        if (res && res.name) {
+                            return res.name;
+                        } else {
+                            return 'OBJECT DELETED';
+                        }
                     } else {
-                        return ""
+                        return ''
                     }
                 }
             },
@@ -1215,9 +1246,14 @@ $(document).ready(function () {
                 },
                 formatter: function (cell, formatterParams, onRendered) {
                     if (cell.getValue() !== undefined && cell.getValue()) {
-                        return objectSelect.find(obj => obj._id == cell.getValue()).name
+                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        if (res && res.name) {
+                            return res.name;
+                        } else {
+                            return 'OBJECT DELETED';
+                        }
                     } else {
-                        return ""
+                        return ''
                     }
                 }
             },
@@ -1411,23 +1447,44 @@ $(document).ready(function () {
         handles: 's',
         minHeight: 350
     });
+
     $("#bottomJumbo").resizable({
         handles: 's',
         minHeight: 350
     });
+
     $("#toolbarBody").resizable({
         handles: 'w',
         maxWidth: $('#diagramJumbo').width() - 60
     });
 
-    // resize event to resize canvas and toolbars
+    // resize event to resize toolbar
     $('#diagramJumbo').on('resize', function (event, ui) {
+        if (ui.size.height === ui.originalSize.height) {
+            return;
+        }
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-            settings.toolbar = Math.round($('#toolbarBody').width());
             settings.diagram = Math.round($('#diagramJumbo').height());
             updateSettings();
             resizeCanvas();
+        }, 100);
+    });
+
+    // resize event to resize canvas
+    $('#toolbarBody').on('resize', function (event, ui) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            settings.toolbar = Math.round($('#toolbarBody').width());
+            updateSettings();
+        }, 100);
+    });
+
+    $('#bottomJumbo').on('resize', function (event, ui) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            settings.tables = Math.round($('#bottomJumbo').height());
+            updateSettings();
         }, 100);
     });
 

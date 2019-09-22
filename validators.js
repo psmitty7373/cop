@@ -204,6 +204,50 @@ const rename_note = {
     additionalProperties: false
 };
 
+const insert_file = {
+    type: 'object',
+    properties: {
+        dst: {
+            type: 'string',
+            maxLength: 64
+        },
+        name: {
+            type: 'string',
+            maxLength: 64
+        }
+    },
+    required: ['dst', 'name'],
+    additionalProperties: false
+}
+
+const move_file = {
+    type: 'object',
+    properties: {
+        src: {
+            type: 'string',
+            maxLength: 64
+        },
+        dst: {
+            type: 'string',
+            maxLength: 64
+        },
+    },
+    required: ['src', 'dst'],
+    additionalProperties: false
+};
+
+const delete_file = {
+    type: 'object',
+    properties: {
+        file: {
+            type: 'string',
+            maxLength: 64
+        },
+    },
+    required: ['file'],
+    additionalProperties: false
+};
+
 const insert_event = {
     type: 'object',
     properties: {
@@ -524,6 +568,9 @@ module.exports = {
     update_user_mission: update_user_mission,
     insert_note: insert_note,
     rename_note: rename_note,
+    insert_file: insert_file,
+    move_file: move_file,
+    delete_file: delete_file,
     insert_event: insert_event,
     update_event: update_event,
     insert_opnote: insert_opnote,

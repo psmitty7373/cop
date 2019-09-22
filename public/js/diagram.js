@@ -48,7 +48,7 @@ fabric.util.addListener(canvas.upperCanvasEl, 'dblclick', function (e) {
             openToolbar('tools');
         }
     } else {
-        closeToolbar();
+        updateSelection();
     }
 });
 
@@ -144,7 +144,7 @@ fabric.Object.prototype.getBoundingBox = function () {
 // called after a selection is made on the canvas
 canvas.on('selection:created', function (options) {
     if (canvas.getActiveObjects().length > 1) {
-        closeToolbar();
+        updateSelection();
         for (var i = options.selected.length - 1; i >= 0; i--) {
             if (options.selected[i].objType === 'link' || options.selected[i].locked) {
                 canvas.getActiveObject().removeWithUpdate(options.selected[i]);
@@ -208,8 +208,8 @@ canvas.on('object:selected', function (options) {
 
 // called before everything on the canvas is deslected
 canvas.on('before:selection:cleared', function (options) {
-    if (!updatingObject) // && canvas.getActiveObjects().length < 1)
-        closeToolbar();
+    updatePropName($('#propName').val())
+    updateSelection();
 });
 
 
@@ -1091,8 +1091,7 @@ function deleteObject() {
         socket.send(JSON.stringify({
             act: 'delete_object',
             arg: {
-                _id: canvas.getActiveObject()._id,
-                type: canvas.getActiveObject().objType
+                _id: canvas.getActiveObject()._id
             },
             msgId: msgHandler()
         }));
