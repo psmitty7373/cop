@@ -16,8 +16,9 @@ const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http').Server(app);
 const session = require('express-session');
-const mongodb = require('mongodb');
+const mongodb = require('mongodb').MongoClient;
 const mongostore = require('connect-mongo')(session);
+const sharedbmongo = require('sharedb-mongo')
 const multer = require('multer');
 const objectid = require('mongodb').ObjectID;
 const path = require('path');
@@ -72,44 +73,50 @@ if (cspEnabled) {
 
 // connect to mongo
 var mdb;
-const mongoclient = mongodb.connect('mongodb://localhost/cop', {
+const mongoclient = mongodb.connect('mongodb://localhost', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     reconnectTries: Number.MAX_VALUE,
     autoReconnect: true,
     wtimeout: 5000
-}, (err, database) => {
+}, (err, client) => {
     if (err) throw err;
-    database.on('close', function () {
+    client.on('close', function () {
         console.log('Connection to database closed. Error?');
         ws.clients.forEach(function each(socket) {
             socket.close();
         });
     });
-    mdb = database.db('cop');
+    mdb = client.db('cop');
 });
 
-// sharedb-mongo connection
-const sdb = require('sharedb-mongo')({ mongo: function(callback) {
-    mongodb.connect('mongodb://localhost:27017/cop', {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        reconnectTries: Number.MAX_VALUE,
-        autoReconnect: true,
-        wtimeout: 5000
-    }, callback);
-}});
+var backend = null;
 
-// start sharedb
-ShareDB.types.register(richText.type);
-const backend = new ShareDB({
-    db: sdb,
-    disableDocAction: true,
-    disableSpaceDelimitedActions: true
-});
+// connect sharedb to mongo
+mongodb.connect('mongodb://localhost', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    reconnectTries: Number.MAX_VALUE,
+    autoReconnect: true,
+    wtimeout: 5000
+},(err, client) => {
+    if (err) throw err;
+    var db = client.db('cop');
+    const sdb = new sharedbmongo({
+        mongo: (cb) => { cb(null, db); }
+    });
 
-backend.use('receive', function (r, c) {
-    c();
+    // start sharedb
+    ShareDB.types.register(richText.type);
+    backend = new ShareDB({
+        db: sdb,
+        disableDocAction: true,
+        disableSpaceDelimitedActions: true
+    });
+
+    backend.use('receive', function (r, c) {
+        c();
+    });
 });
 
 // setup ajv json validation

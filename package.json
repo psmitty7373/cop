@@ -17,7 +17,7 @@
     "recursive-readdir": "^2.2.2",
     "rich-text": "^4.0.0",
     "sharedb": "^1.0.0-beta.13",
-    "sharedb-mongo": "^1.0.0-beta.6",
+    "sharedb-mongo": "^1.0.0-beta.9",
     "sharedb-string-binding": "^1.0.0",
     "websocket-json-stream": "^0.0.3",
     "ws": "^7.1",
