@@ -584,7 +584,8 @@ $(document).ready(function () {
         className: "os-theme-light"
     });
     $('#notesForm').overlayScrollbars({
-        className: "os-theme-light"
+        className: "os-theme-light",
+        overflowBehavior: { x: 'hidden' }
     });
     $('#filesForm').overlayScrollbars({
         className: "os-theme-light",
@@ -834,7 +835,7 @@ $(document).ready(function () {
                 for (var i = 0; i < objectSelect.length; i++) {
                     // change name
                     if (objectSelect[i]._id === o._id && objectSelect[i].name !== o.name.split('\n')[0]) {
-                        var node = $('#notes').jstree(true).get_node(msg.arg, true);
+                        var node = $('#notes').jstree(true).get_node(o._id, true);
                         if (node) {
                             $('#notes').jstree().rename_node(o._id, o.name.split('\n')[0]);
                         }                        
