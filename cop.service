@@ -1,0 +1,14 @@
+[Unit]
+Description=COP
+Documentation=https://github.com/psmitty7373/cop
+After=network.target
+
+[Service]
+Type=simple
+User=cop
+ExecStart=/usr/bin/node /opt/cop/app.js
+Restart=on-failure
+WorkingDirectory=/opt/cop
+
+[Install]
+WantedBy=multi-user.target
