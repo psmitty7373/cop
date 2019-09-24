@@ -121,12 +121,13 @@ html
         div.bottomContainer
           div#chat
             div#channels
-              div.channel.channelSelected#channel-log #log
+              div.channel.channelLabel.channelSelected#channel-log #log
                 span#unread-log.unread(style="display: none;")
-              div.channel#channel-general #general
+              div.channel.channelLabel#channel-general #general
                 span#unread-general.unread(style="display: none;")
+              div.channelLabel#newChannel +New Channel
             div#channel-panes
-              div#log.channel-pane
+              div.channel-pane#log
                 div#logMessages
               div#general.channel-pane(style="display: none;")
                 div#generalMessages
@@ -145,10 +146,12 @@ html
               button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
               h4.tableTitle Events
               div.timelineButton
-                a.btn.btn-secondary(href="#", style='margin-right: 5px')
-                  i.fa.fa-left-big#timelineBack
-                a.btn.btn-secondary(href="#")
-                  i.fa.fa-right-big#timelineForward
+                a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineBack
+                  i.fa.fa-left-big
+                a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineCancel
+                  i.fa.fa-cancel-circled2
+                a.btn.btn-secondary(href="#")#timelineForward
+                  i.fa.fa-right-big
                
             div.tableBody
               table#eventsTable

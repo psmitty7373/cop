@@ -141,6 +141,19 @@ function getMoreMessages(channel) {
     }));
 }
 
+
+function newChannel() {
+    bootbox.prompt('Channel name?', function (name) {
+        socket.send(JSON.stringify({
+            act: 'insert_chat_channel',
+            arg: {
+                name: name
+            },
+            msgId: msgHandler()
+        }));
+    });
+}
+
 $(document).ready(function () {
     // chat notification sound
     notifSound = new Audio('sounds/knock.mp3');
@@ -179,6 +192,8 @@ $(document).ready(function () {
         $('#unread-' + activeChannel).hide();
         $('#chatTab').css('background-color', '');
     });
+
+    $('#newChannel').click(newChannel);
 
     // capture enter key in chat input bar
     $("#messageInput").keypress(function (e) {

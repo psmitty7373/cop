@@ -7,7 +7,7 @@ const insert_chat = {
         },
         channel: {
             type: 'string',
-            'enum': ['log', 'general']
+            maxLength: 32
         },
     },
     required: ['text', 'channel'],
@@ -22,10 +22,23 @@ const get_old_chats = {
         },
         channel: {
             type: 'string',
-            'enum': ['log', 'general']
+            maxLength: 32
         },
     },
     required: ['start_from', 'channel'],
+    additionalProperties: false
+}
+
+const insert_chat_channel = {
+    function: 'insertChatChannel',
+    type: 'object',
+    properties: {
+        name: {
+            type: 'string',
+            maxLength: 32
+        },
+    },
+    required: ['name'],
     additionalProperties: false
 }
 
@@ -104,7 +117,7 @@ const update_mission = {
     additionalProperties: false
 }
 
-const insert_user_mission = {
+const insert_mission_user = {
     type: 'object',
     properties: {
         user_id: {
@@ -117,20 +130,17 @@ const insert_user_mission = {
                 manage_users: {
                     type: 'boolean'
                 },
-                modify_diagram: {
+                write_access: {
                     type: 'boolean'
                 },
-                modify_notes: {
-                    type: 'boolean'
-                },
-                modify_files: {
+                delete_access: {
                     type: 'boolean'
                 },
                 api_access: {
                     type: 'boolean'
                 }
             },
-            required: ['manage_users', 'modify_diagram', 'modify_notes', 'modify_files', 'api_access'],
+            required: ['manage_users', 'write_access', 'delete_access', 'api_access'],
             additionalProperties: false
         }
     },
@@ -138,7 +148,7 @@ const insert_user_mission = {
     additionalProperties: false
 }
 
-const update_user_mission = {
+const update_mission_user = {
     type: 'object',
     properties: {
         _id: {
@@ -155,20 +165,17 @@ const update_user_mission = {
                 manage_users: {
                     type: 'boolean'
                 },
-                modify_diagram: {
+                write_access: {
                     type: 'boolean'
                 },
-                modify_notes: {
-                    type: 'boolean'
-                },
-                modify_files: {
+                delete_access: {
                     type: 'boolean'
                 },
                 api_access: {
                     type: 'boolean'
                 }
             },
-            required: ['manage_users', 'modify_diagram', 'modify_notes', 'modify_files', 'api_access'],
+            required: ['manage_users', 'write_access', 'delete_access', 'api_access'],
             additionalProperties: false
         }
     },
@@ -188,10 +195,10 @@ const insert_note = {
     additionalProperties: false
 }
 
-const rename_note = {
+const update_note = {
     type: 'object',
     properties: {
-        id: {
+        _id: {
             type: 'string',
             pattern: '^[a-fA-F0-9]{24}$'
         },
@@ -200,7 +207,7 @@ const rename_note = {
             maxLength: 64
         },
     },
-    required: ['id', 'name'],
+    required: ['_id', 'name'],
     additionalProperties: false
 };
 
@@ -220,7 +227,7 @@ const insert_file = {
     additionalProperties: false
 }
 
-const move_file = {
+const update_file = {
     type: 'object',
     properties: {
         src: {
@@ -454,7 +461,7 @@ const insert_object = {
     additionalProperties: true
 };
 
-const paste_object = {
+const paste_objects = {
     type: 'object',
     properties: {
         _id: {
@@ -479,6 +486,11 @@ const paste_object = {
     required: ['_id', 'x', 'y', 'z'],
     additionalProperties: true
 };
+
+const paste_object = {
+    type: 'array',
+    items: paste_objects
+}
 
 const change_object = {
     type: 'object',
@@ -510,7 +522,7 @@ const change_object = {
     additionalProperties: true
 };
 
-const move_object = {
+const move_objects = {
     type: 'object',
     properties: {
         _id: {
@@ -545,6 +557,11 @@ const move_object = {
     additionalProperties: true
 };
 
+const move_object = {
+    type: 'array',
+    items: move_objects
+}
+
 const delete_row = {
     type: 'object',
     properties: {
@@ -557,27 +574,38 @@ const delete_row = {
     additionalProperties: false
 };
 
+const empty = { 
+};
+
 module.exports = {
+    get_users: empty,
     insert_chat: insert_chat,
     get_old_chats: get_old_chats,
+    insert_chat_channel: insert_chat_channel,
     insert_user: insert_user,
     update_user: update_user,
+    delete_user: delete_row,
     insert_mission: insert_mission,
     update_mission: update_mission,
-    insert_user_mission: insert_user_mission,
-    update_user_mission: update_user_mission,
+    insert_mission_user: insert_mission_user,
+    update_mission_user: update_mission_user,
+    delete_mission_user: delete_row,
     insert_note: insert_note,
-    rename_note: rename_note,
+    update_note: update_note,
+    delete_note: delete_row,
     insert_file: insert_file,
-    move_file: move_file,
+    update_file: update_file,
     delete_file: delete_file,
     insert_event: insert_event,
     update_event: update_event,
+    delete_event: delete_row,
     insert_opnote: insert_opnote,
     update_opnote: update_opnote,
+    delete_opnote: delete_row,
     insert_object: insert_object,
     paste_object: paste_object,
     change_object: change_object,
+    delete_object: delete_row,
     move_object: move_object,
-    delete_row: delete_row,
+    delete_row: delete_row
 }

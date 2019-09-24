@@ -9,7 +9,6 @@ function addNotes(notes) {
     }
 }
 
-
 $(document).ready(function () {
     $('#notes')
         .on('select_node.jstree', function (e, data) {
@@ -79,13 +78,15 @@ $(document).ready(function () {
                                 'action': function (obj) {
                                     var _node = node;
                                     bootbox.prompt('Note name?', function (name) {
-                                        socket.send(JSON.stringify({
-                                            act: 'insert_note',
-                                            arg: {
-                                                name: name
-                                            },
-                                            msgId: msgHandler()
-                                        }));
+                                        if (name !== null) {
+                                            socket.send(JSON.stringify({
+                                                act: 'insert_note',
+                                                arg: {
+                                                    name: name
+                                                },
+                                                msgId: msgHandler()
+                                            }));
+                                        }
                                     });
                                 }
                             }};
@@ -99,10 +100,11 @@ $(document).ready(function () {
                             'label': 'Open',
                             'action': function (obj) {
                                 var _node = node;
+                                editDetails(node.id, node.text);
                             }
                         }};
 
-                        if (node.parent === 'notes') {
+                        if (permissions.write_access && node.parent === 'notes') {
                             menu.renamenote = {
                                 'separator_before': false,
                                 'separator_after': false,
@@ -110,14 +112,16 @@ $(document).ready(function () {
                                 'action': function (obj) {
                                     var _node = node;
                                     bootbox.prompt('Rename note to?', function (name) {
-                                        socket.send(JSON.stringify({
-                                            act: 'rename_note',
-                                            arg: {
-                                                _id: node.id,
-                                                name: name
-                                            },
-                                            msgId: msgHandler()
-                                        }));
+                                        if (name !== null) {
+                                            socket.send(JSON.stringify({
+                                                act: 'update_note',
+                                                arg: {
+                                                    _id: node.id,
+                                                    name: name
+                                                },
+                                                msgId: msgHandler()
+                                            }));
+                                        }
                                     });
                                 }
                             };

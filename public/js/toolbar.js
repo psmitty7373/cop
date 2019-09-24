@@ -22,9 +22,6 @@ function toggleToolbar(toolbar) {
 
 // set toolbar for editing
 function toolbarEditObject() {
-    if (activeSubToolbar === 'editObject')
-        return;
-
     if (canvas.getActiveObjects().length > 1) {
         $("#toolbarBody").addClass("disabledDiv");
     } else {
@@ -226,18 +223,6 @@ function updateSelection(options) {
     }
 }
 
-function newNote() {
-    bootbox.prompt('Note name?', function (name) {
-        socket.send(JSON.stringify({
-            act: 'insert_note',
-            arg: {
-                name: name
-            },
-            msgId: msgHandler()
-        }));
-    });
-}
-
 function newObject() {
     canvas.discardActiveObject();
     canvas.requestRenderAll();
@@ -282,14 +267,16 @@ function updatePropStrokeColor(color) {
 
 // rename object
 function updatePropName(name) {
-    var o = canvas.getActiveObject();
-    if (o) {
-        for (var i = 0; i < o.children.length; i++) {
-            if (o.children[i].objType === 'name' && o.children[i].text !== name) {
-                o.children[i].text = name;
-                changeObject(o);
-                canvas.requestRenderAll();
-                break;
+    if (canvas.getActiveObjects().length == 1) {
+        var o = canvas.getActiveObject();
+        if (o) {
+            for (var i = 0; i < o.children.length; i++) {
+                if (o.children[i].objType === 'name' && o.children[i].text !== name) {
+                    o.children[i].text = name;
+                    changeObject(o);
+                    canvas.requestRenderAll();
+                    break;
+                }
             }
         }
     }
@@ -517,7 +504,6 @@ $(document).ready(function () {
         $("#newNoteButton").prop('disabled', false);
     }
     $('#propName').change(function () {
-        console.log('change', this.value);
         updatePropName(this.value)
     });
     $('#lockObject').change(function () {

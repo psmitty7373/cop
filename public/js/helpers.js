@@ -100,3 +100,9 @@ function dateStringToEpoch(value) {
     var d = new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5], parts[6], parts[7]);
     return (d.getTime());
 }
+
+function getObjCtr(o) {
+    var x = (o.width * o.scaleX) / 2 + o.left;
+    var y = (o.height * o.scaleY) / 2 + o.top;
+    return {x: x, y:y};
+}

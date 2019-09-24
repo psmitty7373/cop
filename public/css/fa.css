@@ -1,11 +1,11 @@
 @font-face {
   font-family: 'fa';
-  src: url('../fonts/fa.eot?75755159');
-  src: url('../fonts/fa.eot?75755159#iefix') format('embedded-opentype'),
-       url('../fonts/fa.woff2?75755159') format('woff2'),
-       url('../fonts/fa.woff?75755159') format('woff'),
-       url('../fonts/fa.ttf?75755159') format('truetype'),
-       url('../fonts/fa.svg?75755159#fa') format('svg');
+  src: url('../fonts/fa.eot?24717979');
+  src: url('../fonts/fa.eot?24717979#iefix') format('embedded-opentype'),
+       url('../fonts/fa.woff2?24717979') format('woff2'),
+       url('../fonts/fa.woff?24717979') format('woff'),
+       url('../fonts/fa.ttf?24717979') format('truetype'),
+       url('../fonts/fa.svg?24717979#fa') format('svg');
   font-weight: normal;
   font-style: normal;
 }
@@ -29,4 +29,8 @@
 .fa-arrow-down:before { content: '\e803'; } /* '' */
 .fa-right-big:before { content: '\e804'; } /* '' */
 .fa-left-big:before { content: '\e805'; } /* '' */
+.fa-cancel-circled2:before { content: '\e806'; } /* '' */
+.fa-play:before { content: '\e807'; } /* '' */
+.fa-stop:before { content: '\e808'; } /* '' */
+.fa-pause:before { content: '\e809'; } /* '' */
 .fa-trash:before { content: '\f1f8'; } /* '' */

@@ -13,9 +13,8 @@ mission_id = getParameterByName('mission');
 if (!permissions) {
     permissions = {
         manage_users: false,
-        modify_diagram: false,
-        modify_notes: false,
-        modify_files: false,
+        write_access: false,
+        delete_access: false,
         api_access: false
     };
 }
@@ -62,6 +61,8 @@ var lastStrokeColor = '#ffffff';
 var windowManager = null;
 var canvasClipboard = [];
 var settingsTabulator;
+var timeline = null;
+var timelinePosition = null;
 
 var wsdb;
 var openDocs = {};
@@ -288,6 +289,119 @@ function sortByName(a, b) {
     return a.name.localeCompare(b.name);
 }
 
+function timelineCancel() {
+    $('#message').hide();
+    eventsTabulator.deselectRow();
+    timeline = null;
+    timelinePosition = 0;
+
+    if (tempLinks.length > 0) {
+        for (var i = 0; i < tempLinks.length; i++) {
+            canvas.remove(tempLinks[i]);
+        }
+        tempLinks = [];
+    }
+}
+
+function timelineAdvance(offset) {
+    eventsTabulator.deselectRow();
+    if (timeline === null) {
+        timeline = eventsTabulator.getColumn('_id').getCells();
+        timelinePosition = 0;
+    } else {
+        timelinePosition += offset;
+        if (timelinePosition >= timeline.length) {
+            timelinePosition = 0;
+        }
+        if (timelinePosition < 0) {
+            timelinePosition = timeline.length - 1;
+        }
+    }
+
+    if (timeline) {
+        var row = timeline[timelinePosition].getData();
+        eventsTabulator.selectRow(row._id);
+        $('#message').html('<span class="messageHeader">' + row.event_time + '</span><br/><span class="messageBody">' + row.short_desc.replace('\n','<br>') + '</span>');
+        $('#message').show();
+
+        if (tempLinks.length > 0) {
+            for (var i = 0; i < tempLinks.length; i++) {
+                canvas.remove(tempLinks[i]);
+            }
+            tempLinks = [];
+        }
+
+        var from = null;
+        var to = null;
+        var tempLink;
+
+        for (var j = 0; j < canvas.getObjects().length; j++) {
+            if (canvas.item(j)._id && (canvas.item(j)._id == row.source_object || canvas.item(j)._id == row.dest_object)) {
+                if (canvas.item(j)._id == row.source_object) {
+                    from = canvas.item(j);
+                    var shape = new fabric.Rect({
+                        dad: from,
+                        objType: 'shape',
+                        width: from.width * from.scaleX + 10,
+                        height: from.height * from.scaleY + 10,
+                        stroke: 'red',
+                        fill: 'rgba(0,0,0,0)',
+                        strokeWidth: 5,
+                        originX: 'left',
+                        originY: 'top',
+                        left: from.left - 7.5,
+                        top: from.top - 7.5,
+                        selectable: false,
+                        evented: false
+                    });
+                    var tempShape = shape;
+                    tempLinks.push(tempShape);
+                    //canvas.add(shape);
+                } else if (canvas.item(j)._id == row.dest_object) {
+                    to = canvas.item(j);
+                    var shape = new fabric.Rect({
+                        dad: to,
+                        objType: 'shape',
+                        width: to.width * to.scaleX + 10,
+                        height: to.height * to.scaleY + 10,
+                        stroke: 'red',
+                        fill: 'rgba(0,0,0,0)',
+                        strokeWidth: 5,
+                        originX: 'left',
+                        originY: 'top',
+                        left: to.left - 7.5,
+                        top: to.top - 7.5,
+                        selectable: false,
+                        evented: false
+                    });
+                    var tempShape = shape;
+                    tempLinks.push(tempShape);
+                }
+            }
+
+            if (from && to) {
+                var line = new fabric.Line([getObjCtr(from).x, getObjCtr(from).y, getObjCtr(to).x, getObjCtr(to).y], {
+                    objType: 'link',
+                    from: from,
+                    to: to,
+                    stroke: 'red',
+                    strokeColor: 'red',
+                    strokeWidth: 8,
+                    strokeDashArray: [15,10],
+                    selectable: false,
+                    evented: false
+                });
+                tempLink = line;
+                tempLinks.push(tempLink);
+                break;
+            }
+        }
+        for (var i = 0; i < tempLinks.length; i++) {
+            canvas.add(tempLinks[i]);
+        }
+    }
+}
+
 // add user to user table dialog box
 function addUser() {
     var msg = `
@@ -308,16 +422,12 @@ function addUser() {
         <label class="form-check-label" for="nuPermManageUsers">Manage Users</label>
     </div>
     <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="nuPermModifyDiagram">
-        <label class="form-check-label" for="nuPermModifyDiagram">Modify Diagram</label>
+        <input type="checkbox" class="form-check-input" id="nuPermWriteAccess">
+        <label class="form-check-label" for="nuPermWriteAccess">Write Access</label>
     </div>
     <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="nuPermModifyNotes">
-        <label class="form-check-label" for="nuPermModifyNotes">Modify Notes</label>
-    </div>
-    <div class="form-check">
-        <input type="checkbox" class="form-check-input" id="nuPermModifyFiles">
-        <label class="form-check-label" for="nuPermModifyFiles">Modify Files</label>
+        <input type="checkbox" class="form-check-input" id="nuPermDeleteAccess">
+        <label class="form-check-label" for="nuPermDeleteAccess">Delete Access</label>
     </div>
     <div class="form-check">
         <input type="checkbox" class="form-check-input" id="nuPermApiAccess">
@@ -337,13 +447,12 @@ function addUser() {
                     user.user_id = $('#nuUserId').val();
                     user.permissions = {
                             manage_users: $('#nuPermManageUsers').is(":checked"),
-                            modify_diagram: $('#nuPermModifyDiagram').is(":checked"),
-                            modify_notes: $('#nuPermModifyNotes').is(":checked"),
-                            modify_files: $('#nuPermModifyFiles').is(":checked"),
+                            write_access: $('#nuPermWriteAccess').is(":checked"),
+                            delete_access: $('#nuPermDeleteAccess').is(":checked"),
                             api_access: $('#nuPermApiAccess').is(":checked"),
                         },
                         socket.send(JSON.stringify({
-                            act: 'insert_user_mission',
+                            act: 'insert_mission_user',
                             arg: user,
                             msgId: msgHandler()
                         }));
@@ -560,7 +669,6 @@ var dateEditor = function (cell, onRendered, success, cancel) {
         window.removeEventListener("scroll", successFunc, true);
         $('#dateTimePicker').datetimepicker('date', $('#dateTimePicker').val());
         success($('#dateTimePicker').datetimepicker('date').format());
-        console.log('destroy');
         $('#dateTimePicker').datetimepicker('destroy');
     }
 
@@ -645,10 +753,6 @@ $(document).ready(function () {
 
     // ---------------------------- DIAGRAM SOCKET STUFF ----------------------------------
     socket.onopen = function () {
-        setTimeout(function () {
-            $('#modal').modal('hide');
-        }, 1000);
-        $('#modal').modal('hide');
         socket.pingInterval = setInterval(function ping() {
             socket.send(JSON.stringify({
                 act: 'ping',
@@ -656,6 +760,8 @@ $(document).ready(function () {
                 msgId: msgHandler()
             }));
         }, 10000);
+
+        // after connect, send join request
         setTimeout(function () {
             console.log('connect');
             console.log('joining mission: ' + mission_id);
@@ -781,7 +887,7 @@ $(document).ready(function () {
                 addFiles([msg.arg]);
                 break;
 
-            case 'move_file':
+            case 'update_file':
                 var node = $('#files').jstree(true).get_node(msg.arg._id);
                 if (node && node.text !== msg.arg.name) {
                     $('#files').jstree(true).rename_node(msg.arg._id, msg.arg.name);
@@ -804,8 +910,8 @@ $(document).ready(function () {
                 addNotes([msg.arg]);
                 break;
 
-            case 'rename_note':
-                $('#notes').jstree(true).rename_node(msg.arg.id, msg.arg.name);
+            case 'update_note':
+                $('#notes').jstree(true).rename_node(msg.arg._id, msg.arg.name);
                 break;
 
             case 'delete_note':
@@ -817,15 +923,15 @@ $(document).ready(function () {
                 settingsTabulator.setData(msg.arg);
                 break;
 
-            case 'insert_user_mission':
+            case 'insert_mission_user':
                 settingsTabulator.addRow(msg.arg);
                 break;
 
-            case 'update_user_mission':
+            case 'update_mission_user':
                 settingsTabulator.updateRow(msg.arg._id, msg.arg);
                 break;
 
-            case 'delete_user_mission':
+            case 'delete_mission_user':
                 settingsTabulator.deleteRow(msg.arg);
                 break;
 
@@ -1027,11 +1133,11 @@ $(document).ready(function () {
         $('#prop-' + v).imagepicker({
             hide_select: true,
             initialized: function () {
-                if (!permissions.modify_diagram)
+                if (!permissions.write_access)
                     $("#propObjectGroup").find("div").unbind('click');
             },
             selected: function () {
-                if (!permissions.modify_diagram)
+                if (!permissions.write_access)
                     return;
                 if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
                     var obj = canvas.getActiveObject();
@@ -1091,7 +1197,7 @@ $(document).ready(function () {
             var row = cell.getRow().getData();
             delete row.username;
             socket.send(JSON.stringify({
-                act: 'update_user_mission',
+                act: 'update_mission_user',
                 arg: row,
                 msgId: msgHandler()
             }));
@@ -1120,8 +1226,8 @@ $(document).ready(function () {
                 }
             },
             {
-                title: 'Modify Diagram',
-                field: 'permissions.modify_diagram',
+                title: 'Write Access',
+                field: 'permissions.write_access',
                 formatter: 'tickCross',
                 align: 'center',
                 cellClick:function(e, cell) {
@@ -1129,17 +1235,8 @@ $(document).ready(function () {
                 }
             },
             {
-                title: 'Modify Notes',
-                field: 'permissions.modify_notes',
-                formatter: 'tickCross',
-                align: 'center',
-                cellClick:function(e, cell) {
-                    cell.setValue(!cell.getValue());
-                }
-            },
-            {
-                title: 'Modify Files',
-                field: 'permissions.modify_files',
+                title: 'Delete Access',
+                field: 'permissions.delete_access',
                 formatter: 'tickCross',
                 align: 'center',
                 cellClick:function(e, cell) {
@@ -1162,7 +1259,7 @@ $(document).ready(function () {
                 align: 'center',
                 cellClick: function (e, cell) {
                     socket.send(JSON.stringify({
-                        act: 'delete_user_mission',
+                        act: 'delete_mission_user',
                         arg: {
                             _id: cell.getRow().getData()['_id']
                         },
@@ -1177,6 +1274,7 @@ $(document).ready(function () {
     eventsTabulator = new Tabulator("#eventsTable", {
         layout: "fitColumns",
         index: '_id',
+        selectable: 'highlight',
         cellEdited: function (cell) {
             var row = cell.getRow().getData();
             row = cleanupRow(row);
@@ -1357,27 +1455,46 @@ $(document).ready(function () {
     $('#zoomInButton').click(function () {
         zoomIn();
     });
+
     $('#zoomOutButton').click(function () {
         zoomOut();
     });
+
     $('#objectSearch').change(function () {
         objectSearch(this.value)
     });
+
     $('#nextObjectSearch').click(function () {
         nextObjectSearch();
     });
+
     $('#prevObjectSearch').click(function () {
         prevObjectSearch();
     });
+
     $('#downloadEventsButton').click(function () {
         downloadEvents();
     });
+
     $('#downloadDiagramButton').click(function () {
         downloadDiagram(this);
     });
+
     $('#downloadOpnotesButton').click(function () {
         downloadOpnotes();
     });
+
+    $('#timelineBack').click(function() {
+        timelineAdvance(-1);
+    })
+
+    $('#timelineCancel').click(function() {
+        timelineCancel();
+    })
+
+    $('#timelineForward').click(function() {
+        timelineAdvance(1);
+    })
 
     // ---------------------------- WINDOW MANAGER ----------------------------------
     windowManager = new WindowManager({
@@ -1490,7 +1607,7 @@ $(document).ready(function () {
         }, 100);
     });
 
-    // on resize, resize the canvas
+    // on window resize, resize the canvas
     window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {

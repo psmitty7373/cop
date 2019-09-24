@@ -308,7 +308,7 @@ td a {
     line-height: 16px;
 }
 
-.channel {
+.channelLabel {
     cursor: pointer;
     display: flex;
     justify-content: space-between;
@@ -335,6 +335,14 @@ td a {
     float: right;
 }
 
+#channels {
+    background: #375a7f;
+    width: 150px;
+    height: 100%;
+    float: left;
+    position: relative;
+}
+
 #channel-panes {
     width: auto;
     height: 100%;
@@ -349,6 +357,11 @@ td a {
     padding-right: 10px;
 }
 
+#newChannel {
+    position: absolute;
+    bottom: 0px;
+}
+
 .channel-pane {
     height: 100%;
     overflow-x: hidden;
@@ -360,13 +373,6 @@ td a {
 .vakata-context,
 .vakata-context ul {
     z-index: 15;
-}
-
-#channels {
-    background: #375a7f;
-    width: 150px;
-    height: 100%;
-    float: left;
 }
 
 #toolsForm,
@@ -738,6 +744,12 @@ h1 {
     padding-right: 10px;
     float: left;
     margin-right: 5px;
+}
+
+.taskbarClose {
+    padding-left: 10px !important;
+    font-size: 18px;
+    line-height: 22px;
 }
 
 #bottomJumbo {

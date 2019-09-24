@@ -128,26 +128,29 @@ $(document).ready(function () {
             'contextmenu': {
                 'select_node': false,
                 'items': function (node) {
-                    var menu = {
-                        'rename': {
+                    var menu = {};
+                    if (permissions.write_access && node.text != '/') {
+                        menu.rename = {
                             'separator_before': false,
                             'separator_after': false,
                             'label': 'Rename',
                             'action': function (obj) {
                                 var _node = node;
                                 bootbox.prompt('Rename to?', function (name) {
-                                    socket.send(JSON.stringify({
-                                        act: 'move_file',
-                                        arg: {
-                                            src: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
-                                            dst: ($('#files').jstree().get_path(node.id).slice(0,-1).join('/') + '/' + name).replace('//','')
-                                        },
-                                        msgId: msgHandler()
-                                    }));
+                                    if (name !== null) {
+                                        socket.send(JSON.stringify({
+                                            act: 'update_file',
+                                            arg: {
+                                                src: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
+                                                dst: ($('#files').jstree().get_path(node.id).slice(0,-1).join('/') + '/' + name).replace('//','')
+                                            },
+                                            msgId: msgHandler()
+                                        }));
+                                    }
                                 });
                             }
-                        },
-                        'del' : {
+                        };
+                        menu.del = {
                             'separator_before': false,
                             'separator_after': false,
                             'label': 'Delete',
@@ -160,9 +163,10 @@ $(document).ready(function () {
                                     msgId: msgHandler()
                                 }));
                             }
-                        }
+                        };
                     }
-                    if (!node.li_attr.isLeaf) {
+                    
+                    if (permissions.write_access && !node.li_attr.isLeaf) {
                         menu.mkdir = {
                             'separator_before': false,
                             'separator_after': false,
@@ -170,14 +174,16 @@ $(document).ready(function () {
                             'action': function (obj) {
                                 var _node = node;
                                 bootbox.prompt('Directory name?', function (name) {
-                                    socket.send(JSON.stringify({
-                                        act: 'insert_file',
-                                        arg: {
-                                            dst: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
-                                            name: name
-                                        },
-                                        msgId: msgHandler()
-                                    }));
+                                    if (name !== null) {
+                                        socket.send(JSON.stringify({
+                                            act: 'insert_file',
+                                            arg: {
+                                                dst: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
+                                                name: name
+                                            },
+                                            msgId: msgHandler()
+                                        }));
+                                    }
                                 });
                             }
                         }
@@ -189,7 +195,7 @@ $(document).ready(function () {
 
     $('#files').on("move_node.jstree", function (e, data) {
         socket.send(JSON.stringify({
-            act: 'move_file',
+            act: 'update_file',
             arg: {
                 src: $('#files').jstree().get_path(data.old_parent).join('/').replace('//','') + '/' + data.node.text,
                 dst: $('#files').jstree().get_path(data.node.id).join('/').replace('//','')

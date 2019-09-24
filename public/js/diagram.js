@@ -321,7 +321,7 @@ function objectModified(o) {
 
     // update minimap
     updateMinimapBg();
-
+    console.log('here');
     // send changes to db
     socket.send(JSON.stringify({
         act: 'move_object',
@@ -909,11 +909,11 @@ function addObjectToCanvas(o, selected, cb) {
                     left: o.x,
                     top: o.y,
                     locked: o.locked,
-                    hasControls: !(!permissions.modify_diagram ? true : o.locked),
-                    lockMovementX: !permissions.modify_diagram ? true : o.locked,
-                    lockMovementY: !permissions.modify_diagram ? true : o.locked,
-                    lockScalingX: !permissions.modify_diagram ? true : o.locked,
-                    lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                    hasControls: !(!permissions.write_access ? true : o.locked),
+                    lockMovementX: !permissions.write_access ? true : o.locked,
+                    lockMovementY: !permissions.write_access ? true : o.locked,
+                    lockScalingX: !permissions.write_access ? true : o.locked,
+                    lockScalingY: !permissions.write_access ? true : o.locked,
                     lockRotation: true
                 });
                 shape.setControlVisible('mtr', false);
@@ -981,11 +981,11 @@ function addObjectToCanvas(o, selected, cb) {
                 left: o.x,
                 top: o.y,
                 locked: o.locked,
-                hasControls: !(!permissions.modify_diagram ? true : o.locked),
-                lockMovementX: !permissions.modify_diagram ? true : o.locked,
-                lockMovementY: !permissions.modify_diagram ? true : o.locked,
-                lockScalingX: !permissions.modify_diagram ? true : o.locked,
-                lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                hasControls: !(!permissions.write_access ? true : o.locked),
+                lockMovementX: !permissions.write_access ? true : o.locked,
+                lockMovementY: !permissions.write_access ? true : o.locked,
+                lockScalingX: !permissions.write_access ? true : o.locked,
+                lockScalingY: !permissions.write_access ? true : o.locked,
                 lockRotation: true
             });
         } else if (shape === 'circle') {
@@ -1006,11 +1006,11 @@ function addObjectToCanvas(o, selected, cb) {
                 left: o.x,
                 top: o.y,
                 locked: o.locked,
-                hasControls: !(!permissions.modify_diagram ? true : o.locked),
-                lockMovementX: !permissions.modify_diagram ? true : o.locked,
-                lockMovementY: !permissions.modify_diagram ? true : o.locked,
-                lockScalingX: !permissions.modify_diagram ? true : o.locked,
-                lockScalingY: !permissions.modify_diagram ? true : o.locked,
+                hasControls: !(!permissions.write_access ? true : o.locked),
+                lockMovementX: !permissions.write_access ? true : o.locked,
+                lockMovementY: !permissions.write_access ? true : o.locked,
+                lockScalingX: !permissions.write_access ? true : o.locked,
+                lockScalingY: !permissions.write_access ? true : o.locked,
                 lockRotation: true
             });
         } else

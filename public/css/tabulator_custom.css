@@ -466,7 +466,7 @@
 }
 
 .tabulator.table-striped .tabulator-row:nth-child(even).tabulator-selected {
-  background-color: #333;
+  background-color: #555;
 }
 
 .tabulator.table-striped .tabulator-row:nth-child(even).tabulator-selectable:hover {
@@ -475,7 +475,7 @@
 }
 
 .tabulator.table-striped .tabulator-row:nth-child(even).tabulator-selected:hover {
-  background-color: #333;
+  background-color: #555;
   cursor: pointer;
 }
 
@@ -673,11 +673,11 @@
 }
 
 .tabulator-row.tabulator-selected {
-  background-color: #333;
+  background-color: #555;
 }
 
 .tabulator-row.tabulator-selected:hover {
-  background-color: #333;
+  background-color: #666;
   cursor: pointer;
 }
 
