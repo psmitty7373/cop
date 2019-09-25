@@ -14268,7 +14268,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
 					listEl.style.minWidth = cellEl.offsetWidth + "px";
 					
 					// make the select be above
-					listEl.style.bottom = window.innerHeight - offset.top + "px";// - cellEl.offsetHeight + "px";
+					listEl.style.bottom = document.body.getBoundingClientRect().bottom - offset.top + "px";
 					listEl.style.left = offset.left + "px";
 					document.body.appendChild(listEl);
 				}

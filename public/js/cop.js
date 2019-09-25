@@ -656,8 +656,9 @@ var dateEditor = function (cell, onRendered, success, cancel) {
         dtp.datetimepicker('show');
         var picker = $('body').find('.bootstrap-datetimepicker-widget:last');
         picker.css({
-            'bottom': window.innerHeight - cell._cell.element.getBoundingClientRect().y + 'px',
-            'left': cell._cell.element.getBoundingClientRect().x + 'px'
+            'bottom': document.body.getBoundingClientRect().bottom - cell._cell.element.getBoundingClientRect().y + 'px',
+            'left': cell._cell.element.getBoundingClientRect().x + 'px',
+            'top': 'auto'
         })
     });
 

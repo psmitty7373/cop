@@ -28,7 +28,7 @@ function toolbarEditObject() {
         $("#toolbarBody").removeClass("disabledDiv");
     }
 
-    if (permissions.modify_diagram) {
+    if (permissions.write_access) {
         $('#toolbarTitle').html('Edit Object');
     } else {
         $('#toolbarTitle').text('View Object');
@@ -288,7 +288,7 @@ function editDetails(id, name) {
         name = '';
     }
     if (!id && canvas.getActiveObject()) {
-        if (permissions.modify_notes) {
+        if (permissions.write_access) {
             rw = true;
         }
         id = canvas.getActiveObject()._id;
@@ -296,7 +296,7 @@ function editDetails(id, name) {
             name = canvas.getActiveObject().name_val.split('\n')[0];
         }
     } else {
-        if (permissions.modify_notes)
+        if (permissions.write_access)
             rw = true;
     }
 
@@ -387,7 +387,7 @@ function editDetails(id, name) {
 
                 } else {
                     var disabled = ' disabled';
-                    if (permissions.modify_details) {
+                    if (permissions.write_access) {
                         disabled = '';
                     }
 
@@ -485,7 +485,7 @@ function toggleTable(toolbar) {
 // READY!
 $(document).ready(function () {
     // bind buttons
-    if (permissions.modify_diagram) {
+    if (permissions.write_access) {
         $('#propName').prop('disabled', false);
         $('#newObjectButton').prop('disabled', false).click(newObject);
         $('#propFillColor').prop('disabled', false);
@@ -500,7 +500,7 @@ $(document).ready(function () {
         $('#insertObjectButton').prop('disabled', false).click(insertObject);
         $('#deleteObjectButton').prop('disabled', false).click(deleteObjectConfirm);;
     }
-    if (permissions.modify_notes) {
+    if (permissions.write_access) {
         $("#newNoteButton").prop('disabled', false);
     }
     $('#propName').change(function () {
