@@ -87,7 +87,7 @@ function addFiles(files) {
     }
 }
 
-$(document).ready(function () {
+$(window).on('load', function () {
     $('#files').on('dragover', filesDragAndDrop);
     $('#files').on('dragleave', filesDragAndDrop);
     $('#files').on('drop', filesDragAndDrop);

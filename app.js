@@ -2366,6 +2366,13 @@ async function setupSocket(socket) {
         socket.isAlive = true;
     });
 
+    socket.on('close', function() {
+        // cleanup closed sockets from rooms
+        if (rooms.get(socket.room)) {
+            rooms.get(socket.room).delete(socket);
+        }
+    })
+
     socket.on('message', async function (msg, flags) {
         try {
             msg = JSON.parse(msg);
@@ -2576,6 +2583,7 @@ app.get('/config', function (req, res) {
         profile.username = req.session.username;
         profile.name = req.session.name;
         profile.user_id = req.session.user_id;
+        profile.api = req.session.api;
         profile.is_admin = JSON.stringify(req.session.is_admin);
         res.render('config', {
             title: 'cop',
@@ -2720,6 +2728,7 @@ app.post('/login', function (req, res) {
                         req.session.username = row.username;
                         req.session.loggedin = true;
                         req.session.is_admin = row.is_admin;
+                        req.session.api = row.api;
                         req.session.mission_permissions = {};
                         res.redirect('login');
                     } else {

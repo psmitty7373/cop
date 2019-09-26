@@ -47,6 +47,21 @@ function notification(msg) {
     }
 }
 
+function addChatChannels(channels) {
+    for (var i = 0; i < channels.length; i++) {
+        if (channels[i].name === 'log' || channels[i].name === 'general' || channels[i].name === '') {
+            continue;
+        }
+        $('#channels').append('<div class="channel channelLabel" id="' + channels[i].name + 'Channel">#' + channels[i].name + '<span id="' + channels[i].name + 'Unread" style="display: none;"></span></div>');
+        $('#channelPanes').append('<div class="channel-pane" id="' + channels[i].name + 'Pane" style="display: none;"><div id="' + channels[i].name + 'Messages"></div></div>');
+        $('#' + channels[i].name + 'Channel').click(changeChannel);
+        $('#' + channels[i].name + 'Pane').overlayScrollbars({
+            className: "os-theme-light"
+        });
+    }
+}
+
+// adds chat messages to chat panels
 function addChatMessage(messages, bulk, scroll) {
     if (!bulk) {
         bulk = false;
@@ -76,7 +91,7 @@ function addChatMessage(messages, bulk, scroll) {
         }
         else {
             // check if at bottom
-            var atBottom = ($('#' + channel).overlayScrollbars().scroll().max.y == $('#' + channel).overlayScrollbars().scroll().position.y);
+            var atBottom = ($('#' + channel + 'Pane').overlayScrollbars().scroll().max.y == $('#' + channel + 'Pane').overlayScrollbars().scroll().position.y);
 
             var newMsg = $('<div class="messageWrapper"><div class="message"><div class="messageGutter"><img class="messageAvatar" src="images/avatars/' + tuser_id + '.png"/></div><div class="messageContent"><div class="messageContent-header"><span class="messageSender">' + username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div><span class="messageBody">' + messages[i].text + '</span></div></div>');
 
@@ -112,7 +127,7 @@ function addChatMessage(messages, bulk, scroll) {
             // if at bottom, wait for 
             if (atBottom) {
                 setTimeout(function () {
-                    $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
+                    $('#' + channel + 'Pane').overlayScrollbars().scroll($('#' + channel + 'Pane').overlayScrollbars().scroll().max.y);
                 }, 50);
             }
         }
@@ -123,7 +138,7 @@ function addChatMessage(messages, bulk, scroll) {
     // scroll to bottom
     if (scroll) {
         setTimeout(function() {
-            $('#log').overlayScrollbars().scroll($('#log').overlayScrollbars().scroll().max.y);
+            $('#logPane').overlayScrollbars().scroll($('#logPane').overlayScrollbars().scroll().max.y);
         }, 100);
     }
 }
@@ -154,42 +169,46 @@ function newChannel() {
     });
 }
 
-$(document).ready(function () {
+function changeChannel(e) {
+    var channel = e.target.id.split('Channel')[0];
+    console.log(channel);
+
+    if (channel !== activeChannel) {
+        if ($('#' + activeChannel + 'Pane').overlayScrollbars().scroll().max.y == $('#' + activeChannel + 'Pane').overlayScrollbars().scroll().position.y) {
+            chatPosition[activeChannel] = 'bottom';
+        } else {
+            chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
+        }
+    }
+
+    $('.channel-pane').hide();
+    $('.channel').removeClass('channelSelected');
+    $('#' + channel + 'Pane').show();
+    unreadMessages[channel] = 0;
+    $('#' + channel + 'Unread').hide();
+    $('#chatTab').css('background-color', '');
+
+    if (!chatPosition[channel] || chatPosition[channel] === 'bottom') {
+        setTimeout(function() {
+            $('#' + channel + 'Pane').overlayScrollbars().scroll($('#' + channel + 'Pane').overlayScrollbars().scroll().max.y);
+        }, 50);
+    }
+
+    $('#' + channel + 'Channel').addClass('channelSelected');
+    activeChannel = channel;
+}
+
+$(window).on('load', function () {
     // chat notification sound
     notifSound = new Audio('sounds/knock.mp3');
 
-    $('.channel').click(function (e) {
-        var channel = e.target.id.split('-')[1];
-
-        if (channel !== activeChannel) {
-            if ($('#' + activeChannel).overlayScrollbars().scroll().max.y == $('#' + activeChannel).overlayScrollbars().scroll().position.y) {
-                chatPosition[activeChannel] = 'bottom';
-            } else {
-                chatPosition[activeChannel] = $('#' + channel).overlayScrollbars().scroll().position.y;
-            }
-        }
-
-        $('.channel-pane').hide();
-        $('.channel').removeClass('channelSelected');
-        $('#' + channel).show();
-        unreadMessages[channel] = 0;
-        $('#unread-' + channel).hide();
-        $('#chatTab').css('background-color', '');
-
-        if (!chatPosition[channel] || chatPosition[channel] === 'bottom') {
-            setTimeout(function() {
-                $('#' + channel).overlayScrollbars().scroll($('#' + channel).overlayScrollbars().scroll().max.y);
-            }, 50);
-        }
-
-        $('#channel-' + channel).addClass('channelSelected');
-        activeChannel = channel;
-    });
+    $('#generalChannel').click(changeChannel);
+    $('#logChannel').click(changeChannel);
 
     // clear unread when clicking on channel
     $('#chatTab').click(function (e) {
         unreadMessages[activeChannel] = 0;
-        $('#unread-' + activeChannel).hide();
+        $('#' + activeChannel + 'Unread').hide();
         $('#chatTab').css('background-color', '');
     });
 

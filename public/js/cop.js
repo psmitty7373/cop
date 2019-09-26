@@ -682,7 +682,7 @@ var dateEditor = function (cell, onRendered, success, cancel) {
 }
 
 // READY!
-$(document).ready(function () {
+$(window).on('load', function () {
     $('#modal-title').text('Please wait...!');
     $('#modal-body').html('<p>Loading COP, please wait...</p><img src="images/loading.gif"/>');
     $('#modal-footer').html('');
@@ -700,10 +700,10 @@ $(document).ready(function () {
         className: "os-theme-light",
         overflowBehavior: { x: 'hidden' }
     });
-    $('#log').overlayScrollbars({
+    $('#logPane').overlayScrollbars({
         className: "os-theme-light"
     });
-    $('#general').overlayScrollbars({
+    $('#generalPane').overlayScrollbars({
         className: "os-theme-light"
     });
     $('#propObjectGroup').overlayScrollbars({
@@ -751,6 +751,604 @@ $(document).ready(function () {
             arg: ''
         }));
     };
+
+    // ---------------------------- IMAGE PICKER ----------------------------------
+    $('#propObjectGroup').tabs({
+        beforeActivate: function (e, u) {
+            $('#propType').val(u.newPanel.attr('id').split('-')[1]);
+            if ($('#propType').val() === 'link')
+                $('#propFillColorSpan').hide();
+            else
+                $('#propFillColorSpan').show();
+        }
+    });
+    $.each(['icon', 'shape', 'link'], function (i, v) {
+        $('#prop-' + v).imagepicker({
+            hide_select: true,
+            initialized: function () {
+                if (!permissions.write_access)
+                    $("#propObjectGroup").find("div").unbind('click');
+            },
+            selected: function () {
+                if (!permissions.write_access)
+                    return;
+                if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
+                    var obj = canvas.getActiveObject();
+                    var oldZ = canvas.getObjects().indexOf(canvas.getActiveObject());
+                    obj.image = $(this).val().replace('.png', '.svg');
+                    var type = $(this).val().split('-')[2];
+                    if (obj.objType !== type)
+                        return;
+                    updatingObject = true;
+                    changeObject(obj);
+                    updatingObject = false;
+                } else {
+                    var type = $(this).val().split('-')[2];
+                    $('#propType').val(type)
+                }
+            }
+        });
+    });
+
+    // ---------------------------- TABLES ----------------------------------   
+    // bottom table tabs
+    $('#chatTab').click(function () {
+        toggleTable('chat');
+    });
+    if (permissions.manage_users) {
+        $('#settingsTab').show();
+        $('#settingsTabTag').show();
+    }
+
+    // attach events to tab buttons
+    $('#settingsTab').click(function () {
+        toggleTable('settings');
+    });
+    $('#eventsTab').click(function () {
+        toggleTable('events');
+    });
+    $('#opnotesTab').click(function () {
+        toggleTable('opnotes');
+    });
+
+    // attach events to add buttons
+    $('#addUser').click(function () {
+        addUser();
+    });
+    $('#addEvent').click(function () {
+        addEvent();
+    });
+    $('#addOpnote').click(function () {
+        addOpnote();
+    });
+
+    // settings table
+    settingsTabulator = new Tabulator("#settingsTable", {
+        layout: "fitColumns",
+        index: '_id',
+        cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            delete row.username;
+            socket.send(JSON.stringify({
+                act: 'update_mission_user',
+                arg: row,
+                msgId: msgHandler()
+            }));
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'User ID',
+                field: 'user_id',
+                visible: false
+            },
+            {
+                title: 'Username',
+                field: 'username'
+            },
+            {
+                title: 'Manage Users',
+                field: 'permissions.manage_users',
+                formatter: 'tickCross',
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
+            },
+            {
+                title: 'Write Access',
+                field: 'permissions.write_access',
+                formatter: 'tickCross',
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
+            },
+            {
+                title: 'Delete Access',
+                field: 'permissions.delete_access',
+                formatter: 'tickCross',
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
+            },
+            {
+                title: 'API Access',
+                field: 'permissions.api_access',
+                formatter: 'tickCross',
+                align: 'center',
+                cellClick:function(e, cell) {
+                    cell.setValue(!cell.getValue());
+                }
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    socket.send(JSON.stringify({
+                        act: 'delete_mission_user',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            },
+        ]
+    });
+
+    // events table
+    eventsTabulator = new Tabulator("#eventsTable", {
+        layout: "fitColumns",
+        index: '_id',
+        selectable: 'highlight',
+        cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            row = cleanupRow(row);
+            delete row.username;
+            delete row.user_id;
+            socket.send(JSON.stringify({
+                act: 'update_event',
+                arg: row,
+                msgId: msgHandler()
+            }));
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'Discovery Time',
+                field: 'discovery_time',
+                editor: dateEditor,
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Event Time',
+                field: 'event_time',
+                editor: dateEditor,
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Source',
+                field: 'source_object',
+                editor: 'select',
+                editable: function() { return permissions.write_access },
+                editorParams: function () {
+                    objectSelect.sort(sortByName);
+
+                    var vals = {};
+                    for (var i = 0; i < objectSelect.length; i++) {
+                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    }
+                    return {
+                        values: vals
+                    }
+                },
+                formatter: function (cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== undefined && cell.getValue()) {
+                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        if (res && res.name) {
+                            return res.name;
+                        } else {
+                            return 'OBJECT DELETED';
+                        }
+                    } else {
+                        return ''
+                    }
+                }
+            },
+            {
+                title: 'Destination',
+                field: 'dest_object',
+                editor: 'select',
+                editable: function() { return permissions.write_access },
+                editorParams: function () {
+                    objectSelect.sort(sortByName);
+
+                    var vals = {};
+                    for (var i = 0; i < objectSelect.length; i++) {
+                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    }
+                    return {
+                        values: vals
+                    }
+                },
+                formatter: function (cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== undefined && cell.getValue()) {
+                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        if (res && res.name) {
+                            return res.name;
+                        } else {
+                            return 'OBJECT DELETED';
+                        }
+                    } else {
+                        return ''
+                    }
+                }
+            },
+            {
+                title: 'Type',
+                field: 'event_type',
+                editor: 'input',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Description',
+                field: 'short_desc',
+                editor: 'textarea',
+                formatter: 'textarea',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'User',
+                field: 'username'
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    if (!permissions.write_access) {
+                        return false;
+                    }
+                    socket.send(JSON.stringify({
+                        act: 'delete_event',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            }
+        ]
+    });
+
+    // opnotes table
+    opnotesTabulator = new Tabulator("#opnotesTable", {
+        layout: "fitColumns",
+        index: '_id',
+        cellEdited: function (cell) {
+            var row = cell.getRow().getData();
+            row = cleanupRow(row);
+            delete row.username;
+            delete row.user_id;
+            socket.send(JSON.stringify({
+                act: 'update_opnote',
+                arg: row,
+                msgId: msgHandler()
+            }));
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'Opnote Time',
+                field: 'opnote_time',
+                editor: dateEditor,
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Target',
+                field: 'target',
+                editor: 'input',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Tool',
+                field: 'tool',
+                editor: 'input',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Action',
+                field: 'action',
+                editor: 'textarea',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'User',
+                field: 'username'
+            },
+            {
+                headerSort: false,
+                formatter: 'buttonCross',
+                width: 40,
+                align: 'center',
+                cellClick: function (e, cell) {
+                    if (!permissions.write_access) {
+                        return false;
+                    }
+                    socket.send(JSON.stringify({
+                        act: 'delete_opnote',
+                        arg: {
+                            _id: cell.getRow().getData()['_id']
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            },
+        ]
+    });
+
+    // ---------------------------- BUTTONS ----------------------------------
+    $('#zoomInButton').click(function () {
+        zoomIn();
+    });
+
+    $('#zoomOutButton').click(function () {
+        zoomOut();
+    });
+
+    $('#objectSearch').change(function () {
+        objectSearch(this.value)
+    });
+
+    $('#nextObjectSearch').click(function () {
+        nextObjectSearch();
+    });
+
+    $('#prevObjectSearch').click(function () {
+        prevObjectSearch();
+    });
+
+    $('#downloadEventsButton').click(function () {
+        downloadEvents();
+    });
+
+    $('#downloadDiagramButton').click(function () {
+        downloadDiagram(this);
+    });
+
+    $('#downloadOpnotesButton').click(function () {
+        downloadOpnotes();
+    });
+
+    $('#timelineBack').click(function() {
+        timelineAdvance(-1);
+    })
+
+    $('#timelineCancel').click(function() {
+        timelineCancel();
+    })
+
+    $('#timelineForward').click(function() {
+        timelineAdvance(1);
+    })
+
+    // ---------------------------- WINDOW MANAGER ----------------------------------
+    windowManager = new WindowManager({
+        container: "#windowPane",
+        windowTemplate: $('#details_template').html()
+    });
+
+    // ---------------------------- MISC ----------------------------------
+    $('#diagram').mousedown(startPan);
+
+    $('[name="propFillColor"]').paletteColorPicker({
+        colors: [
+            {'#000000': '#000000'},
+            {'#808080': '#808080'},
+            {'#c0c0c0': '#c0c0c0'},
+            {'#ffffff': '#ffffff'},
+            {'#800000': '#800000'},
+            {'#ff0000': '#ff0000'},
+            {'#808000': '#808000'},
+            {'#ffff00': '#ffff00'},
+            {'#008000': '#008000'},
+            {'#00ff00': '#00ff00'},
+            {'#008080': '#008080'},
+            {'#00ffff': '#00ffff'},
+            {'#000080': '#000080'},
+            {'#0000ff': '#0000ff'},
+            {'#800080': '#800080'},
+            {'#ff00ff': '#ff00ff'}  
+        ],
+        clear_btn: null,
+        position: 'upside',
+        timeout: 2000,
+        close_all_but_this: true,
+        onchange_callback: function (color) {
+            if (color !== $('#propFillColor').val())
+                updatePropFillColor(color);
+        }
+    });
+    $('[name="propStrokeColor"]').paletteColorPicker({
+        colors: [
+            {'#000000': '#000000'},
+            {'#808080': '#808080'},
+            {'#c0c0c0': '#c0c0c0'},
+            {'#ffffff': '#ffffff'},
+            {'#800000': '#800000'},
+            {'#ff0000': '#ff0000'},
+            {'#808000': '#808000'},
+            {'#ffff00': '#ffff00'},
+            {'#008000': '#008000'},
+            {'#00ff00': '#00ff00'},
+            {'#008080': '#008080'},
+            {'#00ffff': '#00ffff'},
+            {'#000080': '#000080'},
+            {'#0000ff': '#0000ff'},
+            {'#800080': '#800080'},
+            {'#ff00ff': '#ff00ff'}  
+        ],
+        position: 'upside',
+        timeout: 2000, // default -> 2000
+        close_all_but_this: true,
+        onchange_callback: function (color) {
+            if (color !== $('#propStrokeColor').val())
+                updatePropStrokeColor(color);
+        }
+    });
+
+    // make the diagram resizable
+    $("#diagramJumbo").resizable({
+        handles: 's',
+        minHeight: 350
+    });
+
+    $("#bottomJumbo").resizable({
+        handles: 's',
+        minHeight: 350
+    });
+
+    $("#toolbarBody").resizable({
+        handles: 'w',
+        maxWidth: $('#diagramJumbo').width() - 60
+    });
+
+    // resize event to resize toolbar
+    $('#diagramJumbo').on('resize', function (event, ui) {
+        if (ui.size.height === ui.originalSize.height) {
+            return;
+        }
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            settings.diagram = Math.round($('#diagramJumbo').height());
+            updateSettings();
+            resizeCanvas();
+        }, 100);
+    });
+
+    // resize event to resize canvas
+    $('#toolbarBody').on('resize', function (event, ui) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            settings.toolbar = Math.round($('#toolbarBody').width());
+            updateSettings();
+        }, 100);
+    });
+
+    $('#bottomJumbo').on('resize', function (event, ui) {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            settings.tables = Math.round($('#bottomJumbo').height());
+            updateSettings();
+        }, 100);
+    });
+
+    // on window resize, resize the canvas
+    window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+            resizeCanvas();
+        }, 100);
+    }, false);
+
+    // capture keys
+    window.addEventListener("keydown", function (e) {
+        // copy
+        if (lastClick === canvas.upperCanvasEl) {
+            if (e.ctrlKey && (e.keyCode === 'c'.charCodeAt(0) || e.keyCode === 'C'.charCodeAt(0))) {
+                canvasClipboard = [];
+                o = canvas.getActiveObjects();
+
+                var x = 0;
+                var y = 0;
+
+                for (var i = 0; i < o.length; i++) {
+                    if (o.length === 1) {
+                        x = 0 - o[i].width / 2;
+                        y = 0 - o[i].height / 2;
+                    } else {
+                        x = o[i].left;
+                        y = o[i].top;
+                    }
+                    canvasClipboard.push({
+                        _id: o[i]._id,
+                        x: x,
+                        y: y,
+                        z: Math.round(canvas.getObjects().indexOf(o[i] / 2))
+                    });
+                }
+
+                // paste
+            } else if (e.ctrlKey && (e.keyCode === 'v'.charCodeAt(0) || e.keyCode === 'V'.charCodeAt(0))) {
+                if (canvasClipboard.length > 0)
+                    pasteObjects();
+
+                // delete
+            } else if (e.keyCode === 46) {
+                if (canvas.getActiveObject())
+                    deleteObjectConfirm();
+
+                // arrows
+            } else if (e.keyCode >= 37 && e.keyCode <= 40 && canvas.getActiveObject()) {
+                var o = canvas.getActiveObject();
+                if (objectMovingTimer)
+                    window.clearTimeout(objectMovingTimer);
+                objectMovingTimer = setTimeout(function () {
+                    objectModified(o);
+                }, 1000);
+                switch (e.keyCode) {
+                    case 37:
+                        o.left -= 1;
+                        break;
+                    case 38:
+                        o.top -= 1;
+                        break;
+                    case 39:
+                        o.left += 1;
+                        break;
+                    case 40:
+                        o.top += 1;
+                        break;
+                }
+                objectMoving(o, 0);
+                o.setCoords();
+                canvas.requestRenderAll();
+
+                // search (ctrl + f)
+            } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+                e.preventDefault();
+                if (!$('#objectSearchBar').is(':visible')) {
+                    $('#objectSearchBar').show().css('display', 'table');
+                    $('#objectSearch').focus();
+                } else {
+                    $('#foundCount').hide();
+                    $('#objectSearchBar').hide();
+                    $('#objectSearch').val('');
+                }
+            }
+        }
+    })
+
+    // set focus to diagram
+    $('#diagramJumbo').focus();
+
+    // load settings from cookie
+    loadSettings();
+    resizeCanvas();
 
     // ---------------------------- DIAGRAM SOCKET STUFF ----------------------------------
     socket.onopen = function () {
@@ -843,6 +1441,10 @@ $(document).ready(function () {
             case 'chat':
                 addChatMessage(msg.arg);
                 break;
+            
+            case 'get_channels':
+            case 'insert_chat_channel':
+                addChatChannels(msg.arg)
 
                 // events
             case 'get_events':
@@ -1120,584 +1722,5 @@ $(document).ready(function () {
         });
     };
 
-    // ---------------------------- IMAGE PICKER ----------------------------------
-    $('#propObjectGroup').tabs({
-        beforeActivate: function (e, u) {
-            $('#propType').val(u.newPanel.attr('id').split('-')[1]);
-            if ($('#propType').val() === 'link')
-                $('#propFillColorSpan').hide();
-            else
-                $('#propFillColorSpan').show();
-        }
-    });
-    $.each(['icon', 'shape', 'link'], function (i, v) {
-        $('#prop-' + v).imagepicker({
-            hide_select: true,
-            initialized: function () {
-                if (!permissions.write_access)
-                    $("#propObjectGroup").find("div").unbind('click');
-            },
-            selected: function () {
-                if (!permissions.write_access)
-                    return;
-                if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
-                    var obj = canvas.getActiveObject();
-                    var oldZ = canvas.getObjects().indexOf(canvas.getActiveObject());
-                    obj.image = $(this).val().replace('.png', '.svg');
-                    var type = $(this).val().split('-')[2];
-                    if (obj.objType !== type)
-                        return;
-                    updatingObject = true;
-                    changeObject(obj);
-                    updatingObject = false;
-                } else {
-                    var type = $(this).val().split('-')[2];
-                    $('#propType').val(type)
-                }
-            }
-        });
-    });
-
-    // ---------------------------- TABLES ----------------------------------   
-    // bottom table tabs
-    $('#chatTab').click(function () {
-        toggleTable('chat');
-    });
-    if (permissions.manage_users) {
-        $('#settingsTab').show();
-        $('#settingsTabTag').show();
-    }
-
-    // attach events to tab buttons
-    $('#settingsTab').click(function () {
-        toggleTable('settings');
-    });
-    $('#eventsTab').click(function () {
-        toggleTable('events');
-    });
-    $('#opnotesTab').click(function () {
-        toggleTable('opnotes');
-    });
-
-    // attach events to add buttons
-    $('#addUser').click(function () {
-        addUser();
-    });
-    $('#addEvent').click(function () {
-        addEvent();
-    });
-    $('#addOpnote').click(function () {
-        addOpnote();
-    });
-
-    // settings table
-    settingsTabulator = new Tabulator("#settingsTable", {
-        layout: "fitColumns",
-        index: '_id',
-        cellEdited: function (cell) {
-            var row = cell.getRow().getData();
-            delete row.username;
-            socket.send(JSON.stringify({
-                act: 'update_mission_user',
-                arg: row,
-                msgId: msgHandler()
-            }));
-        },
-        columns: [{
-                title: '_id',
-                field: '_id',
-                visible: false
-            },
-            {
-                title: 'User ID',
-                field: 'user_id',
-                visible: false
-            },
-            {
-                title: 'Username',
-                field: 'username'
-            },
-            {
-                title: 'Manage Users',
-                field: 'permissions.manage_users',
-                formatter: 'tickCross',
-                align: 'center',
-                cellClick:function(e, cell) {
-                    cell.setValue(!cell.getValue());
-                }
-            },
-            {
-                title: 'Write Access',
-                field: 'permissions.write_access',
-                formatter: 'tickCross',
-                align: 'center',
-                cellClick:function(e, cell) {
-                    cell.setValue(!cell.getValue());
-                }
-            },
-            {
-                title: 'Delete Access',
-                field: 'permissions.delete_access',
-                formatter: 'tickCross',
-                align: 'center',
-                cellClick:function(e, cell) {
-                    cell.setValue(!cell.getValue());
-                }
-            },
-            {
-                title: 'API Access',
-                field: 'permissions.api_access',
-                formatter: 'tickCross',
-                align: 'center',
-                cellClick:function(e, cell) {
-                    cell.setValue(!cell.getValue());
-                }
-            },
-            {
-                headerSort: false,
-                formatter: 'buttonCross',
-                width: 40,
-                align: 'center',
-                cellClick: function (e, cell) {
-                    socket.send(JSON.stringify({
-                        act: 'delete_mission_user',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
-                }
-            },
-        ]
-    });
-
-    // events table
-    eventsTabulator = new Tabulator("#eventsTable", {
-        layout: "fitColumns",
-        index: '_id',
-        selectable: 'highlight',
-        cellEdited: function (cell) {
-            var row = cell.getRow().getData();
-            row = cleanupRow(row);
-            delete row.username;
-            delete row.user_id;
-            socket.send(JSON.stringify({
-                act: 'update_event',
-                arg: row,
-                msgId: msgHandler()
-            }));
-        },
-        columns: [{
-                title: '_id',
-                field: '_id',
-                visible: false
-            },
-            {
-                title: 'Discovery Time',
-                field: 'discovery_time',
-                editor: dateEditor
-            },
-            {
-                title: 'Event Time',
-                field: 'event_time',
-                editor: dateEditor
-            },
-            {
-                title: 'Source',
-                field: 'source_object',
-                editor: 'select',
-                editorParams: function () {
-                    objectSelect.sort(sortByName);
-
-                    var vals = {};
-                    for (var i = 0; i < objectSelect.length; i++) {
-                        vals[objectSelect[i]._id] = objectSelect[i].name;
-                    }
-                    return {
-                        values: vals
-                    }
-                },
-                formatter: function (cell, formatterParams, onRendered) {
-                    if (cell.getValue() !== undefined && cell.getValue()) {
-                        var res = objectSelect.find(obj => obj._id == cell.getValue());
-                        if (res && res.name) {
-                            return res.name;
-                        } else {
-                            return 'OBJECT DELETED';
-                        }
-                    } else {
-                        return ''
-                    }
-                }
-            },
-            {
-                title: 'Destination',
-                field: 'dest_object',
-                editor: 'select',
-                editorParams: function () {
-                    objectSelect.sort(sortByName);
-
-                    var vals = {};
-                    for (var i = 0; i < objectSelect.length; i++) {
-                        vals[objectSelect[i]._id] = objectSelect[i].name;
-                    }
-                    return {
-                        values: vals
-                    }
-                },
-                formatter: function (cell, formatterParams, onRendered) {
-                    if (cell.getValue() !== undefined && cell.getValue()) {
-                        var res = objectSelect.find(obj => obj._id == cell.getValue());
-                        if (res && res.name) {
-                            return res.name;
-                        } else {
-                            return 'OBJECT DELETED';
-                        }
-                    } else {
-                        return ''
-                    }
-                }
-            },
-            {
-                title: 'Type',
-                field: 'event_type',
-                editor: 'input'
-            },
-            {
-                title: 'Description',
-                field: 'short_desc',
-                editor: 'textarea'
-            },
-            {
-                title: 'User',
-                field: 'username'
-            },
-            {
-                headerSort: false,
-                formatter: 'buttonCross',
-                width: 40,
-                align: 'center',
-                cellClick: function (e, cell) {
-                    socket.send(JSON.stringify({
-                        act: 'delete_event',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
-                }
-            }
-        ]
-    });
-
-    // opnotes table
-    opnotesTabulator = new Tabulator("#opnotesTable", {
-        layout: "fitColumns",
-        index: '_id',
-        cellEdited: function (cell) {
-            var row = cell.getRow().getData();
-            row = cleanupRow(row);
-            delete row.username;
-            delete row.user_id;
-            socket.send(JSON.stringify({
-                act: 'update_opnote',
-                arg: row,
-                msgId: msgHandler()
-            }));
-        },
-        columns: [{
-                title: '_id',
-                field: '_id',
-                visible: false
-            },
-            {
-                title: 'Opnote Time',
-                field: 'opnote_time',
-                editor: dateEditor
-            },
-            {
-                title: 'Target',
-                field: 'target',
-                editor: 'input'
-            },
-            {
-                title: 'Tool',
-                field: 'tool',
-                editor: 'input'
-            },
-            {
-                title: 'Action',
-                field: 'action',
-                editor: 'textarea'
-            },
-            {
-                title: 'User',
-                field: 'username'
-            },
-            {
-                headerSort: false,
-                formatter: 'buttonCross',
-                width: 40,
-                align: 'center',
-                cellClick: function (e, cell) {
-                    socket.send(JSON.stringify({
-                        act: 'delete_opnote',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
-                }
-            },
-        ]
-    });
-
-    // ---------------------------- BUTTONS ----------------------------------
-    $('#zoomInButton').click(function () {
-        zoomIn();
-    });
-
-    $('#zoomOutButton').click(function () {
-        zoomOut();
-    });
-
-    $('#objectSearch').change(function () {
-        objectSearch(this.value)
-    });
-
-    $('#nextObjectSearch').click(function () {
-        nextObjectSearch();
-    });
-
-    $('#prevObjectSearch').click(function () {
-        prevObjectSearch();
-    });
-
-    $('#downloadEventsButton').click(function () {
-        downloadEvents();
-    });
-
-    $('#downloadDiagramButton').click(function () {
-        downloadDiagram(this);
-    });
-
-    $('#downloadOpnotesButton').click(function () {
-        downloadOpnotes();
-    });
-
-    $('#timelineBack').click(function() {
-        timelineAdvance(-1);
-    })
-
-    $('#timelineCancel').click(function() {
-        timelineCancel();
-    })
-
-    $('#timelineForward').click(function() {
-        timelineAdvance(1);
-    })
-
-    // ---------------------------- WINDOW MANAGER ----------------------------------
-    windowManager = new WindowManager({
-        container: "#windowPane",
-        windowTemplate: $('#details_template').html()
-    });
-
-    // ---------------------------- MISC ----------------------------------
-    $('#diagram').mousedown(startPan);
-
-    $('[name="propFillColor"]').paletteColorPicker({
-        colors: [
-            {'#000000': '#000000'},
-            {'#808080': '#808080'},
-            {'#c0c0c0': '#c0c0c0'},
-            {'#ffffff': '#ffffff'},
-            {'#800000': '#800000'},
-            {'#ff0000': '#ff0000'},
-            {'#808000': '#808000'},
-            {'#ffff00': '#ffff00'},
-            {'#008000': '#008000'},
-            {'#00ff00': '#00ff00'},
-            {'#008080': '#008080'},
-            {'#00ffff': '#00ffff'},
-            {'#000080': '#000080'},
-            {'#0000ff': '#0000ff'},
-            {'#800080': '#800080'},
-            {'#ff00ff': '#ff00ff'}  
-        ],
-        clear_btn: null,
-        position: 'upside',
-        timeout: 2000,
-        close_all_but_this: true,
-        onchange_callback: function (color) {
-            if (color !== $('#propFillColor').val())
-                updatePropFillColor(color);
-        }
-    });
-    $('[name="propStrokeColor"]').paletteColorPicker({
-        colors: [
-            {'#000000': '#000000'},
-            {'#808080': '#808080'},
-            {'#c0c0c0': '#c0c0c0'},
-            {'#ffffff': '#ffffff'},
-            {'#800000': '#800000'},
-            {'#ff0000': '#ff0000'},
-            {'#808000': '#808000'},
-            {'#ffff00': '#ffff00'},
-            {'#008000': '#008000'},
-            {'#00ff00': '#00ff00'},
-            {'#008080': '#008080'},
-            {'#00ffff': '#00ffff'},
-            {'#000080': '#000080'},
-            {'#0000ff': '#0000ff'},
-            {'#800080': '#800080'},
-            {'#ff00ff': '#ff00ff'}  
-        ],
-        position: 'upside',
-        timeout: 2000, // default -> 2000
-        close_all_but_this: true,
-        onchange_callback: function (color) {
-            if (color !== $('#propStrokeColor').val())
-                updatePropStrokeColor(color);
-        }
-    });
-
-    // make the diagram resizable
-    $("#diagramJumbo").resizable({
-        handles: 's',
-        minHeight: 350
-    });
-
-    $("#bottomJumbo").resizable({
-        handles: 's',
-        minHeight: 350
-    });
-
-    $("#toolbarBody").resizable({
-        handles: 'w',
-        maxWidth: $('#diagramJumbo').width() - 60
-    });
-
-    // resize event to resize toolbar
-    $('#diagramJumbo').on('resize', function (event, ui) {
-        if (ui.size.height === ui.originalSize.height) {
-            return;
-        }
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            settings.diagram = Math.round($('#diagramJumbo').height());
-            updateSettings();
-            resizeCanvas();
-        }, 100);
-    });
-
-    // resize event to resize canvas
-    $('#toolbarBody').on('resize', function (event, ui) {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            settings.toolbar = Math.round($('#toolbarBody').width());
-            updateSettings();
-        }, 100);
-    });
-
-    $('#bottomJumbo').on('resize', function (event, ui) {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            settings.tables = Math.round($('#bottomJumbo').height());
-            updateSettings();
-        }, 100);
-    });
-
-    // on window resize, resize the canvas
-    window.addEventListener('resize', function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-            resizeCanvas();
-        }, 100);
-    }, false);
-
-    // capture keys
-    window.addEventListener("keydown", function (e) {
-        // copy
-        if (lastClick === canvas.upperCanvasEl) {
-            if (e.ctrlKey && (e.keyCode === 'c'.charCodeAt(0) || e.keyCode === 'C'.charCodeAt(0))) {
-                canvasClipboard = [];
-                o = canvas.getActiveObjects();
-
-                var x = 0;
-                var y = 0;
-
-                for (var i = 0; i < o.length; i++) {
-                    if (o.length === 1) {
-                        x = 0 - o[i].width / 2;
-                        y = 0 - o[i].height / 2;
-                    } else {
-                        x = o[i].left;
-                        y = o[i].top;
-                    }
-                    canvasClipboard.push({
-                        _id: o[i]._id,
-                        x: x,
-                        y: y,
-                        z: Math.round(canvas.getObjects().indexOf(o[i] / 2))
-                    });
-                }
-
-                // paste
-            } else if (e.ctrlKey && (e.keyCode === 'v'.charCodeAt(0) || e.keyCode === 'V'.charCodeAt(0))) {
-                if (canvasClipboard.length > 0)
-                    pasteObjects();
-
-                // delete
-            } else if (e.keyCode === 46) {
-                if (canvas.getActiveObject())
-                    deleteObjectConfirm();
-
-                // arrows
-            } else if (e.keyCode >= 37 && e.keyCode <= 40 && canvas.getActiveObject()) {
-                var o = canvas.getActiveObject();
-                if (objectMovingTimer)
-                    window.clearTimeout(objectMovingTimer);
-                objectMovingTimer = setTimeout(function () {
-                    objectModified(o);
-                }, 1000);
-                switch (e.keyCode) {
-                    case 37:
-                        o.left -= 1;
-                        break;
-                    case 38:
-                        o.top -= 1;
-                        break;
-                    case 39:
-                        o.left += 1;
-                        break;
-                    case 40:
-                        o.top += 1;
-                        break;
-                }
-                objectMoving(o, 0);
-                o.setCoords();
-                canvas.requestRenderAll();
-
-                // search (ctrl + f)
-            } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
-                e.preventDefault();
-                if (!$('#objectSearchBar').is(':visible')) {
-                    $('#objectSearchBar').show().css('display', 'table');
-                    $('#objectSearch').focus();
-                } else {
-                    $('#foundCount').hide();
-                    $('#objectSearchBar').hide();
-                    $('#objectSearch').val('');
-                }
-            }
-        }
-    })
-
-    // set focus to diagram
-    $('#diagramJumbo').focus();
-
-    // load settings from cookie
-    loadSettings();
-    resizeCanvas();
+    
 });

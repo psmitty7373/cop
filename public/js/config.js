@@ -158,7 +158,7 @@ function newUser() {
     });
 }
 
-$(document).ready(function () {
+$(window).on('load', function () {
     document.body.addEventListener('dragleave', f, false);
     document.body.addEventListener('dragover', f, false);
     document.body.addEventListener('drop', f, false);
@@ -301,9 +301,11 @@ $(document).ready(function () {
                 {
                     title: 'Is Admin?',
                     field: 'is_admin',
-                    editor: 'tickCross',
                     formatter: 'tickCross',
-                    align: 'center'
+                    align: 'center',
+                    cellClick:function(e, cell) {
+                        cell.setValue(!cell.getValue());
+                    }
                 },
                 {
                     headerSort: false,
@@ -312,14 +314,14 @@ $(document).ready(function () {
                     align: 'center',
                     cellClick: function (e, cell) {
                         socket.send(JSON.stringify({
-                            act: 'delete_user',
+                            act: 'delete_event',
                             arg: {
                                 _id: cell.getRow().getData()['_id']
                             },
                             msgId: msgHandler()
                         }));
                     }
-                },
+                }
             ]
         });
     }

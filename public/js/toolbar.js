@@ -483,7 +483,7 @@ function toggleTable(toolbar) {
 }
 
 // READY!
-$(document).ready(function () {
+$(window).on('load', function () {
     // bind buttons
     if (permissions.write_access) {
         $('#propName').prop('disabled', false);

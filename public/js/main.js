@@ -90,7 +90,7 @@ function msgHandler() {
     return msgId++;
 }
 
-$(document).ready(function () {
+$(window).on('load', function () {
     // prevent bootbox from reloading on submit / enter
     $(document).on("submit", ".bootbox form", function (e) {
         e.preventDefault();

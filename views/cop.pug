@@ -120,18 +120,20 @@ html
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
           div#chat
-            div#channels
-              div.channel.channelLabel.channelSelected#channel-log #log
-                span#unread-log.unread(style="display: none;")
-              div.channel.channelLabel#channel-general #general
-                span#unread-general.unread(style="display: none;")
+            div#channelsWrapper
+              div#channels
+                div.channel.channelLabel.channelSelected#logChannel #log
+                  span#logUnread.unread(style="display: none;")
+                div.channel.channelLabel#generalChannel #general
+                  span#generalUnread.unread(style="display: none;")
               div.channelLabel#newChannel +New Channel
-            div#channel-panes
-              div.channel-pane#log
-                div#logMessages
-              div#general.channel-pane(style="display: none;")
-                div#generalMessages
-              div#channel-footer
+            div#channelPanesWrapper
+              div#channelPanes
+                div.channel-pane#logPane
+                  div#logMessages
+                div#generalPane.channel-pane(style="display: none;")
+                  div#generalMessages
+              div#channelFooter
                 input(type="text", name="messageInput")#messageInput.messageInput
 
           div#settings.tableContainer(style="display: none;")

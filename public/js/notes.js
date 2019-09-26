@@ -9,7 +9,7 @@ function addNotes(notes) {
     }
 }
 
-$(document).ready(function () {
+$(window).on('load', function () {
     $('#notes')
         .on('select_node.jstree', function (e, data) {
             var name = '';
