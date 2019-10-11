@@ -2315,7 +2315,7 @@ function adminMessageCheck(socket) {
 }
 
 messageHandlers = {
-    insert_mission: { function: insertMission, checks: function { return true; }, permission: '' },
+    insert_mission: { function: insertMission, checks: function() { return true; }, permission: '' },
     update_mission: { function: updateMission, checks: adminMessageCheck, permission: '' },
     delete_mission: { function: deleteMission, checks: adminMessageCheck },
     get_users: { function: getUsers, checks: adminMessageCheck, permission: '' },
