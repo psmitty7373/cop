@@ -2295,7 +2295,6 @@ async function deleteEvent(socket, event) {
 // ------------------------------------------------------------------------------------------------------------------- /EVENTS
 
 function missionMessageCheck(socket, permission) {
-    console.log(permission);
     if (socket.is_admin) {
         return true;
     }
@@ -2316,7 +2315,7 @@ function adminMessageCheck(socket) {
 }
 
 messageHandlers = {
-    insert_mission: { function: insertMission, checks: null, permission: '' },
+    insert_mission: { function: insertMission, checks: function { return true; }, permission: '' },
     update_mission: { function: updateMission, checks: adminMessageCheck, permission: '' },
     delete_mission: { function: deleteMission, checks: adminMessageCheck },
     get_users: { function: getUsers, checks: adminMessageCheck, permission: '' },
