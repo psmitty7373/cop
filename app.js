@@ -19,6 +19,9 @@ const http = require('http').Server(app);
 const session = require('express-session');
 const mongodb = require('mongodb').MongoClient;
 const mongostore = require('connect-mongo')(session);
+const mime = require('mime-types');
+const readChunk = require('read-chunk');
+const fileType = require('file-type');
 const sharedbmongo = require('sharedb-mongo')
 const multer = require('multer');
 const objectid = require('mongodb').ObjectID;
@@ -165,33 +168,6 @@ function sendToRoom(room, msg, selfSocket, permRequired) {
                 }
             }
         });
-    }
-}
-
-async function insertLogEvent(socket, message, channel) {
-    try {
-        if (!channel || channel === '')
-            channel = 'log';
-        var timestamp = (new Date).getTime();
-        var log = {
-            mission_id: objectid(socket.mission_id),
-            user_id: objectid(socket.user_id),
-            channel: channel,
-            text: message,
-            timestamp: timestamp,
-            deleted: false
-        };
-    
-        var res = await mdb.collection('chats').insertOne(log);
-        log.username = socket.username;
-        sendToRoom(socket.room, JSON.stringify({
-            act: 'chat',
-            arg: [log]
-        }));
-        return [];
-    } catch (err) {
-        logger.error(err);
-        return [];
     }
 }
 
@@ -376,7 +352,7 @@ async function insertObject(socket, object) {
                 }));
             }
         } else {
-            logger.error('[!] insert_object failed.');
+            logger.error('insert_object failed.');
         }
     } catch (err) {
         socket.send(JSON.stringify({
@@ -898,6 +874,7 @@ async function insertMission(socket, mission) {
             user_id: objectid(socket.user_id),
             mission_users: [],
             channels: [{ _id: objectid(null), name: 'log', deleted: false }, { _id: objectid(null), name: 'general', deleted: false }],
+            files: [{ _id: objectid(null), name: '/', parent_id: '#', type: 'dir' }],
             deleted: false
         };
         mission.mission_users[0] = {
@@ -969,7 +946,7 @@ async function updateMission(socket, mission) {
 async function deleteMission(socket, mission) {
     try {
         var res = await mdb.collection('missions').updateOne({
-            _id: objectid(mission)
+            _id: objectid(mission._id)
         }, {
             $set: {
                 deleted: true
@@ -978,7 +955,7 @@ async function deleteMission(socket, mission) {
         if (res.result.ok === 1) {
             sendToRoom(socket.room, JSON.stringify({
                 act: 'delete_mission',
-                arg: mission
+                arg: mission._id
             }));
         } else {
             socket.send(JSON.stringify({
@@ -1066,7 +1043,7 @@ async function insertChatChannel(socket, channel) {
             if (res.result.ok === 1) {
                 sendToRoom(socket.room, JSON.stringify({
                     act: 'insert_chat_channel',
-                    arg: new_values
+                    arg: [new_values]
                 }));
             } else {
                 socket.send(JSON.stringify({
@@ -1099,12 +1076,22 @@ async function insertChatChannel(socket, channel) {
 async function getChats(socket) {
     try {
         var chats = [];
-        var channels = await mdb.collection('chats').distinct('channel');
+        var channels = await mdb.collection('missions').findOne({
+            _id: objectid(socket.mission_id),
+            deleted: {
+                $ne: true
+            }
+        }, {
+            projection: { channels: 1 }
+        });
+        channels = channels['channels'];
+
         for (var i = 0; i < channels.length; i++) {
+            console.log(channels[i]);
             var rows = await mdb.collection('chats').aggregate([{
                 $match: {
                     mission_id: objectid(socket.mission_id),
-                    channel: channels[i],
+                    channel_id: objectid(channels[i]._id),
                     deleted: {
                         $ne: true
                     }
@@ -1130,12 +1117,13 @@ async function getChats(socket) {
                 $project: {
                     _id: 1,
                     user_id: 1,
-                    channel: 1,
+                    channel_id: 1,
                     text: 1,
                     timestamp: 1,
                     username: '$username.username'
                 }
             }]).toArray();
+
             if (rows) {
                 if (rows.length == 50) {
                     rows[0].more = 1;
@@ -1162,27 +1150,95 @@ async function getChats(socket) {
     }
 }
 
+async function insertLogEvent(socket, chat, channel_id, filter) {
+    if (filter === undefined) {
+        filter = true;
+    }
+    try {
+        if (!channel_id || channel_id === '') {
+            var channels = await mdb.collection('missions').aggregate([{
+                $match: {
+                    _id: objectid(socket.mission_id),
+                    deleted: {
+                        $ne: true
+                    }
+                }
+            }, {
+                $unwind: '$channels'
+            }, {
+                $match: {
+                    'channels.name': 'log'
+                }
+            }, {
+                $project: {
+                    channel_id: '$channels._id',
+                }
+            }]).toArray();
+
+            if (channels.length < 1) {
+                logger.error('Error finding log channel.');
+                return;
+            }
+
+            channel_id = channels[0].channel_id;
+        }
+
+        insertChat(socket, { text: chat, channel_id: channel_id }, filter);
+
+        return;
+    } catch (err) {
+        logger.error(err);
+        return;
+    }
+}
+
 // insert chat
-async function insertChat(socket, chat) {
+async function insertChat(socket, chat, filter) {
+    if (filter === undefined) {
+        filter = true;
+    }
     try {
         chat.username = socket.username;
         chat.user_id = socket.user_id;
-        chat.text = xssFilters.inHTMLData(chat.text);
+        chat.channel_id = objectid(chat.channel_id);
+        if (filter) {
+            console.log('filtering', chat.text);
+            chat.text = xssFilters.inHTMLData(chat.text);
+        }
         chat.timestamp = (new Date).getTime();
-        var chat_row = {
-            mission_id: objectid(socket.mission_id),
-            user_id: objectid(socket.user_id),
-            channel: chat.channel,
-            text: chat.text,
-            timestamp: chat.timestamp,
-            deleted: false
-        };
-        
-        var res = await mdb.collection('chats').insertOne(chat_row);
-        sendToRoom(socket.room, JSON.stringify({
-            act: 'chat',
-            arg: [chat]
-        }));
+
+        var count = await mdb.collection('missions').count({
+            _id: objectid(socket.mission_id),
+            'channels._id': chat.channel_id
+        });
+
+        if (count > 0) {
+
+            var chat_row = {
+                mission_id: objectid(socket.mission_id),
+                user_id: objectid(socket.user_id),
+                channel_id: objectid(chat.channel_id),
+                text: chat.text,
+                timestamp: chat.timestamp,
+                deleted: false
+            };
+
+            console.log(chat_row);
+            
+            var res = await mdb.collection('chats').insertOne(chat_row);
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'chat',
+                arg: [chat]
+            }));
+
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Invalid channel.'
+                }
+            }));
+        }
     } catch (err) {
         socket.send(JSON.stringify({
             act: 'error',
@@ -1196,11 +1252,12 @@ async function insertChat(socket, chat) {
 
 // get old chats
 async function getOldChats(socket, request) {
+    console.log(request);
     try {
         var rows = await mdb.collection('chats').aggregate([{
             $match: {
                 mission_id: objectid(socket.mission_id),
-                channel: request.channel,
+                channel_id: objectid(request.channel_id),
                 timestamp: {
                     $lt: parseInt(request.start_from)
                 },
@@ -1225,10 +1282,9 @@ async function getOldChats(socket, request) {
             $project: {
                 _id: 1,
                 user_id: 1,
-                channel: 1,
+                channel_id: 1,
                 text: 1,
                 timestamp: 1,
-                prepend: 'true',
                 username: '$username.username'
             }
         }]).toArray();
@@ -1374,56 +1430,29 @@ async function insertMissionUser(socket, user) {
 // update user in mission
 async function updateMissionUser(socket, user) {
     try {
-        var rows = await mdb.collection('missions').aggregate([{
-            $match: {
-                _id: objectid(socket.mission_id),
+        var new_values = {
+            'mission_users.$.user_id': objectid(user.user_id),
+            'mission_users.$.permissions': user.permissions
+        };
+        var res = await mdb.collection('missions').updateOne({
+            _id: objectid(socket.mission_id),
+            'mission_users._id': objectid(user._id)
+        }, {
+            $set: new_values
+        });
+        if (res.result.ok === 1) {
+            var ouser = await mdb.collection('users').findOne({
+                _id: objectid(user.user_id),
                 deleted: {
                     $ne: true
                 }
-            }
-        }, {
-            $unwind: '$mission_users'
-        }, {
-            $match: {
-                'mission_users._id': {
-                    $ne: objectid(user._id)
-                },
-                'mission_users.user_id': objectid(user.user_id)
-            }
-        }]).toArray();
-
-        if (rows.length == 0) {
-            var new_values = {
-                'mission_users.$.user_id': objectid(user.user_id),
-                'mission_users.$.permissions': user.permissions
-            };
-            var res = await mdb.collection('missions').updateOne({
-                _id: objectid(socket.mission_id),
-                'mission_users._id': objectid(user._id)
-            }, {
-                $set: new_values
             });
-            if (res.result.ok === 1) {
-                var ouser = await mdb.collection('users').findOne({
-                    _id: objectid(user.user_id),
-                    deleted: {
-                        $ne: true
-                    }
-                });
-                user.username = ouser.username;
-                sendToRoom(socket.room, JSON.stringify({
-                    act: 'update_mission_user',
-                    arg: user
-                }));
-                insertLogEvent(socket, 'Modified user setting ID: ' + user._id + '.');
-            } else {
-                socket.send(JSON.stringify({
-                    act: 'error',
-                    arg: {
-                        text: 'Error updating mission user.'
-                    }
-                }));
-            }
+            user.username = ouser.username;
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'update_mission_user',
+                arg: user
+            }));
+            insertLogEvent(socket, 'Modified user setting ID: ' + user._id + '.');
         } else {
             socket.send(JSON.stringify({
                 act: 'error',
@@ -1482,50 +1511,12 @@ async function deleteMissionUser(socket, user) {
 
 // FILES -------------------------------------------------------------------------------------------------------------------
 
-// get files worker
-function getFilesRecursive(dir, parent, done) {
-    let results = [];
-
-    fs.readdir(dir, function(err, list) {
-        if (err) {
-            return done(err);
-        } 
-
-        var pending = list.length;
-        if (!pending) {
-            return done(null, results);
-        }
-
-        list.forEach(function(file){
-            file = path.resolve(dir, file);
-
-            fs.stat(file, function(err, stat) {
-                //var rel = path.relative(base, file);
-                if (stat && stat.isDirectory()) {
-                    results.push({ _id: stat.ino, name: path.basename(file), type: 'dir', parent: parent });
-                    getFilesRecursive(file, stat.ino, function(err, res) {
-                        results = results.concat(res);
-                        if (!--pending){
-                            done(null, results);
-                        }
-                    });
-                } else {
-                    results.push({ _id: stat.ino, name: path.basename(file), type: 'file', parent: parent });
-                    if (!--pending) {
-                        done(null, results);
-                    }
-                }
-            });
-        });
-    });
-};
-
 // get files
 async function getFiles(socket) {
-    var dir = path.join(__dirname + '/mission_files/mission-' + socket.mission_id, '/');
+    var dir = path.join(__dirname + '/mission_files/');
     try {
         // make sure directory exists for mission files
-        fs.stat(dir, function (err, s) {
+        fs.statSync(dir, function (err, s) {
             if (err == null) {} else if (err.code == 'ENOENT') {
                 fs.mkdir(dir, function (err) {
                     if (err) {
@@ -1535,14 +1526,37 @@ async function getFiles(socket) {
             } else {
                 logger.error(err);
             }
-        });        
-
-        getFilesRecursive(dir, '.', function(err, files) {
-            socket.send(JSON.stringify({
-                act: 'get_files',
-                arg: files
-            }));         
         });
+
+        var files = await mdb.collection('missions').aggregate([{
+            $match: {
+                _id: objectid(socket.mission_id),
+                deleted: {
+                    $ne: true
+                }
+            }
+        }, {
+            $unwind: '$files'
+        }, {
+            $match: { 
+                'files.deleted': {
+                    $ne: true
+                }
+            }
+        }, {
+            $project: {
+                _id: '$files._id',
+                parent_id: '$files.parent_id',
+                name: '$files.name',
+                type: '$files.type'
+            }
+        }]).sort({
+            parent_id: 1
+        }).toArray();
+        socket.send(JSON.stringify({
+            act: 'get_files',
+            arg: files
+        }));
 
     } catch (err) {
         socket.send(JSON.stringify({
@@ -1559,94 +1573,61 @@ async function getFiles(socket) {
     }
 }
 
-async function insertFile(socket, dir) {
-    var parent = path.normalize(dir.dst).replace(/^(\.\.[\/\\])+/, '');
-    var base = path.join(__dirname, '/mission_files/mission-' + socket.mission_id + '/');
-    if (parent !== 'mission-' + socket.mission_id) {
-        base = path.join(base, parent);
-    }
-    var newdir = path.normalize(dir.name).replace(/^(\.\.[\/\\])+/, '');
-    var fullpath = path.join(base, '/' + newdir)
+async function insertFile(socket, file) {
+    var real = path.join(__dirname, '/mission_files/');
+    file.name = xssFilters.inHTMLData(file.name).replace(/\./g,'').replace(/\//g,'').replace(/\\/g,'');
     try {
-        // make sure destination doesn't exist
-        fs.stat(fullpath, function (err, s) {
-            if (err === null) {
-                socket.send(JSON.stringify({
-                    act: 'error',
-                    arg: {
-                        text: 'Error: directory already exists.'
-                    }
-                })); 
-                logger.error('[!] Error making directory.');
-                return;
-            }
-            else if (err.code == 'ENOENT') {
-                // mmake sure parent exists
-                fs.stat(base, function (err, parentstat) {
-                    if (err) {
-                        socket.send(JSON.stringify({
-                            act: 'error',
-                            arg: {
-                                text: 'Error creating directory.'
-                            }
-                        })); 
-                        logger.error('[!] Error making directory.');
-                        logger.error(err);
-                        return;
-                    }
-                    // create new path
-                    fs.mkdir(fullpath, function (err) {
-                        if (err) {
-                            socket.send(JSON.stringify({
-                                act: 'error',
-                                arg: {
-                                    text: 'Error creating directory.'
-                                }
-                            }));
-                            logger.error('[!] Error making directory.');
-                            logger.error(err);
-                        }
-                        else {
-                            fs.stat(fullpath, function (err, s) {
-                                if (err) {
-                                    socket.send(JSON.stringify({
-                                        act: 'error',
-                                        arg: {
-                                            text: 'Error creating directory.'
-                                        }
-                                    })); 
-                                    logger.error('[!] Error making directory.');
-                                    logger.error(err);
-                                    return;
-                                }
-                                insertLogEvent(socket, 'Created directory: ' + newdir + '.');
-                                var parent = parentstat.ino;
-                                if (dir.dst === '/') {
-                                    parent = '.';
-                                }
-                                sendToRoom(socket.room, JSON.stringify({
-                                    act: 'insert_file',
-                                    arg: {
-                                        _id: s.ino,
-                                        name: newdir,
-                                        type: 'dir',
-                                        parent: parent
-                                    }
-                                }));
-                            });
-                        }
-                    });
-                });
+        var count = await mdb.collection('missions').count({
+            _id: objectid(socket.mission_id),
+            'files.name': file.name,
+            'files.parent_id': objectid(file.parent_id)
+        });
+
+        // new dir
+        if (count === 0 && file.type === 'dir') {
+            var new_id = objectid(null);
+            var new_value = {
+                _id: new_id,
+                name: file.name,
+                parent_id: objectid(file.parent_id),
+                type: 'dir'
+            };
+
+            var res = await mdb.collection('missions').updateOne({
+                _id: objectid(socket.mission_id)
+            }, {
+                $push: {
+                    files: new_value
+                }
+            });
+
+            if (res.result.ok === 1) {
+                sendToRoom(socket.room, JSON.stringify({
+                    act: 'insert_file',
+                    arg: new_value
+                }));
             } else {
                 socket.send(JSON.stringify({
                     act: 'error',
                     arg: {
-                        text: 'Error creating directory.'
+                        text: 'Error inserting file.'
                     }
                 }));
-                logger.error('[!] Error making directory.');
             }
-        });
+
+        // new file
+        } else if (type === 'file') {
+
+
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Error inserting file.  Directory already exists.'
+                }
+            }));
+        }
+
     } catch (err) {
         socket.send(JSON.stringify({
             act: 'error',
@@ -1654,70 +1635,45 @@ async function insertFile(socket, dir) {
                 text: 'Error creating directory.'
             }
         }));
-        logger.error('[!] Error making directory.');
+        logger.error(err);
     }
 }
 
 async function moveFile(socket, file) {
-    var dstdir = path.normalize(file.dst).replace(/^(\.\.[\/\\])+/, '');
-    var srcdir = path.normalize(file.src).replace(/^(\.\.[\/\\])+/, '');
-    var base = path.join(__dirname, '/mission_files/mission-' + socket.mission_id + '/');
-    dstdir = path.join(base, dstdir);
-    srcdir = path.join(base, srcdir);
-
+    var real = path.join(__dirname, '/mission_files/');
+    file.name = xssFilters.inHTMLData(file.name).replace(/\./g,'').replace(/\//g,'').replace(/\\/g,'');
+    console.log(file);
     try {
-        fs.stat(dstdir, function (err, s) {
-            if (!err) {
-                socket.send(JSON.stringify({
-                    act: 'error',
-                    arg: {
-                        text: 'Error moving file, file already exists.'
-                    }
-                }));
-                logger.error('[!] Error moving file.', err);
-            }
-
-            fs.stat(srcdir, function (err, s) {
-                if (s && (s.isDirectory() || s.isFile())) {
-                    fs.rename(srcdir, dstdir, function (err) {
-                        if (err) {
-                            socket.send(JSON.stringify({
-                                act: 'error',
-                                arg: {
-                                    text: 'Error moving file.'
-                                }
-                            }));
-                            logger.error('[!] Error moving file.');
-                        } else {
-                            insertLogEvent(socket, 'Renamed file/dir: ' + path.basename(srcdir) + ' to ' + path.basename(dstdir) + '.');
-                            
-                            sendToRoom(socket.room, JSON.stringify({
-                                act: 'update_file',
-                                arg: {
-                                    _id: s.ino,
-                                    name: path.basename(dstdir),
-                                    parent: path.dirname(path.relative(base, dstdir))
-                                }
-                            }));
-                        }
-                    });
-                } else {
-                    socket.send(JSON.stringify({
-                        act: 'error',
-                        arg: {
-                            text: 'Error moving file.'
-                        }
-                    }));
-                    logger.error('[!] Error moving file.');;
-                    return;
-                }
-            });
+        var new_values = {
+            'files.$.parent_id': objectid(file.parent_id),
+            'files.$.name': file.name
+        };
+        var res = await mdb.collection('missions').updateOne({
+            _id: objectid(socket.mission_id),
+            'files._id': objectid(file._id)
+        }, {
+            $set: new_values
         });
+        if (res.result.ok === 1) {
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'update_file',
+                arg: file
+            }));
+            insertLogEvent(socket, 'Modified file ID: ' + file._id + '.');
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Error updating file.'
+                }
+            }));
+        }
+
     } catch (err) {
         socket.send(JSON.stringify({
             act: 'error',
             arg: {
-                text: 'Error moving file.'
+                text: 'Error updating file.'
             }
         }));
         logger.error(err);
@@ -1725,62 +1681,29 @@ async function moveFile(socket, file) {
 }
 
 async function deleteFile(socket, file) {
-    var dir = path.normalize(file.file).replace(/^(\.\.[\/\\])+/, '');
-    dir = path.join(path.join(__dirname, '/mission_files/mission-' + socket.mission_id + '/'), dir);
     try {
-        fs.stat(dir, function (err, s) {
-            if (err) {
-                socket.send(JSON.stringify({
-                    act: 'error',
-                    arg: {
-                        text: 'Error deleting directory.'
-                    }
-                }));
-                logger.error('[!] Error deleting directory.');
-            }
-
-            // delete directory
-            else if (s && s.isDirectory()) {
-                fs.rmdir(dir, function (err) {
-                    if (err) {
-                        socket.send(JSON.stringify({
-                            act: 'error',
-                            arg: {
-                                text: 'Error deleting directory.'
-                            }
-                        }));
-                        logger.error('[!] Error deleting directory.');
-                    } else {
-                        insertLogEvent(socket, 'Deleted file: ' + file.file + '.');
-                        sendToRoom(socket.room, JSON.stringify({
-                            act: 'delete_file',
-                            arg: s.ino
-                        }));
-                    }
-                });
-
-            // delete file
-            } else {
-                fs.unlink(dir, function (err) {
-                    if (err) {
-                        socket.send(JSON.stringify({
-                            act: 'error',
-                            arg: {
-                                text: 'Error delting file.'
-                            }
-                        }));
-                        logger.error('[!] Error deleting file.');
-
-                    } else {
-                        insertLogEvent(socket, 'Deleted file: ' + file.file + '.');
-                        sendToRoom(socket.room, JSON.stringify({
-                            act: 'delete_file',
-                            arg: s.ino
-                        }));
-                    }
-                });
+        var res = await mdb.collection('missions').updateMany({
+            _id: objectid(socket.mission_id)
+        }, {
+            $pull: {
+                files: {
+                    $or: [{ _id: objectid(file._id) }, { parent_id: objectid(file._id) }]
+                }
             }
         });
+        if (res.result.ok === 1) {
+            sendToRoom(socket.room, JSON.stringify({
+                act: 'delete_file',
+                arg: file._id
+            }));
+        } else {
+            socket.send(JSON.stringify({
+                act: 'error',
+                arg: {
+                    text: 'Error deleting file.'
+                }
+            }));
+        }
     } catch (err) {
         socket.send(JSON.stringify({
             act: 'error',
@@ -2453,7 +2376,7 @@ async function setupSocket(socket) {
                                     text: 'Permission denied or invalid data.'
                                 }
                             }));
-                            logger.error('[!] ' + msg.act + ' failed. Arguments:', msg.arg, 'Validator Errors:', ajv.errors)
+                            logger.error('' + msg.act + ' failed. Arguments:', msg.arg, 'Validator Errors:', ajv.errors)
                         }
                     }
                     break;
@@ -2773,70 +2696,121 @@ app.use('/download', express.static(path.join(__dirname, 'mission_files'), {
     setHeaders: function (res, path) {
         res.attachment(path);
     }
-
 }))
 
-app.post('/upload', upload.any(), function (req, res) {
-    if (!req.session.loggedin || !req.session.mission_permissions[req.body.mission_id].write_access) {
-        res.status(500).send('Error: Permission denied or invalid data.');
-        return;
-    }
-    if (req.body.dir && req.body.mission_id) {
-        var dir = path.normalize(req.body.dir).replace(/^(\.\.[\/\\])+/, '');
-        var base = path.join(__dirname + '/mission_files/mission-' + req.body.mission_id + '/');
-        var fullpath = path.join(base, dir);
+app.use('/render', express.static('mission_files'));
 
-        // make sure target dir exists and get inode
-        fs.stat(fullpath, function (err, dirstat) {
-            if (err) {
-                res.status(500).send('Error: Permission denied or invalid data.');
-                logger.error(err);
-                return;
+function findUserSocket(user_id, mission_id) {
+    for (var i = rooms.get(mission_id).values(), socket = null; socket = i.next().value; ) {
+        if (socket.readyState === socket.OPEN && socket.mission_id === mission_id && socket.user_id === user_id) {
+            return socket;
+        }
+    };
+    return null;
+}
+
+app.post('/upload', upload.any(), function (req, res) {
+    console.log(req);
+    try {
+        if (!req.session.loggedin || !req.session.mission_permissions[req.body.mission_id].write_access) {
+            throw('app.post /upload Not signed in.');
+        }
+        if ((req.body.channel_id ? !req.body.dir : req.body.dir) && req.body.mission_id) {
+            var wwwdir = path.join('/mission-' + req.body.mission_id + '/', dir);
+            var base = path.join(__dirname, '/mission_files');
+
+            // making sure base directory exists
+            try {
+                var dirstat = fs.statSync(base);
+            } catch (err) {
+                if (err.code == 'ENOENT') {
+                    fs.mkdirSync(base, { recursive: true });
+                    dirstat = fs.statSync(base);
+                } else {
+                    throw (err);
+                }
             }
+
             async.each(req.files, function (file, callback) {
+                var id = objectid();
+                fs.renameSync(base + '/' + id)
+                // file upload
+                if (req.body.parent_id) {
+                
+
+                }
+                // chat upload
+                else if (req.body.channel_id) {
+                    
+                }
+
+
+
+
+
+                /*
+
                 // check if a file is already there
-                fs.stat(fullpath + '/' + file.originalname, function (err, s) {
-                    if (!err) {
+                if (req.body.channel_id) {                    
+                    ;
+                    file.originalname = id;
+
+                } else {
+                    var exists = true;
+                    try {
+                        var filestat = fs.statSync(fullpath + '/' + file.originalname);
+                    } catch (err) {
+                        if (err.code == 'ENOENT') {
+                            exists = false;
+                        }
+                    }
+                    if (exists) {
                         sendToRoom(req.body.mission_id, JSON.stringify({
                             act: 'delete_file',
-                            arg: s.ino
+                            arg: filestat.ino
                         }));
                     }
                     // move temp file to final path
-                    fs.rename(file.path, fullpath + '/' + file.originalname, function (err) {
-                        if (err) {
-                            res.status(500).send('Error: File upload error.');
-                            logger.error(err);
-                        } else {
-                            callback(file);
-                        }
-                    });
-                });
+                    fs.renameSync(file.path, fullpath + '/' + file.originalname);   
+                }
+                */
+                callback(file);
             }, function (file) {
+                /*
                 // grab inode of uploaded file and send to sockets
-                fs.stat(fullpath + '/' + file.originalname, function (err, s) {
-                    if (err) {
-                        res.status(500).send('Error: Permission denied or invalid data.');
-                    } else {
-                        var parent = dirstat.ino;
-                        if (req.body.dir === '/') {
-                            parent = '.';
-                        }
-                        res.send('{}');
-                        sendToRoom(req.body.mission_id, JSON.stringify({
-                            act: 'insert_file',
-                            arg: {
-                                _id: s.ino,
-                                name: file.originalname,
-                                type: 'file',
-                                parent: parent
-                            }
-                        }));
+                var filestat = fs.statSync(fullpath + '/' + file.originalname);
+                var parent = dirstat.ino;
+                if (req.body.dir === '/') {
+                    parent = '.';
+                }
+
+                if (req.body.channel_id) {
+                    var mimeType = mime.lookup(fullpath + '/' + file.originalname);
+                    var buffer = readChunk.sync(fullpath + '/' + file.originalname, 0, fileType.minimumBytes);
+                    var filetype = fileType(buffer);
+                    var s = findUserSocket(req.session.user_id, req.body.mission_id,);
+                    if (s) {
+                        if (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif') {
+                            insertLogEvent(s, '<img class="chatImage" src="/render' + wwwdir + file.originalname + '">', req.body.channel_id, false);
+                        }                        
                     }
-                });
+                }
+                
+                sendToRoom(req.body.mission_id, JSON.stringify({
+                    act: 'insert_file',
+                    arg: {
+                        _id: filestat.ino,
+                        name: file.originalname,
+                        type: 'file',
+                        parent: parent
+                    }
+                }));
+                */
+                res.send('{}');
             });
-        });
-    } else {
+        }
+    } catch (err) {
+        logger.error(err);
         res.status(500).send('Error: Permission denied or invalid data.');
     }
 });

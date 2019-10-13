@@ -119,20 +119,14 @@ html
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
-          div#chat
+          div.droppable#chat
+            div#chatDropZone
+              div#chatDropZoneBanner Drop the file here to upload to chat.
             div#channelsWrapper
               div#channels
-                div.channel.channelLabel.channelSelected#logChannel #log
-                  span#logUnread.unread(style="display: none;")
-                div.channel.channelLabel#generalChannel #general
-                  span#generalUnread.unread(style="display: none;")
               div.channelLabel#newChannel +New Channel
             div#channelPanesWrapper
               div#channelPanes
-                div.channel-pane#logPane
-                  div#logMessages
-                div#generalPane.channel-pane(style="display: none;")
-                  div#generalMessages
               div#channelFooter
                 input(type="text", name="messageInput")#messageInput.messageInput
 
@@ -151,7 +145,7 @@ html
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineBack
                   i.fa.fa-left-big
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineCancel
-                  i.fa.fa-cancel-circled2
+                  i.fa.fa-cancel-circled
                 a.btn.btn-secondary(href="#")#timelineForward
                   i.fa.fa-right-big
                

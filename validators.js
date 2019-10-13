@@ -5,12 +5,12 @@ const insert_chat = {
             type: 'string',
             maxLength: 1024 * 512
         },
-        channel: {
+        channel_id: {
             type: 'string',
-            maxLength: 32
-        },
+            pattern: '^[a-fA-F0-9]{24}$'
+        }
     },
-    required: ['text', 'channel'],
+    required: ['text', 'channel_id'],
     additionalProperties: false
 }
 
@@ -20,12 +20,12 @@ const get_old_chats = {
         start_from: {
             type: 'integer'
         },
-        channel: {
+        channel_id: {
             type: 'string',
-            maxLength: 32
+            pattern: '^[a-fA-F0-9]{24}$'
         },
     },
-    required: ['start_from', 'channel'],
+    required: ['start_from', 'channel_id'],
     additionalProperties: false
 }
 
@@ -214,44 +214,52 @@ const update_note = {
 const insert_file = {
     type: 'object',
     properties: {
-        dst: {
+        parent_id: {
             type: 'string',
-            maxLength: 64
+            pattern: '^[a-fA-F0-9]{24}$'
         },
         name: {
             type: 'string',
             maxLength: 64
+        },
+        type: {
+            type: 'string',
+            'enum': ['dir', 'file'],
         }
     },
-    required: ['dst', 'name'],
+    required: ['parent_id', 'name', 'type'],
     additionalProperties: false
 }
 
 const update_file = {
     type: 'object',
     properties: {
-        src: {
+        _id: {
             type: 'string',
-            maxLength: 64
+            pattern: '^[a-fA-F0-9]{24}$'
         },
-        dst: {
+        parent_id: {
+            type: 'string',
+            pattern: '^[a-fA-F0-9]{24}$'
+        },
+        name: {
             type: 'string',
             maxLength: 64
         },
     },
-    required: ['src', 'dst'],
+    required: ['_id', 'parent_id', 'name'],
     additionalProperties: false
 };
 
 const delete_file = {
     type: 'object',
     properties: {
-        file: {
+        _id: {
             type: 'string',
-            maxLength: 64
-        },
+            pattern: '^[a-fA-F0-9]{24}$'
+        }
     },
-    required: ['file'],
+    required: ['_id'],
     additionalProperties: false
 };
 
@@ -587,6 +595,7 @@ module.exports = {
     delete_user: delete_row,
     insert_mission: insert_mission,
     update_mission: update_mission,
+    delete_mission: delete_row,
     insert_mission_user: insert_mission_user,
     update_mission_user: update_mission_user,
     delete_mission_user: delete_row,

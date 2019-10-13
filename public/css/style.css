@@ -171,7 +171,28 @@ td a {
 .messageWrapper {
     position: relative;
     display: block;
-    margin-bottom: 3px;
+    padding-top: 3px;
+    padding-left: 3px;
+}
+
+.messageWrapper:hover {
+    background-color: #444;
+}
+
+.messageWrapper:hover .messageOptions {
+    display: block;
+}
+
+.messageOptions {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: -15px;
+
+}
+
+.messageOptionBtn {
+    padding: 4px 7px 4px 7px;
 }
 
 .messageContent {
@@ -266,7 +287,7 @@ td a {
 }
 
 .newMessage {
-    border-top: 1px solid #f2bdc3;
+    border-top: 1px solid #fff;
 }
 
 .newMessageLabel {
@@ -297,7 +318,8 @@ td a {
     display: none;
 }
 
-.unread {
+.channelUnread {
+    pointer-events: none;
     background: #dc5960;
     font-size: 12px;
     border-radius: 15px;
@@ -311,15 +333,20 @@ td a {
 .channelLabel {
     cursor: pointer;
     display: flex;
-    justify-content: space-between;
+    flex-flow: row;
     height: 26px;
     width: 100%;
-    color: #acb2b8;
+    color: #fff;
     padding: 0 12px 0 15px;
     font-size: 16px;
     text-decoration: none;
     line-height: 26px;
     vertical-align: middle;
+}
+
+.channelName {
+    pointer-events: none;
+    width: 100%;
 }
 
 .channelSelected {
@@ -329,6 +356,14 @@ td a {
 
 .channel:hover {
     background: #4A5664;
+}
+
+.channel:hover .channelDeleteIcon {
+    display: block;
+}
+
+.channelDeleteIcon {
+    display: none;
 }
 
 .timelineButton {
@@ -341,10 +376,12 @@ td a {
 
 #channelsWrapper {
     background: #375a7f;
-    width: 150px;
+    width: 200px;
     height: 100%;
     float: left;
     position: relative;
+    display: flex;
+    flex-flow: column;
 }
 
 #channelPanesWrapper {
@@ -361,9 +398,10 @@ td a {
     padding-right: 10px;
 }
 
-#newChannel {
-    position: absolute;
-    bottom: 0px;
+#channels {
+    height: 100%;
+    flex: 1;
+    overflow-y: auto;
 }
 
 .channel-pane {
@@ -733,6 +771,25 @@ h1 {
     background: none;
     pointer-events: none;
     z-index: 99;
+}
+
+#chat.dragging * {
+    pointer-events: none;
+}
+
+#chatDropZone {
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #000c;
+    z-index: 15;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
 }
 
 #tabs-icon {

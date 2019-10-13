@@ -230,7 +230,7 @@ function sendChatMessage(msg, channel) {
     socket.send(JSON.stringify({
         act: 'insert_chat',
         arg: {
-            channel: channel,
+            channel_id: channel,
             text: msg
         },
         msgId: msgHandler()
@@ -1445,6 +1445,7 @@ $(window).on('load', function () {
             case 'get_channels':
             case 'insert_chat_channel':
                 addChatChannels(msg.arg)
+                break;
 
                 // events
             case 'get_events':

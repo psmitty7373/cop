@@ -18,9 +18,10 @@ var filesDragAndDrop = function (e) {
 
         if (e.originalEvent.type == 'drop') {
             var node = $('#files').jstree().get_node(srcElement.id.split('_')[0]);
+            console.log(node);
             if (node) {
                 var formData = new FormData();
-                formData.append('dir', $('#files').jstree().get_path(node).join('/').replace('//',''));
+                formData.append('parent_id', node.id);
 
                 $.each(e.originalEvent.dataTransfer.files, function (i, file) {
                     formData.append('file', file);
@@ -77,13 +78,14 @@ function progressHandler(e) {
 function addFiles(files) {
     for (var i = 0; i < files.length; i++) {
         var node = { id: files[i]._id, text: files[i].name, icon: 'jstree-file', type: files[i].type, li_attr: { isLeaf: true } };
+        console.log(node);
 
         if (files[i].type === 'dir') {
             node.icon = 'jstree-folder';
             node.li_attr.isLeaf = false;
             node.a_attr = { class: 'droppable' };
         }
-        $('#files').jstree().create_node(files[i].parent, node);
+        $('#files').jstree().create_node(files[i].parent_id, node);
     }
 }
 
@@ -105,24 +107,7 @@ $(window).on('load', function () {
                 'themes': {
                     'dots': true
                 },
-                'data': [{
-                    id: '.',
-                    text: "/",
-                    icon: "jstree-folder",
-                    state: {
-                        opened: true,
-                        disabled: false,
-                        selected: false
-                    },
-                    li_attr: {
-                        base: "#",
-                        isLeaf: false
-                    },
-                    a_attr: {
-                        class: 'droppable'
-                    },
-                    children : []
-                }]
+                'data': []
             },
             'plugins': ['dnd', 'wholerow', 'contextmenu'],
             'contextmenu': {
@@ -137,12 +122,14 @@ $(window).on('load', function () {
                             'action': function (obj) {
                                 var _node = node;
                                 bootbox.prompt('Rename to?', function (name) {
+                                    console.log(node);
                                     if (name !== null) {
                                         socket.send(JSON.stringify({
                                             act: 'update_file',
                                             arg: {
-                                                src: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
-                                                dst: ($('#files').jstree().get_path(node.id).slice(0,-1).join('/') + '/' + name).replace('//','')
+                                                _id: node.id,
+                                                parent_id: node.parent,
+                                                name: name
                                             },
                                             msgId: msgHandler()
                                         }));
@@ -158,7 +145,7 @@ $(window).on('load', function () {
                                 socket.send(JSON.stringify({
                                     act: 'delete_file',
                                     arg: {
-                                        file: $('#files').jstree().get_path(node.id).join('/').replace('//','')
+                                        _id: node.id
                                     },
                                     msgId: msgHandler()
                                 }));
@@ -175,11 +162,13 @@ $(window).on('load', function () {
                                 var _node = node;
                                 bootbox.prompt('Directory name?', function (name) {
                                     if (name !== null) {
+                                        console.log(node);
                                         socket.send(JSON.stringify({
                                             act: 'insert_file',
                                             arg: {
-                                                dst: $('#files').jstree().get_path(node.id).join('/').replace('//',''),
-                                                name: name
+                                                parent_id: node.id,
+                                                name: name,
+                                                type: 'dir'
                                             },
                                             msgId: msgHandler()
                                         }));
@@ -194,11 +183,13 @@ $(window).on('load', function () {
         });
 
     $('#files').on("move_node.jstree", function (e, data) {
+        console.log(data);
         socket.send(JSON.stringify({
             act: 'update_file',
             arg: {
-                src: $('#files').jstree().get_path(data.old_parent).join('/').replace('//','') + '/' + data.node.text,
-                dst: $('#files').jstree().get_path(data.node.id).join('/').replace('//','')
+                _id: data.node.id,
+                parent_id: data.parent,
+                name: data.node.text                
             },
             msgId: msgHandler()
         }));
