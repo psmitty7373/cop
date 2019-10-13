@@ -77,8 +77,7 @@ function progressHandler(e) {
 
 function addFiles(files) {
     for (var i = 0; i < files.length; i++) {
-        var node = { id: files[i]._id, text: files[i].name, icon: 'jstree-file', type: files[i].type, li_attr: { isLeaf: true } };
-        console.log(node);
+        var node = { id: files[i]._id, text: files[i].name, icon: 'jstree-file', state: { opened: true }, type: files[i].type, li_attr: { isLeaf: true }, data: { protected: files[i].protected }};
 
         if (files[i].type === 'dir') {
             node.icon = 'jstree-folder';
@@ -97,24 +96,43 @@ $(window).on('load', function () {
     $('#files')
         .on('select_node.jstree', function (e, data) {
             if (data.node.li_attr.isLeaf) {
-                var url = 'download/mission-' + mission_id + '/' + $('#files').jstree().get_path(data.node).join('/').replace('//','');
+                var url = 'download?file_id=' + data.node.id + '&mission_id=' + mission_id; 
                 var dl = $('<iframe />').attr('src', url).hide().appendTo('body');
             }
 
         }).jstree({
             'core': {
-                'check_callback': true,
+                'check_callback' : function(o, n, p, i, m) {
+                    if(m && m.dnd && m.pos !== 'i') { return false; }
+                    if(o === "move_node" || o === "copy_node") {
+                        if(this.get_node(n).parent === this.get_node(p).id) { return false; }
+                    }
+                    return true;
+                },
                 'themes': {
-                    'dots': true
+                    'dots': false
                 },
                 'data': []
             },
             'plugins': ['dnd', 'wholerow', 'contextmenu'],
+            'dnd': {
+                'is_draggable': function(node) {
+                    return !node[0].data.protected;
+                },
+                'drag_check': function(node) {
+                    console.log(node);
+                    return {
+                        after: false,
+                        before: false,
+                        inside: true
+                    }
+                }
+            },
             'contextmenu': {
                 'select_node': false,
                 'items': function (node) {
                     var menu = {};
-                    if (permissions.write_access && node.text != '/') {
+                    if (permissions.write_access && node.data.protected === false) {
                         menu.rename = {
                             'separator_before': false,
                             'separator_after': false,
@@ -183,7 +201,6 @@ $(window).on('load', function () {
         });
 
     $('#files').on("move_node.jstree", function (e, data) {
-        console.log(data);
         socket.send(JSON.stringify({
             act: 'update_file',
             arg: {

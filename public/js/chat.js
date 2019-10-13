@@ -311,7 +311,6 @@ function newChannel() {
 }
 
 function changeChannel(e) {
-    console.log('changeChannel', e);
     if (e.target.id.indexOf('Label') === -1) {
         return;
     }
