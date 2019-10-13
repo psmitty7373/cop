@@ -229,6 +229,20 @@ td a {
     padding: 10px;
 }
 
+#chatProgressbar {
+    width: 100%;
+    height: 25px;
+    text-align: center;
+}
+
+#chatProgressbarContainer {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 75%;
+    padding: 10px;
+}
+
 #globalSearchText {
     height: 23px;
 }
@@ -282,6 +296,7 @@ td a {
     background-color: #000c;
     z-index: 15;
     display: flex;
+    flex-flow: column;
     justify-content: center;
     align-items: center;
     visibility: hidden;
@@ -369,7 +384,7 @@ td a {
     line-height: 16px;
 }
 
-.channelLabel {
+.userLabel, .channelLabel {
     cursor: pointer;
     display: flex;
     flex-flow: row;
@@ -381,6 +396,17 @@ td a {
     text-decoration: none;
     line-height: 26px;
     vertical-align: middle;
+}
+
+.channelHeading {
+    padding: 0 12px 0 6px;
+    height: 26px;
+    width: 100%;
+    font-size: 16px;
+    text-decoration: none;
+    line-height: 26px;
+    vertical-align: middle;
+    margin-top: 5px;
 }
 
 .channelName {
@@ -438,7 +464,6 @@ td a {
 }
 
 #channels {
-    height: 100%;
     flex: 1;
     overflow-y: auto;
 }

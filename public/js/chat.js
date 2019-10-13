@@ -83,16 +83,16 @@ var chatDragAndDrop = function (e) {
                 xhr: function () {
                     var mxhr = $.ajaxSettings.xhr();
                     if (mxhr.upload) {
-                        /*
-                        $("#progressbar")
+                        
+                        $("#chatProgressbar")
                             .progressbar({
                                 value: 0
                             })
                             .children('.ui-progressbar-value')
                             .html('0%')
                             .css("display", "block");
-                        mxhr.upload.addEventListener('progress', progressHandler, false);
-                        */
+                        mxhr.upload.addEventListener('progress', chatProgressHandler, false);
+                        
                     }
                     return mxhr;
                 },
@@ -102,22 +102,31 @@ var chatDragAndDrop = function (e) {
                 contentType: false,
                 processData: false,
                 success: function () {
-                    /*$("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
+                    $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
                     setTimeout(function () {
-                        $("#progressbar").fadeOut("slow");
-                    }, 5000);*/
+                        $("#chatProgressbar").fadeOut("slow");
+                        $('#chatDropZone').css('visibility', 'hidden');
+                    }, 2000);
                 },
                 error: function () {
-                    /*$("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');*/
+                    $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
+                    $('#chatDropZone').css('visibility', 'hidden');
                     console.log('upload error');
                 }
             });
             
             $('#chat').removeClass('dragging');
-            $('#chatDropZone').css('visibility', 'hidden');
         }
     }
 };
+
+function chatProgressHandler(e) {
+    if (e.lengthComputable) {
+        var p = Math.floor((e.loaded / e.total) * 100);
+        $("#chatProgressbar").progressbar('value', p).children('.ui-progressbar-value').html(p.toPrecision(3) + '%');
+
+    }
+}
 
 function deleteChannel(e) {
     console.log(e);
@@ -148,7 +157,12 @@ function addChatChannels(c) {
             deleteButton = '';
         }
 
-        $('#channels').append('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label"><div class="channelName">#' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
+        if (c[i].type === 'channel') {
+            $('#channelsHeading').after('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
+        } else if (c[i].type === 'user') {
+            $('#usersHeading').after('<div class="channel userLabel' + selected + '" id="' + c[i]._id + 'Label" data-name="' + c[i].name + '"><div class="channelName">O ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
+        }
+
         $('#channelPanes').append('<div class="channel-pane" id="' + c[i]._id + 'Pane" style="' + style +'"><div id="' + c[i]._id + 'Messages"></div></div>');
         $('#' + c[i]._id + 'Label').click(changeChannel);
         $('#' + c[i]._id + 'Delete').click(deleteChannel);
@@ -156,6 +170,11 @@ function addChatChannels(c) {
             className: "os-theme-light"
         });
     }
+    $('#channelsHeading').after($('div.channelLabel').sort(function (a, b) {
+        var contentA = $(a).attr('data-name');
+        var contentB = $(b).attr('data-name');
+        return (contentA < contentB) ? -1 : (contentA > contentB) ? 1 : 0;
+     }));
 }
 
 // adds chat messages to chat panels

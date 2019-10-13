@@ -110,7 +110,7 @@ $(window).on('load', function () {
                     return true;
                 },
                 'themes': {
-                    'dots': false
+                    'dots': true
                 },
                 'data': []
             },

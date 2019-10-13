@@ -1004,9 +1004,20 @@ async function getChatChannels(socket) {
         }, {
             $project: {
                 _id: '$channels._id',
-                name: '$channels.name'
+                name: '$channels.name',
+                type: 'channel'
             }
         }]).toArray();
+
+        var users = [];
+        for (var i = rooms.get(socket.mission_id).values(), s = null; s = i.next().value; ) {
+            if (s.readyState === s.OPEN) {
+                if (users.indexOf(s.username) === -1) {
+                    users.push(s.username);
+                    channels.push({ _id: s.user_id, name: s.username, type: 'user'});
+                }
+            }
+        };
 
         socket.send(JSON.stringify({
             act: 'get_channels',
@@ -1581,13 +1592,41 @@ async function getFiles(socket) {
     }
 }
 
-async function insertFile(socket, file) {
+async function insertFile(socket, file, allowDupName) {
+    if (allowDupName === undefined) {
+        allowDupName = false;
+    }
     try {
         if (file.type === 'dir') {
             file.name = xssFilters.inHTMLData(file.name).replace(/\//g,'').replace(/\\/g,'');
         }
 
+        console.log(file);
+
+        var res = [];
+        var match = {};
+        // check if the same file already exists with the same hash and same name
+        if (allowDupName) {
+            match = {
+                'files.hash': file.hash,
+                'files.name': file.name,
+                'files.parent_id': objectid(file.parent_id),
+                'files.deleted': {
+                    $ne: true
+                }
+            }
+
         // check if a file with the same name already exists under this parent
+        } else {
+            match = {
+                'files.name': file.name,
+                'files.parent_id': objectid(file.parent_id),
+                'files.deleted': {
+                    $ne: true
+                }
+            }
+        }
+
         var res = await mdb.collection('missions').aggregate([{
             $match: {
                 _id: objectid(socket.mission_id),
@@ -1598,13 +1637,7 @@ async function insertFile(socket, file) {
         }, {
             $unwind: '$files'
         }, {
-            $match: { 
-                'files.name': file.name,
-                'files.parent_id': objectid(file.parent_id),
-                'files.deleted': {
-                    $ne: true
-                }
-            }
+            $match: match
         }, {
             $project: {
                 _id: '$files._id',
@@ -1647,6 +1680,7 @@ async function insertFile(socket, file) {
                 parent_id: objectid(file.parent_id),
                 type: file.type,
                 level: parent[0].level + 1,
+                hash: file.hash,
                 protected: false
             };
 
@@ -1681,10 +1715,13 @@ async function insertFile(socket, file) {
  
         // file already exists
         else if(file.type === 'file') {
+            //TO-DO: cleanup old file?
+
             file._id = res[0]._id;
 
             var new_values = {
-                'files.$.realName': file.realName
+                'files.$.realName': file.realName,
+                hash: file.hash
             };
 
             var res = await mdb.collection('missions').updateOne({
@@ -2908,6 +2945,7 @@ app.post('/upload', upload.any(), function (req, res) {
                     newFile.name = file.originalname;
                     newFile.realName = hash;
                     newFile.type = 'file';
+                    newFile.hash = hash;
 
                     // file upload
                     if (req.body.parent_id) {
@@ -2924,16 +2962,22 @@ app.post('/upload', upload.any(), function (req, res) {
                         }, {
                             projection: { chat_files_root: 1 }
                         });
-                        newFile.name = file.originalname + '_' + objectid(null);
+                        newFile.name = file.originalname;
                         newFile.parent_id = res.chat_files_root;
 
-                        new_id = await insertFile(s, newFile);
+                        new_id = await insertFile(s, newFile, true);
 
                         var buffer = readChunk.sync(base + '/' + hash, 0, fileType.minimumBytes);
                         var filetype = fileType(buffer);
 
                         if (filetype === undefined) {
-                            insertLogEvent(s, '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/blank.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">unknown file type (' + readableBytes(file.size) + ')</div></div></div></a>', req.body.channel_id, false);
+                            var mimetype = mime.lookup(file.originalname);
+                            var extension = mime.extension(mimetype);
+                            if (!mimetype) {
+                                mimetype = 'unknown file type';
+                                extension = 'unk';
+                            }
+                            insertLogEvent(s, '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimetype + ' (' + readableBytes(file.size) + ')</div></div></div></a>', req.body.channel_id, false);
                         }
                         else if (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif') {
                             insertLogEvent(s, '<img class="chatImage" src="/render/' + hash + '">', req.body.channel_id, false);
@@ -2993,6 +3037,10 @@ app.post('/avatar', upload.any(), function (req, res) {
 
 app.get("/images/avatars/*", function (req, res, next) {
     res.sendFile(path.join(__dirname, 'public/images/avatars/default.png'));
+});
+
+app.get("/images/file_types/*", function (req, res, next) {
+    res.sendFile(path.join(__dirname, 'public/images/file_types/blank.svg'));
 });
 
 // -------------------------------------------------------------------------
