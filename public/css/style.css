@@ -150,9 +150,12 @@ td a {
 }
 
 .messageInput {
-    border: 2px solid #a0a0a2;
+    border: 1px solid #ddd;
     border-radius: 5px !important;
     width: 100%;
+    background-color: #222;
+    color: #fff;
+    padding: 5px;
 }
 
 .messageSender {
@@ -265,6 +268,25 @@ td a {
     right: 0px;
 }
 
+#chat.dragging * {
+    pointer-events: none;
+}
+
+#chatDropZone {
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #000c;
+    z-index: 15;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+}
+
 #chat {
     padding-top: 10px;
     padding-bottom: 10px;
@@ -279,6 +301,23 @@ td a {
     overflow-y: scroll;
     background: #ffffff;
     padding-left: 15px;
+}
+
+.chatImage {
+    max-height: 500px;
+    max-width: 500px;
+}
+
+.chatIcon {
+    width: 50;
+    height: 50px;
+}
+
+.chatFile {
+    display: flex;
+    flex-flow: row;
+    width: fit-content;
+    padding: 5px;
 }
 
 .tablesPane {
@@ -771,25 +810,6 @@ h1 {
     background: none;
     pointer-events: none;
     z-index: 99;
-}
-
-#chat.dragging * {
-    pointer-events: none;
-}
-
-#chatDropZone {
-    pointer-events: none;
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    left: 0;
-    top: 0;
-    background-color: #000c;
-    z-index: 15;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    visibility: hidden;
 }
 
 #tabs-icon {

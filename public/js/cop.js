@@ -1470,7 +1470,6 @@ $(window).on('load', function () {
                 break;
 
             case 'insert_opnote':
-                console.log(msg);
                 opnotesTabulator.addRow(msg.arg);
                 break;
 
@@ -1587,7 +1586,6 @@ $(window).on('load', function () {
                             if (o.type === 'link' && o.stroke_color === '') // don't let links disappear
                                 o.stroke_color = '#000000';
                             if (canvas.item(i).name_val !== o.name) {
-                                console.log('renaming');
                                 canvas.item(i).name_val = o.name;
                                 for (var k = 0; k < to.children.length; k++) {
                                     if (canvas.item(i).children[k].objType === 'name') {

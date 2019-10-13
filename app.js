@@ -140,6 +140,14 @@ Array.prototype.move = function (old_index, new_index) {
     return this;
 };
 
+// https://ourcodeworld.com/articles/read/713/converting-bytes-to-human-readable-values-kb-mb-gb-tb-pb-eb-zb-yb-with-javascript
+function readableBytes(bytes) {
+    var i = Math.floor(Math.log(bytes) / Math.log(1024)),
+    sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+    return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + sizes[i];
+}
+
 function dynamicSort(property) {
     var sortOrder = 1;
     if (property[0] === "-") {
@@ -1667,6 +1675,8 @@ async function insertFile(socket, file) {
                     }
                 }));
             }
+
+            return new_id;
         }
  
         // file already exists
@@ -1698,6 +1708,8 @@ async function insertFile(socket, file) {
                     }
                 }));
             }
+
+            return file._id;
         } else {
             socket.send(JSON.stringify({
                 act: 'error',
@@ -1705,6 +1717,8 @@ async function insertFile(socket, file) {
                     text: 'Error inserting file.  Directory already exists.'
                 }
             }));
+
+            return null;
         }
 
     } catch (err) {
@@ -1715,6 +1729,8 @@ async function insertFile(socket, file) {
             }
         }));
         logger.error(err);
+
+        return null;
     }
 }
 
@@ -2896,7 +2912,7 @@ app.post('/upload', upload.any(), function (req, res) {
                     // file upload
                     if (req.body.parent_id) {
                         newFile.parent_id = req.body.parent_id;
-                        
+                        insertFile(s, newFile);                        
                     }
                     // chat upload
                     else if (req.body.channel_id) {
@@ -2911,43 +2927,24 @@ app.post('/upload', upload.any(), function (req, res) {
                         newFile.name = file.originalname + '_' + objectid(null);
                         newFile.parent_id = res.chat_files_root;
 
-                        var mimeType = mime.lookup(base + '/' + hash);
+                        new_id = await insertFile(s, newFile);
+
                         var buffer = readChunk.sync(base + '/' + hash, 0, fileType.minimumBytes);
                         var filetype = fileType(buffer);
-                        if (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif') {
+
+                        if (filetype === undefined) {
+                            insertLogEvent(s, '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/blank.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">unknown file type (' + readableBytes(file.size) + ')</div></div></div></a>', req.body.channel_id, false);
+                        }
+                        else if (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif') {
                             insertLogEvent(s, '<img class="chatImage" src="/render/' + hash + '">', req.body.channel_id, false);
-                        }   
+                        } else {
+                            insertLogEvent(s, '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + filetype.ext + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + filetype.mime + ' (' + readableBytes(file.size) + ')</div></div></div></a>', req.body.channel_id, false);
+                        }
                     }
-                    insertFile(s, newFile);
+                    
                 });
                 callback(file);
             }, function (file) {
-                /*
-                // grab inode of uploaded file and send to sockets
-                var filestat = fs.statSync(fullpath + '/' + file.originalname);
-                var parent = dirstat.ino;
-                if (req.body.dir === '/') {
-                    parent = '.';
-                }
-
-                if (req.body.channel_id) {
-                    
-                    var s = findUserSocket(req.session.user_id, req.body.mission_id,);
-                    if (s) {
-                     
-                    }
-                }
-                
-                sendToRoom(req.body.mission_id, JSON.stringify({
-                    act: 'insert_file',
-                    arg: {
-                        _id: filestat.ino,
-                        name: file.originalname,
-                        type: 'file',
-                        parent: parent
-                    }
-                }));
-                */
                 res.send('{}');
             });
         }

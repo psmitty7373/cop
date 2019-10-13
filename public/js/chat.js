@@ -54,7 +54,6 @@ var chatDragAndDrop = function (e) {
     var srcElement = e.originalEvent.srcElement ? e.originalEvent.srcElement : e.originalEvent.target;
 
     if (e.originalEvent.type === 'dragleave') {
-        console.log('dragleave');
     }
 
     if ($.inArray('Files', e.originalEvent.dataTransfer.types) > -1) {
@@ -259,7 +258,7 @@ function addChatMessage(messages, bulk, scroll) {
             if (atBottom) {
                 setTimeout(function () {
                     $('#' + channel_id + 'Pane').overlayScrollbars().scroll($('#' + channel_id + 'Pane').overlayScrollbars().scroll().max.y);
-                }, 50);
+                }, 100);
             }
         }
         if (messages[i].more && bulk) {
