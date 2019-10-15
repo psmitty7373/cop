@@ -2561,6 +2561,10 @@ async function setupSocket(socket) {
                     getMissions(socket);
                     break;
 
+                case 'echo':
+                    sendToRoom(socket.mission_id, JSON.stringify(msg), socket);
+                    break;
+
                 default:
                     if (messageHandlers[msg.act]) {
                         if (messageHandlers[msg.act].checks(socket, messageHandlers[msg.act].permission) && ajv.validate(validators[msg.act], msg.arg)) {

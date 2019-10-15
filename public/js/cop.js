@@ -93,10 +93,10 @@ function checkIfObjectsLoaded() {
         $('#modal').modal('hide');
         //FIXME
         // objects loaded, update the events tracker
-        updateLinks();
-        updateMinimapBg();
-        canvas.requestRenderAll();
-        canvas.renderOnAddRemove = true;
+        //updateLinks();
+        //updateMinimapBg();
+        //canvas.requestRenderAll();
+        //canvas.renderOnAddRemove = true;
     } else {
         setTimeout(checkIfObjectsLoaded, 50);
     }
@@ -142,11 +142,13 @@ function loadSettings() {
     settings = JSON.parse(dc.split('mcscop-settings=')[1]);
     $('#diagramJumbo').height(settings.diagram);
     $('#bottomJumbo').height(settings.tables);
+    /*
     canvas.setZoom(settings.zoom);
     canvas.relativePan({
         x: settings.x,
         y: settings.y
     });
+    */
 }
 
 function updateSettings() {
@@ -1155,8 +1157,6 @@ $(window).on('load', function () {
     });
 
     // ---------------------------- MISC ----------------------------------
-    $('#diagram').mousedown(startPan);
-
     $('[name="propFillColor"]').paletteColorPicker({
         colors: [
             {'#000000': '#000000'},
@@ -1350,7 +1350,7 @@ $(window).on('load', function () {
 
     // load settings from cookie
     loadSettings();
-    resizeCanvas();
+    //resizeCanvas();
 
     // ---------------------------- DIAGRAM SOCKET STUFF ----------------------------------
     socket.onopen = function () {
@@ -1422,6 +1422,10 @@ $(window).on('load', function () {
                 checkIfShapesCached(objects);
                 break;
 
+            case 'echo':
+                console.log(msg.arg);
+                changes(msg.arg);
+                break;
 
             case 'get_opnotes':
                 opnotesTabulator.setData(msg.arg);

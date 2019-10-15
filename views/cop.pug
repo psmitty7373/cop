@@ -26,8 +26,7 @@ html
       include nav.pug
       div.jumbotron#diagramJumbo(style='height:700px;')
         div.canvas#diagram
-          canvas#background
-          canvas#canvas
+          div#canvas
           div#message
           div#objectSearchBar
             input(type="text", placeholder="Search...").form-control#objectSearch
@@ -189,7 +188,7 @@ script var permissions = !{permissions}; var user_id = "#{user_id}"; var usernam
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/jquery.overlayScrollbars.min.js')
-script(src='js/fabric.min.js')
+script(src='js/mxClient.min.js')
 script(src='js/toastr.min.js')
 script(src='js/bootstrap.min.js')
 script(src='js/bootbox.min.js')
