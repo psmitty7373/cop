@@ -155,6 +155,9 @@ $(window).on('load', function () {
                                 });
                             }
                         };
+                    }
+
+                    if (permissions.delete_access && node.data.protected === false) {
                         menu.del = {
                             'separator_before': false,
                             'separator_after': false,
@@ -170,7 +173,7 @@ $(window).on('load', function () {
                             }
                         };
                     }
-                    
+                
                     if (permissions.write_access && !node.li_attr.isLeaf) {
                         menu.mkdir = {
                             'separator_before': false,

@@ -125,7 +125,9 @@ $(window).on('load', function () {
                                     });
                                 }
                             };
-
+                        }
+                        
+                        if (permissions.delete_access && node.parent === 'notes') {
                             menu.del = {
                                 'separator_before': false,
                                 'separator_after': false,
@@ -139,7 +141,7 @@ $(window).on('load', function () {
                                         msgId: msgHandler()
                                     }));
                                 }
-                            }
+                            };
                         }
                         return menu;
                     }

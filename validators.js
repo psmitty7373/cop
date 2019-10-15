@@ -8,9 +8,13 @@ const insert_chat = {
         channel_id: {
             type: 'string',
             pattern: '^[a-fA-F0-9]{24}$'
+        },
+        type: {
+            type: 'string',
+            'enum': ['channel', 'user'],
         }
     },
-    required: ['text', 'channel_id'],
+    required: ['text', 'channel_id', 'type'],
     additionalProperties: false
 }
 

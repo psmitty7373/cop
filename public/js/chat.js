@@ -1,4 +1,5 @@
 var activeChannel = '';
+var activeChannelType = '';
 var firstChat = true;
 var channels = {};
 
@@ -70,6 +71,7 @@ var chatDragAndDrop = function (e) {
         if (e.originalEvent.type == 'drop') {
             var formData = new FormData();
             formData.append('channel_id', activeChannel);
+            formData.append('type', activeChannelType);
 
             $.each(e.originalEvent.dataTransfer.files, function (i, file) {
                 formData.append('file', file);
@@ -145,6 +147,7 @@ function addChatChannels(c) {
 
         if (c[i].name === 'general') {
             activeChannel = c[i]._id;
+            activeChannelType = 'channel';
             style = '';
             selected = ' channelSelected';
         } else {
@@ -158,9 +161,9 @@ function addChatChannels(c) {
         }
 
         if (c[i].type === 'channel') {
-            $('#channelsHeading').after('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
+            $('#channelsHeading').after('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
         } else if (c[i].type === 'user') {
-            $('#usersHeading').after('<div class="channel userLabel' + selected + '" id="' + c[i]._id + 'Label" data-name="' + c[i].name + '"><div class="channelName">O ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
+            $('#usersHeading').after('<div class="channel userLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName">O ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
         }
 
         $('#channelPanes').append('<div class="channel-pane" id="' + c[i]._id + 'Pane" style="' + style +'"><div id="' + c[i]._id + 'Messages"></div></div>');
@@ -171,6 +174,12 @@ function addChatChannels(c) {
         });
     }
     $('#channelsHeading').after($('div.channelLabel').sort(function (a, b) {
+        var contentA = $(a).attr('data-name');
+        var contentB = $(b).attr('data-name');
+        return (contentA < contentB) ? -1 : (contentA > contentB) ? 1 : 0;
+     }));
+
+     $('#usersHeading').after($('div.userLabel').sort(function (a, b) {
         var contentA = $(a).attr('data-name');
         var contentB = $(b).attr('data-name');
         return (contentA < contentB) ? -1 : (contentA > contentB) ? 1 : 0;
@@ -225,8 +234,6 @@ function addChatMessage(messages, bulk, scroll) {
         }
         
         var newMsg = '<div class="messageWrapper"><div class="message"><div class="messageGutter">' + avatar + '</div><div class="messageContent">' + header + '<span class="messageBody">' + messages[i].text + '</span></div><div class="messageOptions"><div class="btn-group" role="group"><button type="button" class="btn btn-primary messageOptionBtn"><i class="fa fa-pencil"></i></button><button type="button" class="btn btn-primary messageOptionBtn"><i class="fa fa-cancel-circled"></i></button></div></div></div></div>';
-
-        // mark who sent the message
 
         if (bulk) {
             bulkMsg[channel_id].messages += newMsg;
@@ -332,7 +339,9 @@ function changeChannel(e) {
     if (e.target.id.indexOf('Label') === -1) {
         return;
     }
+
     var channel = e.target.id.split('Label')[0];
+    var type = $(e.target).attr('data-type');
 
     if (channel !== activeChannel && activeChannel !== '') {
         if ($('#' + activeChannel + 'Pane').overlayScrollbars().scroll().max.y == $('#' + activeChannel + 'Pane').overlayScrollbars().scroll().position.y) {
@@ -357,6 +366,7 @@ function changeChannel(e) {
 
     $('#' + channel + 'Label').addClass('channelSelected');
     activeChannel = channel;
+    activeChannelType = type;
 }
 
 $(window).on('load', function () {
@@ -400,7 +410,7 @@ $(window).on('load', function () {
         var key = e.charCode || e.keyCode || 0;
         if (key === $.ui.keyCode.ENTER) {
             if ($("#messageInput").val() != '') {
-                sendChatMessage($("#messageInput").val(), activeChannel);
+                sendChatMessage($("#messageInput").val(), activeChannel, activeChannelType);
                 $("#messageInput").val('');
             }
         }

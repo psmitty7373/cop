@@ -321,7 +321,6 @@ function objectModified(o) {
 
     // update minimap
     updateMinimapBg();
-    console.log('here');
     // send changes to db
     socket.send(JSON.stringify({
         act: 'move_object',

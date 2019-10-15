@@ -226,12 +226,13 @@ function msgHandler() {
 }
 
 // send chat message to db
-function sendChatMessage(msg, channel) {
+function sendChatMessage(msg, channel, type) {
     socket.send(JSON.stringify({
         act: 'insert_chat',
         arg: {
             channel_id: channel,
-            text: msg
+            text: msg,
+            type: type
         },
         msgId: msgHandler()
     }));
@@ -712,6 +713,9 @@ $(window).on('load', function () {
     $('.tableBody').overlayScrollbars({
         className: "os-theme-light"
     });
+    $('#channels').overlayScrollbars({
+        className: "os-theme-light"
+    });
 
     // start clocks
     startTime();
@@ -1010,8 +1014,7 @@ $(window).on('load', function () {
             {
                 title: 'User',
                 field: 'username'
-            },
-            {
+            }, {
                 headerSort: false,
                 formatter: 'buttonCross',
                 width: 40,
@@ -1079,8 +1082,7 @@ $(window).on('load', function () {
             {
                 title: 'User',
                 field: 'username'
-            },
-            {
+            }, {
                 headerSort: false,
                 formatter: 'buttonCross',
                 width: 40,
@@ -1097,7 +1099,7 @@ $(window).on('load', function () {
                         msgId: msgHandler()
                     }));
                 }
-            },
+            }
         ]
     });
 
