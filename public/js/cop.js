@@ -1155,8 +1155,6 @@ $(window).on('load', function () {
     });
 
     // ---------------------------- MISC ----------------------------------
-    $('#diagram').mousedown(startPan);
-
     $('[name="propFillColor"]').paletteColorPicker({
         colors: [
             {'#000000': '#000000'},
@@ -1548,7 +1546,7 @@ $(window).on('load', function () {
                     if (objectSelect[i]._id === o._id && objectSelect[i].name !== o.name.split('\n')[0]) {
                         var node = $('#notes').jstree(true).get_node(o._id, true);
                         if (node) {
-                            $('#notes').jstree().rename_node(o._id, o.name.split('\n')[0]);
+                             $('#notes').jstree().rename_node(o._id, o.name.split('\n')[0]);
                         }                        
                         objectSelect[i].name = o.name.split('\n')[0];
                         break;

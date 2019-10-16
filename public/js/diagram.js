@@ -1326,3 +1326,7 @@ function changeObject(o) {
         msgId: msgHandler()
     }));
 }
+
+$(window).on('load', function () {
+    $('#diagram').mousedown(startPan);
+});

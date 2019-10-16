@@ -1960,9 +1960,10 @@ async function getNotes(socket) {
                 deleted: {
                     $ne: true
                 },
-                //type: {
-                //    $ne: 'link'
-                //}
+            }, {
+                name: {
+                    $ne: ''
+                }
             }]
         },{ projection: projection }).sort({
             name: 1
