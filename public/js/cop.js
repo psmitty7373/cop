@@ -1326,7 +1326,7 @@ $(window).on('load', function () {
                         o.top += 1;
                         break;
                 }
-                objectMoving(o, 0);
+                //objectMoving(o, 0);
                 o.setCoords();
                 canvas.requestRenderAll();
 

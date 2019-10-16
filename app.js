@@ -380,7 +380,15 @@ async function insertObject(socket, object) {
 async function pasteObject(socket, objects) {
     try {
         var args = [];
-        async.eachOf(objects, async function (o, index, callback) {
+
+        var count = await mdb.collection('objects').count({
+            mission_id: objectid(socket.mission_id),
+            deleted: {
+                $ne: true
+            }
+        });
+
+        async.forEachOf(objects, async function (o, index, callback) {
         //if (ajv.validate(validators.paste_object, o)) {
             try {
                 var row = await mdb.collection('objects').findOne({
@@ -395,12 +403,11 @@ async function pasteObject(socket, objects) {
 
                 if (row) {
                     row._id = objectid(null);
-                    row.z = o.z;
+                    row.z = count + index;
                     row.x = o.x;
                     row.y = o.y;
 
                     var res = await mdb.collection('objects').insertOne(row);
-                    insertLogEvent(socket, { text: 'Created ' + row.type + ': ' + row.name + '.' });
                     args.push(row);
                 }
                 callback();
@@ -411,6 +418,8 @@ async function pasteObject(socket, objects) {
             if (err) {
                 throw(err);
             } else {
+                insertLogEvent(socket, { text: 'Pasted some objects.' });
+                args.sort(dynamicSort('z'));
                 sendToRoom(socket.room, JSON.stringify({
                     act: 'insert_object',
                     arg: args
@@ -577,11 +586,15 @@ async function moveObject(socket, objects) {
                 // move objects (z-axis)
                 if (o.z !== zs.indexOf(o._id)) {
                     o.z = Math.floor(o.z);
+                    o.x = Math.round(o.x);
+                    o.y = Math.round(o.y);
                     zs.move(zs.indexOf(String(o._id)), o.z);
                     async.forEachOf(zs, async function (item, index, callback) {
                         try {
                             var new_values = {
                                 $set: {
+                                    x: o.x,
+                                    y: o.y,
                                     z: index
                                 }
                             };

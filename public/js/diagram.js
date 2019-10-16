@@ -1,14 +1,14 @@
 // ---------------------------- FABRIC CANVASES ----------------------------------
 MAXWIDTH = 2000;
 MAXHEIGHT = 2000;
-fabric.Object.prototype.originX = 'left';
-fabric.Object.prototype.originY = 'top';
+//fabric.Object.prototype.originX = 'left';
+//fabric.Object.prototype.originY = 'top';
 //fabric.Group.prototype.hasControls = false;
 fabric.Object.prototype.transparentCorners = false;
 fabric.Object.prototype.cornerSize = 7;
 fabric.Object.prototype.objectCaching = true;
 fabric.Object.prototype.noScaleCache = false;
-fabric.Object.NUM_FRACTION_DIGITS = 10;
+//fabric.Object.NUM_FRACTION_DIGITS = 10;
 fabric.Object.prototype.lockScalingFlip = true;
 fabric.Group.prototype.hasControls = false;
 fabric.Group.prototype.lockScalingX = true;
@@ -16,9 +16,9 @@ fabric.Group.prototype.lockScalingY = true;
 
 // canvas initilization
 var canvas = new fabric.Canvas('canvas', {
-    preserveObjectStacking: true,
-    renderOnAddRemove: false,
-    enableRetinaScaling: false,
+    //preserveObjectStacking: true,
+    //renderOnAddRemove: false,
+    //enableRetinaScaling: false,
     uniScaleTransform: true,
     width: MAXWIDTH,
     height: MAXHEIGHT
@@ -163,17 +163,138 @@ canvas.on('object:rotating', function (options) {
 
 // called when an object is moving on the canvas
 canvas.on('object:moving', function (options) {
-    objectMoving(options.target, 2);
+    var o = options.target;
+    var grid = 5;
+
+    o.set({
+        left: Math.round(o.left / grid) * grid,
+        top: Math.round(o.top / grid) * grid
+    });
+
+    var zoom = canvas.getZoom();
+    var tmod = 0;
+    var lmod = 0;
+    if (canvas.getActiveObjects().length > 1) {
+        tmod = o.top + o.height / 2;
+        lmod = o.left + o.width / 2;
+    }
+
+    drawAlignmentGuides(o, 1);
+    o = canvas.getActiveObjects();
+    for (var i = 0; i < o.length; i++) {
+        o[i].dirty = true;
+        for (var j = 0; j < o[i].children.length; j++) {
+            if (o[i].children[j].objType === 'name') {
+                o[i].children[j].set('top', o[i].top + tmod + o[i].height * o[i].scaleY + 4);
+                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX) / 2);
+                o[i].children[j].setCoords();
+            } else if (o[i].children[j].objType === 'link') {
+                drawLink(o[i].children[j]);
+            }
+        }
+    }
 });
 
 canvas.on('object:scaling', function (options) {
     var o = options.target;
+
     var tmod = 0;
     var lmod = 0;
     if (canvas.getActiveObjects().length > 1) {
         tmod = options.target.top + options.target.height / 2;
         lmod = options.target.left + options.target.width / 2;
     }
+
+    var w = o.width * o.scaleX;
+    var h = o.height * o.scaleY;
+
+    if (!o.savedRight) {
+        o.savedRight = o.left + w;
+    }
+
+    if (!o.savedBottom) {
+        o.savedBottom = o.top + h;
+    }
+
+    var grid = 5;
+
+    var snap = {      // Closest snapping points
+        top: Math.round(o.top / grid) * grid,
+        left: Math.round(o.left / grid) * grid,
+        bottom: Math.round((o.top + h) / grid) * grid,
+        right: Math.round((o.left + w) / grid) * grid
+    };
+
+    var threshold = 2.5;
+
+    var dist = {      // Distance from snapping points
+        top: Math.abs(snap.top - o.top),
+        left: Math.abs(snap.left - o.left),
+        bottom: Math.abs(snap.bottom - o.top - h),
+        right: Math.abs(snap.right - o.left - w)
+    };
+
+    var attrs = {
+        scaleX: o.scaleX,
+        scaleY: o.scaleY,
+        top: o.top,
+        left: o.left
+    };
+
+    switch (o.__corner) {
+        case 'tl':
+                if (dist.top < threshold) {
+                    attrs.top = snap.top;
+                    attrs.scaleY = Math.abs((attrs.top - o.savedBottom) / o.height);
+                }
+        case 'ml':
+                if (dist.left < threshold) {
+                    attrs.left = snap.left;
+                    attrs.scaleX = Math.abs((attrs.left - o.savedRight) / o.width);
+                }
+        break;
+
+        case 'mt':
+                if (dist.top < threshold) {
+                    attrs.top = snap.top;
+                    attrs.scaleY = Math.abs((attrs.top - o.savedBottom) / o.height);
+                }
+        break;
+        
+        case 'tr':
+            if (dist.top < threshold) {
+                attrs.top = snap.top;
+                attrs.scaleY = Math.abs((attrs.top - o.savedBottom) / o.height);
+            }
+        case 'mr':
+                if (dist.right < threshold) {
+                    attrs.scaleX = (snap.right - o.left) / o.width;
+                }
+        break;
+
+        case 'br':
+                if (dist.right < threshold) {
+                    attrs.scaleX = (snap.right - o.left) / o.width;
+                }
+                if (dist.bottom < threshold) {
+                    attrs.scaleY = (snap.bottom - o.top) / o.height;
+                }
+        break;
+        
+        case 'bl':
+            if (dist.left < threshold) {
+                attrs.scaleX = (w - (snap.left - o.left)) / o.width;
+                attrs.left = snap.left;
+            }
+       case 'mb':
+            if (dist.bottom < threshold) {
+                attrs.scaleY = (snap.bottom - o.top) / o.height;
+            }
+        break;
+    }
+
+    o.set(attrs);
+
     $('#objectWidth').val(Math.round(o.width * o.scaleX));
     $('#objectHeight').val(Math.round(o.height * o.scaleY));
     drawAlignmentGuides(o, 1);
@@ -222,35 +343,6 @@ canvas.observe('object:modified', function (e) {
 
 
 // ---------------------------- Canvas Functions ----------------------------------
-function objectMoving(o, snap) {
-    var grid = 1;
-    o.set({
-        left: Math.round(o.left / grid) * grid,
-        top: Math.round(o.top / grid) * grid
-    });
-    var zoom = canvas.getZoom();
-    var tmod = 0;
-    var lmod = 0;
-    if (canvas.getActiveObjects().length > 1) {
-        tmod = o.top + o.height / 2;
-        lmod = o.left + o.width / 2;
-    }
-    drawAlignmentGuides(o, snap);
-    o = canvas.getActiveObjects();
-    for (var i = 0; i < o.length; i++) {
-        o[i].dirty = true;
-        for (var j = 0; j < o[i].children.length; j++) {
-            if (o[i].children[j].objType === 'name') {
-                o[i].children[j].set('top', o[i].top + tmod + o[i].height * o[i].scaleY + 4);
-                o[i].children[j].set('left', o[i].left + lmod + (o[i].width * o[i].scaleX) / 2);
-                o[i].children[j].setCoords();
-            } else if (o[i].children[j].objType === 'link') {
-                drawLink(o[i].children[j]);
-            }
-        }
-    }
-}
-
 function objectModified(o) {
     var tmod = 0;
     var lmod = 0;
@@ -265,10 +357,15 @@ function objectModified(o) {
             height: Math.round(o.height)
         });
     }
+
     o.set({
         left: Math.round(o.left),
         top: Math.round(o.top)
     });
+
+    delete o.savedRight;
+    delete o.savedBottom;
+
     if (canvas.getActiveObjects().length > 1) {
         tmod = o.top + o.height / 2;
         lmod = o.left + o.width / 2;
@@ -449,8 +546,10 @@ function drawAlignmentGuides(o, snap) {
     var vSpaced = false;
     var hAlignedObjects = [];
     var vAlignedObjects = [];
+
     for (var i = 0; i < canvas.getObjects().length; i++) {
         if (canvas.item(i).isOnScreen() && (canvas.item(i).objType && canvas.item(i).objType === 'icon' || canvas.item(i).objType && canvas.item(i).objType === 'shape') && canvas.getActiveObjects().indexOf(canvas.item(i)) === -1) {
+
             // middle vert alignment guide
             if (Math.round(getObjectCenter(canvas.item(i)).x) <= Math.ceil(getObjectCenter(o).x) + vSnap && Math.round(getObjectCenter(canvas.item(i)).x) >= Math.floor(getObjectCenter(o).x) - vSnap) {
                 if (canvas.item(i).top + canvas.item(i).height * canvas.item(i).scaleY < o.top || canvas.item(i).top > o.top + o.height * o.scaleY)
@@ -478,8 +577,10 @@ function drawAlignmentGuides(o, snap) {
                     }
                 }
             }
+
             // left alignment mark
             if (!lAligned && (Math.round(canvas.item(i).left) <= Math.round(o.left) + vSnap && Math.round(canvas.item(i).left) >= Math.round(o.left) - vSnap)) {
+                console.log('left');
                 if (vSnap > 1 && !vAligned)
                     o.set({
                         left: canvas.item(i).left
@@ -500,6 +601,7 @@ function drawAlignmentGuides(o, snap) {
                     guides.lGuide = line;
                 }
             }
+
             // right alignment mark
             if (!rAligned && (Math.round(canvas.item(i).left + canvas.item(i).width * canvas.item(i).scaleX) <= Math.round(o.left + o.width * o.scaleX) + vSnap && Math.round(canvas.item(i).left + canvas.item(i).width * canvas.item(i).scaleX) >= Math.round(o.left + o.width * o.scaleX) - vSnap)) {
                 if (vSnap > 1 && !vAligned && !lAligned)
@@ -521,6 +623,7 @@ function drawAlignmentGuides(o, snap) {
                     guides.rGuide = line;
                 }
             }
+
             // middle horiz alignment guide
             if (Math.round(getObjectCenter(canvas.item(i)).y) <= Math.round(getObjectCenter(o).y) + hSnap && Math.round(getObjectCenter(canvas.item(i)).y) >= Math.round(getObjectCenter(o).y) - hSnap) {
                 if (canvas.item(i).left + canvas.item(i).width * canvas.item(i).scaleX < o.left || canvas.item(i).left > o.left + o.width * o.scaleX)
@@ -547,6 +650,7 @@ function drawAlignmentGuides(o, snap) {
                     }
                 }
             }
+
             // top alignment guide
             if (!tAligned && (Math.round(canvas.item(i).top) <= Math.round(o.top) + hSnap && Math.round(canvas.item(i).top) >= Math.round(o.top) - hSnap)) {
                 if (hSnap > 1)
@@ -569,6 +673,7 @@ function drawAlignmentGuides(o, snap) {
                     guides.tGuide = line;
                 }
             }
+
             // bottom alignment guide
             if (!bAligned && (Math.round(canvas.item(i).top + canvas.item(i).height * canvas.item(i).scaleY) <= Math.round(o.top + (o.height * o.scaleY)) + hSnap && Math.round(canvas.item(i).top + canvas.item(i).height * canvas.item(i).scaleY) >= Math.round(o.top + (o.height * o.scaleY)) - hSnap)) {
                 if (hSnap > 1)
@@ -892,12 +997,14 @@ function addObjectToCanvas(o, selected, cb) {
         getIcon(o.image, function () {
             SVGCache[o.image].clone(function (shape) {
                 var name;
+                var scale_x = (Math.ceil((o.scale_x * shape.width)/5) * 5) / shape.width;
+                var scale_y = (Math.ceil((o.scale_y * shape.height)/5) * 5) / shape.height;
                 shape.set({
                     fill: o.fill_color,
                     stroke: o.stroke_color,
                     strokeWidth: 1,
-                    scaleX: o.scale_x,
-                    scaleY: o.scale_y,
+                    scaleX: scale_x ,
+                    scaleY: scale_y,
                     angle: o.rot,
                     _id: o._id,
                     objType: o.type,
