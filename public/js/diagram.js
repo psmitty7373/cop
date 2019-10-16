@@ -3,12 +3,12 @@ MAXWIDTH = 2000;
 MAXHEIGHT = 2000;
 //fabric.Object.prototype.originX = 'left';
 //fabric.Object.prototype.originY = 'top';
-//fabric.Group.prototype.hasControls = false;
+fabric.Group.prototype.hasControls = false;
 fabric.Object.prototype.transparentCorners = false;
 fabric.Object.prototype.cornerSize = 7;
 fabric.Object.prototype.objectCaching = true;
 fabric.Object.prototype.noScaleCache = false;
-//fabric.Object.NUM_FRACTION_DIGITS = 10;
+fabric.Object.NUM_FRACTION_DIGITS = 10;
 fabric.Object.prototype.lockScalingFlip = true;
 fabric.Group.prototype.hasControls = false;
 fabric.Group.prototype.lockScalingX = true;
@@ -16,9 +16,9 @@ fabric.Group.prototype.lockScalingY = true;
 
 // canvas initilization
 var canvas = new fabric.Canvas('canvas', {
-    //preserveObjectStacking: true,
-    //renderOnAddRemove: false,
-    //enableRetinaScaling: false,
+    preserveObjectStacking: true,
+    renderOnAddRemove: false,
+    enableRetinaScaling: false,
     uniScaleTransform: true,
     width: MAXWIDTH,
     height: MAXHEIGHT
