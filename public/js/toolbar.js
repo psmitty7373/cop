@@ -34,23 +34,10 @@ function toolbarEditObject() {
         $('#toolbarTitle').text('View Object');
     }
 
-    $('#propNameGroup').show();
     $('#propObjectGroup').show();
     $('#editNotesButton').show();
     $('#deleteObjectButton').show();
-    $('#insertObjectButton').hide();
     $('#newObjectButton').show();
-
-    var objType = $('#propType').val();
-
-    if (objType === 'link') {
-        $('#sizeObject').hide();
-        $('#lockObjectGroup').hide();
-        $('#propFillColorSpan').hide();
-    } else {
-        $('#sizeObject').show();
-        $('#lockObjectGroup').show();
-    }
     $('#moveObject').show();
     activeSubToolbar = 'editObject';
 }
@@ -63,8 +50,6 @@ function toolbarNewObject() {
     $("#toolbarBody").removeClass("disabledDiv");
     $('#toolbarTitle').html('New Object');
     $('#propID').val('');
-    $('#propNameGroup').show();
-    $('#propName').val('');
     $('#propFillColor').val(lastFillColor);
     $('#propFillColor').data('paletteColorPickerPlugin').reload();
     $('#propStrokeColor').val(lastStrokeColor);
@@ -77,7 +62,6 @@ function toolbarNewObject() {
     $('#newObjectButton').hide();
     $('#editNotesButton').hide();
     $('#deleteObjectButton').hide();
-    $('#insertObjectButton').show();
 
     activeSubToolbar = 'newObject';
 }
@@ -145,7 +129,6 @@ function updateSelection(options) {
         if (o && canvas.getActiveObject()) {
             if (o.objType !== undefined) {
                 // selecting an object
-                $('#propType').val(o.objType);
                 $('#propID').val(o._id);
                 $('#propFillColor').val(o.fill);
                 $('#propFillColor').data('paletteColorPickerPlugin').reload();
@@ -154,17 +137,6 @@ function updateSelection(options) {
                 $('#objectWidth').val(Math.round(o.width * o.scaleX));
                 $('#objectHeight').val(Math.round(o.height * o.scaleY));
                 $('#lockObject').prop('checked', o.locked);
-                $('#propName').val('');
-
-                if (o.children !== undefined) {
-                    for (var i = 0; i < o.children.length; i++) {
-                        if (o.children[i].objType === 'name')
-                            $('#propName').val(o.children[i].text);
-                    }
-                }
-
-                $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
-                $('#prop-' + o.objType).data('picker').sync_picker_with_select();
                 if (toolbarState)
                     openToolbar('tools');
                 if (options.e && options.e.ctrlKey)
@@ -189,29 +161,12 @@ function cancelMenu() {
     return false;
 }
 
-function insertLink() {
-    creatingLink = true;
-    showMessage('Click on a node to start a new link.');
-    $('#cancelLink').show();
-}
-
-function cancelLink() {
-    creatingLink = false;
-    showMessage('Link cancelled.', 5);
-    $('#cancelLink').hide();
-}
-
 // change colors
 function updatePropFillColor(color) {
     
 }
 
 function updatePropStrokeColor(color) {
-    
-}
-
-// rename object
-function updatePropName(name) {
     
 }
 
@@ -340,11 +295,6 @@ function editDetails(id, name) {
     }
 }
 
-// send insert message for inserted objects
-function insertObject() {
-
-}
-
 // bottom table toggle
 function toggleTable(toolbar) {
     if (toolbar === activeTable) {
@@ -374,15 +324,10 @@ function toggleTable(toolbar) {
     }
 }
 
-function blark(e) {
-    console.log(e);
-}
-
 // READY!
 $(window).on('load', function () {
     // bind buttons
     if (permissions.write_access) {
-        $('#propName').prop('disabled', false);
         $('#newObjectButton').prop('disabled', false).click(newObject);
         $('#propFillColor').prop('disabled', false);
         $('#propStrokeColor').prop('disabled', false);
@@ -393,17 +338,12 @@ $(window).on('load', function () {
         $('#moveToBack').prop('disabled', false).click(moveToBack);
         $('#objectWidth').prop('disabled', false);
         $('#objectHeight').prop('disabled', false);
-        $('#insertObjectButton').prop('disabled', false).click(insertObject);
         $('#deleteObjectButton').prop('disabled', false).click(deleteObjectConfirm);;
     }
 
     if (permissions.write_access) {
         $("#newNoteButton").prop('disabled', false);
     }
-
-    $('#propName').change(function () {
-        updatePropName(this.value)
-    });
 
     $('#lockObject').change(function () {
         toggleObjectLock($('#lockObject').is(':checked'))
@@ -416,8 +356,6 @@ $(window).on('load', function () {
     $('#objectHeight').change(function () {
         setObjectSize();
     });
-
-    $('#cancelLinkButton').click(cancelLink);
 
     $('#editNotesButton').click(function () {
         editDetails();
@@ -444,17 +382,19 @@ $(window).on('load', function () {
         toggleToolbar('files');
     });
 
-
     // load SVG icons
     for (var i = 0; i < icons.length; i++) {
         $.ajax('/images/icons/' + icons[i], {
             dataType: 'text',
             processData: false,
             success: function(data) {
-                $('#propObjectGroup').append('<img src=\'data:image/svg+xml;utf8,' + data + '\' class="icon">');
+                $('#toolbarIcons').append('<img src=\'data:image/svg+xml;utf8,' + data + '\' class="icon">');
             }
         });
     }
+    /*$('#toolbarIcons').overlayScrollbars({
+        className: "os-theme-dark"
+    });*/
 
     $('.icon').on('dragstart', function(evt) {
         console.log('dragstart', evt);

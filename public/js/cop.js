@@ -37,7 +37,6 @@ var settings = {
     'tables': 350
 };
 var earliest_messages = {}; //= 2147483647000;
-var creatingLink = false;
 var userSelect = [];
 var objectSelect = [{ _id: null, name: null }];
 var objectsLoaded = null;
@@ -45,11 +44,8 @@ var updatingObject = false;
 var socket;
 var firstNode = null;
 var SVGCache = {};
-var tempLinks = [];
-var guides = {};
 var resizeTimer = null;
 var updateSettingsTimer = null;
-var objectMovingTimer = null;
 var objectSearchResults = [];
 var objectSearchPtr = null;
 
@@ -77,7 +73,6 @@ function checkIfObjectsLoaded() {
         $('#modal').modal('hide');
         //FIXME
         // objects loaded, update the events tracker
-        //updateLinks();
         //updateMinimapBg();
         //canvas.requestRenderAll();
         //canvas.renderOnAddRemove = true;
@@ -566,10 +561,6 @@ $(window).on('load', function () {
     $('#generalPane').overlayScrollbars({
         className: "os-theme-light"
     });
-    /*
-    $('#propObjectGroup').overlayScrollbars({
-        className: "os-theme-dark"
-    });*/
     $('.tableBody').overlayScrollbars({
         className: "os-theme-light"
     });

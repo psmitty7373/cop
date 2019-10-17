@@ -62,12 +62,6 @@ html
             div#toolsForm.toolbar-form
               div#tools
                 span.toolbarTitle#toolbarTitle Edit Object
-                button.propButton.btn.btn-success#newObjectButton(type='button' disabled) New!
-                input(type="hidden", name="id")#propID
-                input(type="hidden", name="type")#propType
-                div.form-group#propNameGroup
-                  label Name
-                  textarea(name="name" disabled).form-control#propName
                 div.form-group#propColorGroup
                   label Color
                   div.colors
@@ -75,7 +69,7 @@ html
                       input#propFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
                     span#propStrokeColorSpan
                       input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
-                div.form-group#propObjectGroup
+                div.form-group#toolbarIcons
                 div.form-group#moveObject
                     div.checkbox#lockObjectGroup
                       label
@@ -92,7 +86,6 @@ html
                     button.propButton.btn.btn-secondary#moveToFront(type='button' disabled) Front
                     button.propButton.btn.btn-secondary#moveToBack(type='button' disabled) Back
                 div.form-group#makeObject
-                    button.propButton.btn.btn-primary#insertObjectButton(type='button' disabled) Insert
                     button.propButton.btn.btn-info#editNotesButton(type='button') Object Notes
                     button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
       

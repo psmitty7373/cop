@@ -30,6 +30,20 @@ function startGraph(container)
         style['fontWeight'] = 'regular';
         graph.getStylesheet().putDefaultVertexStyle(style);
 
+        // load shapes into registry
+        var req = mxUtils.load('/images/icons/icons.xml');
+        var root = req.getDocumentElement();
+        var shape = root.firstChild;        
+        while (shape != null)
+        {
+            if (shape.nodeType == mxConstants.NODETYPE_ELEMENT)
+            {
+                console.log(shape.getAttribute('name'), shape);
+                mxStencilRegistry.addStencil(shape.getAttribute('name'), new mxStencil(shape));
+            }            
+            shape = shape.nextSibling;
+        }
+
         // drag-over listener
         mxEvent.addListener(container, 'dragover', function(evt)
         {
@@ -86,6 +100,12 @@ function startGraph(container)
                 }
             }
         });
+
+        // selection listener
+        graph.getSelectionModel().addListener(mxEvent.CHANGE, function(sender, evt)
+        {
+            selectionChanged(graph);
+        });
     }
 };
 
@@ -127,6 +147,27 @@ function handleSVGDrop(data,x,y) {
             data = 'data:image/svg+xml,' + btoa(mxUtils.getXml(svgs[0], '\n'));
             graph.insertVertex(null, null, '', x, y, w, h, 'shape=image;image=' + data + ';');
         }
+    }
+}
+
+function selectionChanged(graph)
+{
+    graph.container.focus();
+    // Gets the selection cell
+    var cell = graph.getSelectionCell();
+    if (cell == null)
+    {
+        console.log('nothing');
+    }
+    else
+    {
+        console.log(cell.id);
+        var style=graph.getModel().getStyle(cell);
+        console.log(style);
+        var newStyle=mxUtils.setStyle(style,mxConstants.STYLE_STROKECOLOR,'red');
+        //var cs= new Array();
+        //cs[0]=cell;
+        //graph.setCellStyle(newStyle,cs);
     }
 }
 
