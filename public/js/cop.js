@@ -59,7 +59,6 @@ var pendingMsg = [];
 var lastFillColor = '#000000';
 var lastStrokeColor = '#ffffff';
 var windowManager = null;
-var canvasClipboard = [];
 var settingsTabulator;
 var timeline = null;
 var timelinePosition = null;
@@ -69,21 +68,6 @@ var openDocs = {};
 var shareDBConnection;
 
 // ---------------------------- LOADING / CACHING OF STUFF ----------------------------------
-// check if shapes are chached before loading canvas
-function checkIfShapesCached(msg) {
-    if (objectsLoaded.length == 0) {
-        console.log('cached');
-        for (var o in msg) {
-            objectsLoaded.push(false);
-            addObjectToCanvas(msg[o]);
-        }
-        checkIfObjectsLoaded();
-    } else {
-        setTimeout(function () {
-            checkIfShapesCached(msg);
-        }, 50);
-    }
-}
 
 // check if objects are all added to the canvas before first draw
 // we're basically ready after this
@@ -101,38 +85,6 @@ function checkIfObjectsLoaded() {
         setTimeout(checkIfObjectsLoaded, 50);
     }
 }
-
-// grab icons from the server
-function getIcon(icon, cb) {
-    var path = 'images/icons/';
-    if (!SVGCache[icon]) {
-        $.get(path + icon, function (data) {
-            fabric.loadSVGFromString(data, function (objects, options) {
-                SVGCache[icon] = fabric.util.groupSVGElements(objects, options);
-                if (cb) {
-                    cb();
-                }
-                objectsLoaded.pop();
-            });
-        }, 'text').fail(function () {
-            $.get(path + 'missing.svg', function (data) {
-                fabric.loadSVGFromString(data, function (objects, options) {
-                    SVGCache[icon] = fabric.util.groupSVGElements(objects, options);
-                    if (cb) {
-                        cb();
-                    }
-                    objectsLoaded.pop();
-                });
-            }, 'text')
-        });
-    } else {
-        objectsLoaded.pop();
-        if (cb) {
-            cb();
-        }
-    }
-}
-
 
 // ---------------------------- SETTINGS COOKIE ----------------------------------
 function loadSettings() {
@@ -164,11 +116,10 @@ function updateSettings() {
 function updateMinimap() {
     var scaleX = 100 / (MAXWIDTH * 2);
     var scaleY = 100 / (MAXHEIGHT * 2);
-    var zoom = canvas.getZoom();
     var mLeft = (MAXHEIGHT - settings.x / zoom) * scaleX;
     var mTop = (MAXHEIGHT - settings.y / zoom) * scaleY;
-    var mWidth = (canvas.width / zoom) * scaleX;
-    var mHeight = (canvas.height / zoom) * scaleY;
+    //var mWidth = (canvas.width / zoom) * scaleX;
+    //var mHeight = (canvas.height / zoom) * scaleY;
     minimapCtx.strokeStyle = '#ffffff';
     minimapCtx.clearRect(0, 0, minimapCtx.canvas.width, minimapCtx.canvas.height);
     minimapCtx.beginPath();
@@ -211,8 +162,6 @@ function msgHandler() {
             clearTimeout(pendingMsg[m]);
         }
         clearInterval(socket.pingInterval);
-        canvas.clear();
-        canvas.requestRenderAll();
         $('#modal-close').hide();
         $('#modal-header').html('Attention!');
         $('#modal-body').html('<p>Connection lost! Please refresh the page to continue!</p>');
@@ -254,15 +203,6 @@ function showMessage(msg, timeout) {
 
 //download diagram to png
 function downloadDiagram(link) {
-    var viewport = canvas.viewportTransform;
-    canvas.setHeight(MAXHEIGHT * 2);
-    canvas.setWidth(MAXWIDTH * 2);
-    canvas.viewportTransform = [1, 0, 0, 1, MAXWIDTH, MAXHEIGHT];
-    link.href = canvas.toDataURL('png');
-    link.download = 'diagram.png';
-    canvas.viewportTransform = viewport;
-    resizeCanvas();
-    canvas.requestRenderAll();
 }
 
 // setup times for cop clocks
@@ -297,13 +237,6 @@ function timelineCancel() {
     eventsTabulator.deselectRow();
     timeline = null;
     timelinePosition = 0;
-
-    if (tempLinks.length > 0) {
-        for (var i = 0; i < tempLinks.length; i++) {
-            canvas.remove(tempLinks[i]);
-        }
-        tempLinks = [];
-    }
 }
 
 function timelineAdvance(offset) {
@@ -326,82 +259,6 @@ function timelineAdvance(offset) {
         eventsTabulator.selectRow(row._id);
         $('#message').html('<span class="messageHeader">' + row.event_time + '</span><br/><span class="messageBody">' + row.short_desc.replace('\n','<br>') + '</span>');
         $('#message').show();
-
-        if (tempLinks.length > 0) {
-            for (var i = 0; i < tempLinks.length; i++) {
-                canvas.remove(tempLinks[i]);
-            }
-            tempLinks = [];
-        }
-
-        var from = null;
-        var to = null;
-        var tempLink;
-
-        for (var j = 0; j < canvas.getObjects().length; j++) {
-            if (canvas.item(j)._id && (canvas.item(j)._id == row.source_object || canvas.item(j)._id == row.dest_object)) {
-                if (canvas.item(j)._id == row.source_object) {
-                    from = canvas.item(j);
-                    var shape = new fabric.Rect({
-                        dad: from,
-                        objType: 'shape',
-                        width: from.width * from.scaleX + 10,
-                        height: from.height * from.scaleY + 10,
-                        stroke: 'red',
-                        fill: 'rgba(0,0,0,0)',
-                        strokeWidth: 5,
-                        originX: 'left',
-                        originY: 'top',
-                        left: from.left - 7.5,
-                        top: from.top - 7.5,
-                        selectable: false,
-                        evented: false
-                    });
-                    var tempShape = shape;
-                    tempLinks.push(tempShape);
-                    //canvas.add(shape);
-                } else if (canvas.item(j)._id == row.dest_object) {
-                    to = canvas.item(j);
-                    var shape = new fabric.Rect({
-                        dad: to,
-                        objType: 'shape',
-                        width: to.width * to.scaleX + 10,
-                        height: to.height * to.scaleY + 10,
-                        stroke: 'red',
-                        fill: 'rgba(0,0,0,0)',
-                        strokeWidth: 5,
-                        originX: 'left',
-                        originY: 'top',
-                        left: to.left - 7.5,
-                        top: to.top - 7.5,
-                        selectable: false,
-                        evented: false
-                    });
-                    var tempShape = shape;
-                    tempLinks.push(tempShape);
-                }
-            }
-
-            if (from && to) {
-                var line = new fabric.Line([getObjCtr(from).x, getObjCtr(from).y, getObjCtr(to).x, getObjCtr(to).y], {
-                    objType: 'link',
-                    from: from,
-                    to: to,
-                    stroke: 'red',
-                    strokeColor: 'red',
-                    strokeWidth: 8,
-                    strokeDashArray: [15,10],
-                    selectable: false,
-                    evented: false
-                });
-                tempLink = line;
-                tempLinks.push(tempLink);
-                break;
-            }
-        }
-        for (var i = 0; i < tempLinks.length; i++) {
-            canvas.add(tempLinks[i]);
-        }
     }
 }
 
@@ -709,9 +566,10 @@ $(window).on('load', function () {
     $('#generalPane').overlayScrollbars({
         className: "os-theme-light"
     });
+    /*
     $('#propObjectGroup').overlayScrollbars({
         className: "os-theme-dark"
-    });
+    });*/
     $('.tableBody').overlayScrollbars({
         className: "os-theme-light"
     });
@@ -757,44 +615,6 @@ $(window).on('load', function () {
             arg: ''
         }));
     };
-
-    // ---------------------------- IMAGE PICKER ----------------------------------
-    $('#propObjectGroup').tabs({
-        beforeActivate: function (e, u) {
-            $('#propType').val(u.newPanel.attr('id').split('-')[1]);
-            if ($('#propType').val() === 'link')
-                $('#propFillColorSpan').hide();
-            else
-                $('#propFillColorSpan').show();
-        }
-    });
-    $.each(['icon', 'shape', 'link'], function (i, v) {
-        $('#prop-' + v).imagepicker({
-            hide_select: true,
-            initialized: function () {
-                if (!permissions.write_access)
-                    $("#propObjectGroup").find("div").unbind('click');
-            },
-            selected: function () {
-                if (!permissions.write_access)
-                    return;
-                if (canvas.getActiveObject() !== null && canvas.getActiveObject() !== undefined && (canvas.getActiveObject().objType === 'icon' || canvas.getActiveObject().objType === 'shape')) {
-                    var obj = canvas.getActiveObject();
-                    var oldZ = canvas.getObjects().indexOf(canvas.getActiveObject());
-                    obj.image = $(this).val().replace('.png', '.svg');
-                    var type = $(this).val().split('-')[2];
-                    if (obj.objType !== type)
-                        return;
-                    updatingObject = true;
-                    changeObject(obj);
-                    updatingObject = false;
-                } else {
-                    var type = $(this).val().split('-')[2];
-                    $('#propType').val(type)
-                }
-            }
-        });
-    });
 
     // ---------------------------- TABLES ----------------------------------   
     // bottom table tabs
@@ -1238,7 +1058,7 @@ $(window).on('load', function () {
         resizeTimer = setTimeout(function () {
             settings.diagram = Math.round($('#diagramJumbo').height());
             updateSettings();
-            resizeCanvas();
+//            resizeCanvas();
         }, 100);
     });
 
@@ -1263,7 +1083,7 @@ $(window).on('load', function () {
     window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(function () {
-            resizeCanvas();
+//            resizeCanvas();
         }, 100);
     }, false);
 
@@ -1272,63 +1092,15 @@ $(window).on('load', function () {
         // copy
         if (lastClick === canvas.upperCanvasEl) {
             if (e.ctrlKey && (e.keyCode === 'c'.charCodeAt(0) || e.keyCode === 'C'.charCodeAt(0))) {
-                canvasClipboard = [];
-                o = canvas.getActiveObjects();
-
-                var x = 0;
-                var y = 0;
-
-                for (var i = 0; i < o.length; i++) {
-                    if (o.length === 1) {
-                        x = 0 - o[i].width / 2;
-                        y = 0 - o[i].height / 2;
-                    } else {
-                        x = o[i].left;
-                        y = o[i].top;
-                    }
-                    canvasClipboard.push({
-                        _id: o[i]._id,
-                        x: x,
-                        y: y,
-                        z: Math.round(canvas.getObjects().indexOf(o[i] / 2))
-                    });
-                }
 
                 // paste
             } else if (e.ctrlKey && (e.keyCode === 'v'.charCodeAt(0) || e.keyCode === 'V'.charCodeAt(0))) {
-                if (canvasClipboard.length > 0)
-                    pasteObjects();
 
                 // delete
             } else if (e.keyCode === 46) {
-                if (canvas.getActiveObject())
-                    deleteObjectConfirm();
 
                 // arrows
             } else if (e.keyCode >= 37 && e.keyCode <= 40 && canvas.getActiveObject()) {
-                var o = canvas.getActiveObject();
-                if (objectMovingTimer)
-                    window.clearTimeout(objectMovingTimer);
-                objectMovingTimer = setTimeout(function () {
-                    objectModified(o);
-                }, 1000);
-                switch (e.keyCode) {
-                    case 37:
-                        o.left -= 1;
-                        break;
-                    case 38:
-                        o.top -= 1;
-                        break;
-                    case 39:
-                        o.left += 1;
-                        break;
-                    case 40:
-                        o.top += 1;
-                        break;
-                }
-                objectMoving(o, 0);
-                o.setCoords();
-                canvas.requestRenderAll();
 
                 // search (ctrl + f)
             } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
@@ -1402,29 +1174,12 @@ $(window).on('load', function () {
 
                 break;
 
-            case 'get_objects':
-                objectsLoaded = [];
-                objectSelect = [{ _id: '', name: '' }];
-                var objects = msg.arg;
-                for (var o in objects) {
-                    if (objects[o].type !== 'link' && objects[o].name !== '') {
-                        objectSelect.push({
-                            _id: objects[o]._id,
-                            name: objects[o].name.split('\n')[0]
-                        });
-                    }
-                    if (objects[o].type === 'icon' && SVGCache[objects[o].image] === undefined && objects[o].image !== undefined && objects[o].image !== null) {
-                        SVGCache[objects[o].image] = null;
-                        objectsLoaded.push(false);
-                        getIcon(objects[o].image);
-                    }
-                }
-                checkIfShapesCached(objects);
+            case 'update_graph':
+                changes(model, msg.arg);
                 break;
 
-            case 'echo':
-                console.log(msg.arg);
-                changes(msg.arg);
+            case 'get_graph':
+                loadGraph(msg.arg);
                 break;
 
             case 'get_opnotes':
@@ -1505,7 +1260,7 @@ $(window).on('load', function () {
                     $('#files').jstree(true).move_node(msg.arg._id, msg.arg.parent);
                 }
                 break;
-    
+
             case 'delete_file':
                 $('#files').jstree(true).delete_node(msg.arg);
                 break;
@@ -1542,178 +1297,11 @@ $(window).on('load', function () {
 
             case 'delete_mission_user':
                 settingsTabulator.deleteRow(msg.arg);
-                break;
-
-                // objects
-            case 'change_object':
-                var o = msg.arg;
-                for (var i = 0; i < objectSelect.length; i++) {
-                    // change name
-                    if (objectSelect[i]._id === o._id && objectSelect[i].name !== o.name.split('\n')[0]) {
-                        var node = $('#notes').jstree(true).get_node(o._id, true);
-                        if (node) {
-                            $('#notes').jstree().rename_node(o._id, o.name.split('\n')[0]);
-                        }                        
-                        objectSelect[i].name = o.name.split('\n')[0];
-                        break;
-                    }
-                }
-
-                var selected = '';
-                for (var i = 0; i < canvas.getObjects().length; i++) {
-                    if (canvas.item(i)._id === o._id) {
-                        var to = canvas.item(i);
-                        if (to === canvas.getActiveObject()) {
-                            updatingObject = true;
-                            selected = 'single';
-                            if (canvas.getActiveObjects().length > 1) {
-                                selected = 'group';
-                                canvas.getActiveObjects().remove(to);
-                            }
-                        }
-                        if (o.type === 'icon') {
-                            var old_children = [];
-                            for (var k = 0; k < to.children.length; k++) {
-                                if (to.children[k].objType === 'link')
-                                    old_children.push(to.children[k]);
-                                if (to.children[k].objType === 'name')
-                                    canvas.remove(to.children[k]);
-                            }
-                            canvas.remove(to);
-                            cb = function () {
-                                for (k = 0; k < old_children.length; k++) {
-                                    updateLink(old_children[k]);
-                                }
-                            }
-                            addObjectToCanvas(o, selected, cb);
-                            canvas.requestRenderAll();
-                        } else if (o.type === 'shape' || o.type === 'link') {
-                            setObjectLock(canvas.item(i), o.locked);
-                            if (o.type === 'link' && o.stroke_color === '') // don't let links disappear
-                                o.stroke_color = '#000000';
-                            if (canvas.item(i).name_val !== o.name) {
-                                canvas.item(i).name_val = o.name;
-                                for (var k = 0; k < to.children.length; k++) {
-                                    if (canvas.item(i).children[k].objType === 'name') {
-                                        canvas.item(i).children[k].set('text', o.name);
-                                    }
-                                }
-                            }
-                            canvas.item(i).set('stroke', o.stroke_color);
-                            canvas.item(i).set('fill', o.fill_color);
-                            canvas.item(i).set('dirty', true);
-                            canvas.requestRenderAll();
-                        }
-                        updatingObject = false;
-                        break;
-                    }
-                }
-                break;
-
-            case 'move_object':
-                for (var h = 0; h < msg.arg.length; h++) {
-                    var o = msg.arg[h];
-                    for (var i = 0; i < canvas.getObjects().length; i++) {
-                        if (canvas.item(i)._id == o._id) {
-                            var obj = canvas.item(i);
-                            obj.dirty = true;
-
-                            if (obj.objType !== 'link') {
-                                obj.set('angle', o.rot);
-                                if (obj.objType === 'shape') {
-                                    obj.set('width', o.scale_x);
-                                    obj.set('height', o.scale_y);
-                                } else if (obj.objType === 'icon') {
-                                    obj.set('scaleX', o.scale_x);
-                                    obj.set('scaleY', o.scale_y);
-                                }
-                                var tmod = 0;
-                                var lmod = 0;
-                                if (canvas.getActiveObjects().length > 1 && canvas.getActiveObjects().indexOf(obj) > -1) {
-                                    canvas.getActiveObject().removeWithUpdate(obj);
-                                }
-                                obj.set({
-                                    left: o.x,
-                                    top: o.y
-                                });
-                                for (var j = 0; j < obj.children.length; j++) {
-                                    if (obj.children[j].objType === 'name') {
-                                        obj.children[j].set('top', tmod + obj.top + obj.height * obj.scaleY + 4);
-                                        obj.children[j].set('left', lmod + obj.left + (obj.width * obj.scaleX) / 2);
-                                        obj.children[j].setCoords();
-                                    } else if (obj.children[j].objType === 'link') {
-                                        drawLink(obj.children[j]);
-                                    }
-                                }
-                                obj.setCoords();
-                            }
-                            if (o.z !== undefined && i !== o.z * 2) {
-                                if (i < o.z * 2) {
-                                    obj.moveTo((o.z) * 2 + 1);
-                                    for (var k = 0; k < obj.children.length; k++) {
-                                        if (obj.children[k].objType === 'name') {
-                                            obj.children[k].moveTo(canvas.getObjects().indexOf(obj));
-                                        }
-                                    }
-                                } else {
-                                    obj.moveTo(o.z * 2);
-                                    for (var k = 0; k < obj.children.length; k++) {
-                                        if (obj.children[k].objType === 'name') {
-                                            obj.children[k].moveTo(canvas.getObjects().indexOf(obj) + 1);
-                                        }
-                                    }
-                                }
-                            }
-                            break;
-                        }
-                    }
-                }
-                canvas.requestRenderAll();
-                updateMinimapBg();
-                break;
-
-            case 'insert_object':
-                for (var h = 0; h < msg.arg.length; h++) {
-                    var o = msg.arg[h];
-                    if (o.objType !== 'link') {
-                        objectSelect.push({ _id: o._id, name: o.name.split('\n')[0] });
-                        addNotes([{ _id: o._id, name: o.name.split('\n')[0], type: 'object' }]);
-                    }
-                    addObjectToCanvas(o, false);
-                }
-                updateMinimapBg();
-                break;
-
-            case 'delete_object':
-                var _id = msg.arg;
-                var node = $('#notes').jstree(true).get_node(_id, true);
-                if (node) {
-                    $('#notes').jstree(true).delete_node(node);
-                }
-                for (var i = 0; i < canvas.getObjects().length; i++) {
-                    if (canvas.item(i)._id == _id) {
-                        var object = canvas.item(i);
-                        if (canvas.item(i).children !== undefined) {
-                            for (var k = 0; k < object.children.length; k++) {
-                                if (object.children[k].objType === 'name')
-                                    canvas.remove(object.children[k]);
-                            }
-                        }
-                        if (canvas.getActiveObjects().indexOf(object) > 1)
-                            canvas.getActiveObject().removeWithUpdate(object);
-                        canvas.remove(object);
-                        break;
-                    }
-                }
-                updateMinimapBg();
-                canvas.requestRenderAll();
-                break;
+                break; 
         }
     };
 
     socket.onclose = function () {
-        canvas.clear();
-        canvas.requestRenderAll();
         clearInterval(socket.pingInterval);
         $('#modal-close').hide();
         $('#modal-title').text('Attention!');
@@ -1726,6 +1314,5 @@ $(window).on('load', function () {
             keyboard: false
         });
     };
-
-    
+   
 });

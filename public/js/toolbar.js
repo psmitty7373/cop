@@ -40,7 +40,6 @@ function toolbarEditObject() {
     $('#deleteObjectButton').show();
     $('#insertObjectButton').hide();
     $('#newObjectButton').show();
-    $('#propObjectGroup').tabs('disable');
 
     var objType = $('#propType').val();
 
@@ -52,12 +51,7 @@ function toolbarEditObject() {
         $('#sizeObject').show();
         $('#lockObjectGroup').show();
     }
-
-    var index = $('#propObjectGroup a[href="#tabs-' + objType + '"]').parent().index();
     $('#moveObject').show();
-    $('#propObjectGroup').tabs('enable', index);
-    $('#propObjectGroup').tabs('option', 'active', index);
-
     activeSubToolbar = 'editObject';
 }
 
@@ -78,9 +72,7 @@ function toolbarNewObject() {
     $('#lockObject').prop('checked', false);
     $('#propType').val('icon');
     $('#prop-icon').val('00-000-icon-hub.png');
-    $('#prop-icon').data('picker').sync_picker_with_select();
-    $('#propObjectGroup').tabs('enable');
-    $('#propObjectGroup').tabs('option', 'active', 0);
+    //$('#prop-icon').data('picker').sync_picker_with_select();
     $('#moveObject').hide();
     $('#newObjectButton').hide();
     $('#editNotesButton').hide();
@@ -113,10 +105,10 @@ function openToolbar(toolbar) {
             $('#filesForm').hide();
             $('#propFillColorSpan').show();
             // editing an object
-            if (canvas.getActiveObject()) {
+            if (false) {
                 toolbarEditObject();
             // new object
-            } else if (canvas.getActiveObject() === undefined || canvas.getActiveObject() === null) {
+            } else if (true) {
                 toolbarNewObject();
             }
             break;
@@ -152,71 +144,36 @@ function updateSelection(options) {
         var o = options.target;
         if (o && canvas.getActiveObject()) {
             if (o.objType !== undefined) {
-                // creating a link
-                if (creatingLink) {
-                    if ((o.objType === 'icon' || o.objType === 'shape') && firstNode !== o) {
-                        if (firstNode === null) {
-                            firstNode = o;
-                            showMessage('Click on a second node to complete the link.');
-                        } else {
-                            showMessage('Link created.', 5);
-                            $('#cancelLink').hide();
-                            lastFillColor = $('#propFillColor').val();
-                            lastFillColor = $('#propStrokeColor').val();
-                            socket.send(JSON.stringify({
-                                act: 'insert_object',
-                                arg: {
-                                    name: $('#propName').val(),
-                                    type: 'link',
-                                    image: $('#prop-link').val().replace('.png', '.svg'),
-                                    stroke_color: $('#propStrokeColor').val(),
-                                    fill_color: $('#propFillColor').val(),
-                                    obj_a: firstNode._id,
-                                    obj_b: o._id,
-                                    x: 0,
-                                    y: 0,
-                                    z: 0,
-                                    locked: $('#lockObject').is(':checked')
-                                },
-                                msgId: msgHandler()
-                            }));
-                            firstNode = null;
-                            creatingLink = false;
-                        }
-                    }
-
                 // selecting an object
-                } else {
-                    $('#propType').val(o.objType);
-                    $('#propID').val(o._id);
-                    $('#propFillColor').val(o.fill);
-                    $('#propFillColor').data('paletteColorPickerPlugin').reload();
-                    $('#propStrokeColor').val(o.stroke);
-                    $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
-                    $('#objectWidth').val(Math.round(o.width * o.scaleX));
-                    $('#objectHeight').val(Math.round(o.height * o.scaleY));
-                    $('#lockObject').prop('checked', o.locked);
-                    $('#propName').val('');
+                $('#propType').val(o.objType);
+                $('#propID').val(o._id);
+                $('#propFillColor').val(o.fill);
+                $('#propFillColor').data('paletteColorPickerPlugin').reload();
+                $('#propStrokeColor').val(o.stroke);
+                $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
+                $('#objectWidth').val(Math.round(o.width * o.scaleX));
+                $('#objectHeight').val(Math.round(o.height * o.scaleY));
+                $('#lockObject').prop('checked', o.locked);
+                $('#propName').val('');
 
-                    if (o.children !== undefined) {
-                        for (var i = 0; i < o.children.length; i++) {
-                            if (o.children[i].objType === 'name')
-                                $('#propName').val(o.children[i].text);
-                        }
+                if (o.children !== undefined) {
+                    for (var i = 0; i < o.children.length; i++) {
+                        if (o.children[i].objType === 'name')
+                            $('#propName').val(o.children[i].text);
                     }
-
-                    $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
-                    $('#prop-' + o.objType).data('picker').sync_picker_with_select();
-                    if (toolbarState)
-                        openToolbar('tools');
-                    if (options.e && options.e.ctrlKey)
-                        editDetails();
-
-                    toolbarEditObject();
                 }
+
+                $('#prop-' + o.objType).val(o.image.replace('.svg', '.png'));
+                $('#prop-' + o.objType).data('picker').sync_picker_with_select();
+                if (toolbarState)
+                    openToolbar('tools');
+                if (options.e && options.e.ctrlKey)
+                    editDetails();
+
+                toolbarEditObject();
+
             }
         }
-
     // selected nothing, set toolbar for new object
     } else {
         toolbarNewObject();
@@ -224,9 +181,7 @@ function updateSelection(options) {
 }
 
 function newObject() {
-    canvas.discardActiveObject();
-    canvas.requestRenderAll();
-    openToolbar('tools');
+     openToolbar('tools');
 }
 
 function cancelMenu() {
@@ -248,38 +203,16 @@ function cancelLink() {
 
 // change colors
 function updatePropFillColor(color) {
-    var o = canvas.getActiveObject();
-    if (o) {
-        lastFillColor = $('#propFillColor').val();
-        o.fill = color;
-        changeObject(o);
-    }
+    
 }
 
 function updatePropStrokeColor(color) {
-    var o = canvas.getActiveObject();
-    if (o) {
-        lastStrokeColor = $('#propStrokeColor').val();
-        o.stroke = color;
-        changeObject(o);
-    }
+    
 }
 
 // rename object
 function updatePropName(name) {
-    if (canvas.getActiveObjects().length == 1) {
-        var o = canvas.getActiveObject();
-        if (o) {
-            for (var i = 0; i < o.children.length; i++) {
-                if (o.children[i].objType === 'name' && o.children[i].text !== name) {
-                    o.children[i].text = name;
-                    changeObject(o);
-                    canvas.requestRenderAll();
-                    break;
-                }
-            }
-        }
-    }
+    
 }
 
 function editDetails(id, name) {
@@ -287,13 +220,9 @@ function editDetails(id, name) {
     if (!name) {
         name = '';
     }
-    if (!id && canvas.getActiveObject()) {
+    if (!id) {
         if (permissions.write_access) {
             rw = true;
-        }
-        id = canvas.getActiveObject()._id;
-        if (canvas.getActiveObject().name_val) {
-            name = canvas.getActiveObject().name_val.split('\n')[0];
         }
     } else {
         if (permissions.write_access)
@@ -335,21 +264,6 @@ function editDetails(id, name) {
                         minHeight: 153,
                         minWidth: 300
                     });
-
-                    /*
-
-                    // start codemirror
-                    var editor = CodeMirror.fromTextArea(document.getElementById('object_details_' + id), {
-                        mode: 'javascript',
-                        lineNumbers: true
-                    });
-
-                    ShareDBCodeMirror.attachDocToCodeMirror(openDocs[id], editor, {
-                        key: 'content',
-                        verbose: true
-                      });
-
-                    */
 
                     // start quill
                     var quill = new Quill('#object_details_' + id, {
@@ -428,29 +342,7 @@ function editDetails(id, name) {
 
 // send insert message for inserted objects
 function insertObject() {
-    if ($('#propType').val() === 'link')
-        insertLink();
-    else {
-        var center = new fabric.Point(canvas.width / 2, canvas.height / 2);
-        lastFillColor = $('#propFillColor').val();
-        lastStrokeColor = $('#propStrokeColor').val();
-        socket.send(JSON.stringify({
-            act: 'insert_object',
-            arg: {
-                name: $('#propName').val(),
-                fill_color: $('#propFillColor').val(),
-                stroke_color: $('#propStrokeColor').val(),
-                locked: $('#lockObject').is(':checked'),
-                image: $('#prop-' + $('#propType').val()).val().replace('.png', '.svg'),
-                type: $('#propType').val(),
-                x: Math.round(center.x / canvas.getZoom() - settings.x / canvas.getZoom()),
-                y: Math.round(center.y / canvas.getZoom() - settings.y / canvas.getZoom()),
-                z: canvas.getObjects().length
-            },
-            msgId: msgHandler()
-        }));
-    }
-    updateSelection();
+
 }
 
 // bottom table toggle
@@ -482,6 +374,10 @@ function toggleTable(toolbar) {
     }
 }
 
+function blark(e) {
+    console.log(e);
+}
+
 // READY!
 $(window).on('load', function () {
     // bind buttons
@@ -500,25 +396,33 @@ $(window).on('load', function () {
         $('#insertObjectButton').prop('disabled', false).click(insertObject);
         $('#deleteObjectButton').prop('disabled', false).click(deleteObjectConfirm);;
     }
+
     if (permissions.write_access) {
         $("#newNoteButton").prop('disabled', false);
     }
+
     $('#propName').change(function () {
         updatePropName(this.value)
     });
+
     $('#lockObject').change(function () {
         toggleObjectLock($('#lockObject').is(':checked'))
     });
+
     $('#objectWidth').change(function () {
         setObjectSize();
     });
+
     $('#objectHeight').change(function () {
         setObjectSize();
     });
+
     $('#cancelLinkButton').click(cancelLink);
+
     $('#editNotesButton').click(function () {
         editDetails();
     });
+
     $('#newNoteButton').click(function () {
         newNote();
     });
@@ -527,14 +431,33 @@ $(window).on('load', function () {
     $('#toolbarButton').click(function () {
         toggleToolbar(activeToolbar);
     });
+
     $('#toolsTab').click(function () {
         toggleToolbar('tools');
     });
+
     $('#notesTab').click(function () {
         toggleToolbar('notes');
     });
+
     $('#filesTab').click(function () {
         toggleToolbar('files');
+    });
+
+
+    // load SVG icons
+    for (var i = 0; i < icons.length; i++) {
+        $.ajax('/images/icons/' + icons[i], {
+            dataType: 'text',
+            processData: false,
+            success: function(data) {
+                $('#propObjectGroup').append('<img src=\'data:image/svg+xml;utf8,' + data + '\' class="icon">');
+            }
+        });
+    }
+
+    $('.icon').on('dragstart', function(evt) {
+        console.log('dragstart', evt);
     });
 
 });

@@ -921,6 +921,12 @@ h1 {
     transform: translateY(9px) rotate(45deg);
 }
 
+.icon {
+    width: 50px;
+    height: 50px;
+    margin: 2px;
+}
+
 #chatTabTag {
     left: 20px;
     top: 50px;

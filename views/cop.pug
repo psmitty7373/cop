@@ -7,7 +7,6 @@ html
     link(rel='stylesheet', href='css/tabulator_custom.css')
     link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
     link(rel='stylesheet', href='css/tempusdominus-bootstrap-4.min.css')
-    link(rel='stylesheet', href='css/image-picker.css')
     link(rel='stylesheet', href='css/quill.snow.css')
     link(rel='stylesheet', href='css/jstree.min.css')
     link(rel='stylesheet', href='css/palette-color-picker.css')
@@ -77,25 +76,6 @@ html
                     span#propStrokeColorSpan
                       input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
                 div.form-group#propObjectGroup
-                  ul
-                    li
-                      a(href="#tabs-icon") Icons
-                    li
-                      a(href="#tabs-shape") Shapes
-                    li
-                      a(href="#tabs-link") Links
-                  div#tabs-icon
-                    select.image-picker#prop-icon
-                      each icon in icons
-                        option(data-img-src="images/icons/" + icon, data-img-class="first", value=icon) icon
-                  div#tabs-shape
-                    select.image-picker#prop-shape
-                      each shape in shapes
-                        option(data-img-src="images/shapes/" + shape, data-img-class="first", value=shape) shape
-                  div#tabs-link
-                    select.image-picker#prop-link
-                      each link in links
-                        option(data-img-src="images/links/" + link, data-img-class="first", value=link) link
                 div.form-group#moveObject
                     div.checkbox#lockObjectGroup
                       label
@@ -184,7 +164,7 @@ script(type="template/text", id="details_template")
       div.window-body.modal-body
       div.window-footer.modal-footer
 
-script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
+script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}"; var icons = !{icons};
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
 script(src='js/jquery.overlayScrollbars.min.js')
@@ -196,7 +176,6 @@ script(src='js/sharedb-client.min.js')
 script(src='js/rich-text.min.js')
 script(src='js/highlight.min.js')
 script(src='js/quill.min.js')
-script(src='js/image-picker.min.js')
 script(src='js/jstree.min.js')
 script(src='js/palette-color-picker.min.js')
 script(src='js/moment.min.js')
