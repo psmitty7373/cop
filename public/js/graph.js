@@ -29,19 +29,19 @@ function graphStart(container)
         style[mxConstants.STYLE_VERTICAL_LABEL_POSITION] = 'bottom';
         style[mxConstants.STYLE_VERTICAL_ALIGN] = 'top';
         style[mxConstants.STYLE_FONTSIZE] = '14';
-        style['fontColor'] = '#fff';
-        style['fontFamily'] = 'Lato-Regular';
-        style['strokeColor'] = '#000';
-        style['fillColor'] = '#3f6ba3';        
+        style[mxConstants.STYLE_FONTCOLOR] = '#fff';
+        style[mxConstants.STYLE_FONTFAMILY] = 'Lato-Regular';
+        style[mxConstants.STYLE_STROKECOLOR] = '#000';
+        style[mxConstants.STYLE_FILLCOLOR] = '#3f6ba3';        
 
         var edgeStyle = {};        
         style = graph.getStylesheet().getDefaultEdgeStyle();
-        style['strokeColor'] = '#000000';
-        style['fontColor'] = '#000000';
-        style['fontStyle'] = '0';
-        style['fontStyle'] = '0';
-        style['startSize'] = '8';
-        style['endSize'] = '8';
+        style[mxConstants.STYLE_VERTICAL_LABEL_POSITION] = 'bottom';
+        style[mxConstants.STYLE_VERTICAL_ALIGN] = 'top';
+        style[mxConstants.STYLE_FONTSIZE] = '14';
+        style[mxConstants.STYLE_FONTCOLOR] = '#fff';
+        style[mxConstants.STYLE_FONTFAMILY] = 'Lato-Regular';
+        style[mxConstants.STYLE_STROKECOLOR] = '#fff';
 
         // load shapes into registry
         var req = mxUtils.load('/images/icons/icons.xml');
@@ -142,6 +142,9 @@ function graphStart(container)
                     }));
                 }
             }
+
+            // update the objectSelect array
+            objectSelect = graphGetCellsByNameAndId();
         });
 
         // selection listener
@@ -182,6 +185,20 @@ function graphCellSetStyleString(cell, styleStr) {
         }
     }
     graph.setCellStyle(style, [cell]);
+}
+
+function graphMoveCellsFront() {
+    var cell = graph.getSelectionCell();
+    if (cell) {
+        graph.orderCells(false, [cell]);
+    }
+}
+
+function graphMoveCellsBack() {
+    var cell = graph.getSelectionCell();
+    if (cell) {
+        graph.orderCells(true, [cell]);
+    }
 }
 
 function handleSVGDrop(data, x, y) {
@@ -317,6 +334,17 @@ function graphLoad(xml) {
     var node = xmlDoc.documentElement;
     var dec = new mxCodec(node.ownerDocument);
     dec.decode(node, graph.getModel());
+
+    objectSelect = graphGetCellsByNameAndId();
+}
+
+function graphGetCellsByNameAndId() {
+    var res = [{ _id: '', name: '' }];
+    var cells = graph.getChildCells(graph.getDefaultParent(), true, true);
+    for (var i = 0; i < cells.length; i++) {
+        res.push({ _id: [cells[i].id], name: cells[i].value.split('\n')[0]});
+    }
+    return res;
 }
 
 function graphExecuteChanges(model, n) {

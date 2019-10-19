@@ -77,6 +77,11 @@ function toolbarUpdateSelection(cell) {
             $('#toolbarFillColor').data('paletteColorPickerPlugin').reload();
             $('#toolbarStrokeColor').val(style.strokeColor);
             $('#toolbarStrokeColor').data('paletteColorPickerPlugin').reload();
+            if (cell.edge) {
+                $('#toolbarEdgeOptions').show();
+            } else {
+                $('#toolbarEdgeOptions').hide();
+            }
         }
     } else {
         $('#toolbarEditGroup').hide();
@@ -146,10 +151,8 @@ $(window).on('load', function () {
     if (permissions.write_access) {
         $('#toolbarFillColor').prop('disabled', false);
         $('#toolbarStrokeColor').prop('disabled', false);
-        $('#toolbarMoveUp').prop('disabled', false).click();
-        $('#toolbarMoveDown').prop('disabled', false).click();
-        $('#toolbarMoveToFront').prop('disabled', false).click();
-        $('#toolbarMoveToBack').prop('disabled', false).click();
+        $('#toolbarMoveToFront').prop('disabled', false).click(graphMoveCellsFront);
+        $('#toolbarMoveToBack').prop('disabled', false).click(graphMoveCellsBack);
         $('#toolbarDeleteObject').prop('disabled', false).click();;
     }
 

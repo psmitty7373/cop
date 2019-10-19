@@ -665,10 +665,11 @@ h1 {
     background-color: #101010;
 }
 
-#zoom-buttons {
+#zoomButtons {
     position: absolute;
     bottom: 5px;
     left: 5px;
+    z-index: 9;
 }
 
 .btn-login {
@@ -690,15 +691,8 @@ h1 {
     border-top-right-radius: 0;
 }
 
-.propButton {
+.toolbarButton {
     margin-right: 10px;
-}
-
-.cancelLink {
-    position: relative;
-    left: 6px;
-    bottom: 0px;
-    display: none;
 }
 
 #objectSearchBar {
@@ -707,24 +701,6 @@ h1 {
     top: 10px;
     position: absolute;
     display: none;
-}
-
-.zoomIn {
-    width: 21px;
-    height: 21px;
-    position: relative;
-    left: 0px;
-    bottom: 0px;
-    margin-right: 3px;
-}
-
-.zoomOut {
-    width: 21px;
-    height: 21px;
-    position: relative;
-    left: 0px;
-    bottom: 0px;
-    margin-right: 3px;
 }
 
 #message {
@@ -746,11 +722,6 @@ h1 {
 
 .messageBody {
     font-size: 16px;
-}
-
-.toolbarTitle {
-    font-size: 20px;
-    font-weight: bold;
 }
 
 .propColor {
@@ -846,15 +817,10 @@ h1 {
     padding: 10px;
 }
 
-.tab-float {
+.tabFloat {
     background: none;
     pointer-events: none;
     z-index: 99;
-}
-
-#tabs-icon {
-    width: 100%;
-    padding: 5px;
 }
 
 .taskbarButton {
@@ -936,14 +902,41 @@ h1 {
     transform: translateY(9px) rotate(45deg);
 }
 
+#toolbar {
+    background-color: #303030;
+    position: absolute;
+    right: 0px;
+    top: 0px;
+    height: 100%;
+}
+
+#toolbarBody[style] {
+    left: 0 !important;
+}
+
+#toolbarBody {
+    width: 0px;
+    height: 100%;
+    overflow: hidden;
+}
+
+#toolbarEdgeOptions {
+    display: flex;
+    flex-flow: row;
+}
+
+#toolbarEdgeOptions button {
+    margin-right: 10px;
+}
+
+.toolbarForm {
+    min-width: 300px;
+}
+
 #toolbarIcons {
     height: 300px;
     width: 100%;
     background-color: #444;
-}
-
-#toolbarNewGroup {
-    margin-bottom: 5px;
 }
 
 .toolbarIconDivider {
@@ -952,10 +945,6 @@ h1 {
     background-color: #777;
     margin-top: 5px;
     margin-bottom: 5px;
-}
-
-.toolbarIconOuter {
-    display: inline-block
 }
 
 .toolbarIconInner {
@@ -967,9 +956,22 @@ h1 {
     align-items: center;
 }
 
+.toolbarIconOuter {
+    display: inline-block
+}
+
 .toolbarIcon {
     max-width: 50px;
     max-height: 50px;
+}
+
+#toolbarNewGroup {
+    margin-bottom: 5px;
+}
+
+.toolbarTitle {
+    font-size: 20px;
+    font-weight: bold;
 }
 
 #chatTabTag {
@@ -1026,43 +1028,11 @@ h1 {
     transform-origin: left center;
 }
 
-#toolbar {
-    background-color: #303030;
-    position: absolute;
-    right: 0px;
-    top: 0px;
-    height: 100%;
-}
-
-#toolbarBody[style] {
-    left: 0 !important;
-}
-
-#toolbarBody {
-    width: 0px;
-    height: 100%;
-    overflow: hidden;
-}
-
-.toolbar-form {
-    min-width: 300px;
-}
-
 .thumbnail {
     margin-bottom: 2px;
     width: 40px;
     height: 40px;
     position: relative;
-}
-
-.image_picker_image {
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    max-width: 90%;
-    max-height: 90%;
-    vertical-align: middle;
 }
 
 #windowPane {
@@ -1083,4 +1053,22 @@ h1 {
 
 .windowPane .label+.label {
     margin-bottom: 0px;
+}
+
+.zoomIn {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
+}
+
+.zoomOut {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
 }

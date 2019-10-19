@@ -35,10 +35,9 @@ html
               button.btn.btn-secondary#prevObjectSearch &#8249;
               button.btn.btn-secondary#nextObjectSearch &#8250;
 
-          div#zoom-buttons
+          div#zoomButtons
             button.zoomIn#zoomInButton.ui-icon.ui-icon-zoomin
             button.zoomOut#zoomOutButton.ui-icon.ui-icon-zoomout
-            button.cancelLink#cancelLinkButton Cancel Link
 
           div#graphOutline
 
@@ -51,19 +50,19 @@ html
             div.vertTab#filesTab
 
           div.vertNav.vertNavOutsideLeft.click-through 
-            div.tabText.tab-float.rotated#toolsTabTag TOOLS
-            div.tabText.tab-float.rotated#notesTabTag NOTES
-            div.tabText.tab-float.rotated#filesTabTag FILES
+            div.tabText.tabFloat.rotated#toolsTabTag TOOLS
+            div.tabText.tabFloat.rotated#notesTabTag NOTES
+            div.tabText.tabFloat.rotated#filesTabTag FILES
 
           div#toolbarBody
-            div#notesForm.toolbar-form
+            div#notesForm.toolbarForm
               div#notes
-            div#filesForm.toolbar-form
+            div#filesForm.toolbarForm
               div#files
               div#progressbarContainer
                 div#progressbar
 
-            div#toolsForm.toolbar-form
+            div#toolsForm.toolbarForm
               div#tools
                 div#toolbarNewGroup
                   span.toolbarTitle New Object
@@ -114,14 +113,12 @@ html
                           | Isometric
 
                   div.form-group
-                      button.propButton.btn.btn-secondary#toolbarMoveUp(type='button') Up
-                      button.propButton.btn.btn-secondary#toolbarMoveDown(type='button') Down
-                      button.propButton.btn.btn-secondary#toolbarMoveToFront(type='button') Front
-                      button.propButton.btn.btn-secondary#toolbarMoveToBack(type='button') Back
+                      button.toolbarButton.btn.btn-secondary#toolbarMoveToFront(type='button') Front
+                      button.toolbarButton.btn.btn-secondary#toolbarMoveToBack(type='button') Back
 
                   div.form-group
-                      button.propButton.btn.btn-info#toolbarEditNotes(type='button') Object Notes
-                      button.propButton.btn.btn-danger#toolbarDeleteObject(type='button') Delete
+                      button.toolbarButton.btn.btn-info#toolbarEditNotes(type='button') Object Notes
+                      button.toolbarButton.btn.btn-danger#toolbarDeleteObject(type='button') Delete
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
@@ -144,14 +141,14 @@ html
 
           div#settings.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addUser(type='button') Add User
+              button.toolbarButton.btn.btn-primary.tableButton#addUser(type='button') Add User
               h4.tableTitle Settings
             div.tableBody
               table#settingsTable
 
           div#events.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
+              button.toolbarButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
               h4.tableTitle Events
               div.timelineButton
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineBack
@@ -166,7 +163,7 @@ html
 
           div#opnotes.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
+              button.toolbarButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
               h4.tableTitle Opnotes
             div.tableBody
               table#opnotesTable
@@ -178,10 +175,10 @@ html
             div.vertTab#opnotesTab
             div.vertTab#settingsTab(style='display: none;')
             div.vertNav.click-through(style='position: absolute;')
-              div.tabText.tab-float.rotated#chatTabTag CHAT
-              div.tabText.tab-float.rotated#eventsTabTag EVENTS
-              div.tabText.tab-float.rotated#opnotesTabTag OPNOTES
-              div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
+              div.tabText.tabFloat.rotated#chatTabTag CHAT
+              div.tabText.tabFloat.rotated#eventsTabTag EVENTS
+              div.tabText.tabFloat.rotated#opnotesTabTag OPNOTES
+              div.tabText.tabFloat.rotated#settingsTabTag(style='display: none;') SETTINGS
 
     div#windowPane.windowPane
 

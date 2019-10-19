@@ -30,7 +30,7 @@ var settings = {
 };
 var earliest_messages = {}; //= 2147483647000;
 var userSelect = [];
-var objectSelect = [{ _id: null, name: null }];
+var objectSelect = [{ _id: '', name: '' }];
 var objectsLoaded = null;
 var updatingObject = false;
 var socket;
@@ -188,6 +188,7 @@ function deleteObjectConfirm() {
 }
 
 function sortByName(a, b) {
+    console.log(a,b);
     return a.name.localeCompare(b.name);
 }
 
@@ -723,6 +724,7 @@ $(window).on('load', function () {
                 editor: 'select',
                 editable: function() { return permissions.write_access },
                 editorParams: function () {
+                    console.log(objectSelect);
                     objectSelect.sort(sortByName);
 
                     var vals = {};
@@ -969,14 +971,6 @@ $(window).on('load', function () {
             updateSettings();
         }, 100);
     });
-
-    // on window resize, resize the canvas
-    window.addEventListener('resize', function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () {
-//            resizeCanvas();
-        }, 100);
-    }, false);
 
     // capture keys
     window.addEventListener("keydown", function (e) {

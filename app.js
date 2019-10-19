@@ -349,14 +349,22 @@ function mxRootChange(js, graph) {
 
 function mxChildChange(js, graph) {
     // delete
-    if (js.$ && js.$.previous) {
+    if (js.$ && js.$.parent === undefined) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (js.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.$.child) {
-                console.log('delete', graph.mxGraphModel.root.mxCell);
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
                 break;
             }
         }
+    // move
+    } else if (js.$ && js.$.index && js.$.child) {
+        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+            if (js.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.$.child) {
+                graph.mxGraphModel.root.mxCell.move(i, js.$.index);
+                break;
+            }
+        }
+    // insert
     } else if (js.mxCell) {
         graph.mxGraphModel.root.mxCell.push(js.mxCell);
     }
