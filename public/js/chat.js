@@ -48,7 +48,6 @@ function notification(msg) {
 }
 
 var chatDragAndDrop = function (e) {
-
     e.originalEvent.stopPropagation();
     e.originalEvent.preventDefault();
 
@@ -130,7 +129,7 @@ function chatProgressHandler(e) {
     }
 }
 
-function deleteChannel(e) {
+function chatDeleteChannel(e) {
     console.log(e);
 }
 
@@ -161,25 +160,25 @@ function addChatChannels(c) {
         }
 
         if (c[i].type === 'channel') {
-            $('#channelsHeading').after('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
+            $('#chatChannelsHeading').after('<div class="channel channelLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
         } else if (c[i].type === 'user') {
-            $('#usersHeading').after('<div class="channel userLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName">O ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
+            $('#chatUsersHeading').after('<div class="channel userLabel' + selected + '" id="' + c[i]._id + 'Label" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName">O ' + c[i].name + '</div><div id="' + c[i]._id + 'Unread" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');
         }
 
         $('#channelPanes').append('<div class="channel-pane" id="' + c[i]._id + 'Pane" style="' + style +'"><div id="' + c[i]._id + 'Messages"></div></div>');
-        $('#' + c[i]._id + 'Label').click(changeChannel);
-        $('#' + c[i]._id + 'Delete').click(deleteChannel);
+        $('#' + c[i]._id + 'Label').click(chatChangeChannel);
+        $('#' + c[i]._id + 'Delete').click(chatDeleteChannel);
         $('#' + c[i]._id + 'Pane').overlayScrollbars({
             className: "os-theme-light"
         });
     }
-    $('#channelsHeading').after($('div.channelLabel').sort(function (a, b) {
+    $('#chatChannelsHeading').after($('div.channelLabel').sort(function (a, b) {
         var contentA = $(a).attr('data-name');
         var contentB = $(b).attr('data-name');
         return (contentA < contentB) ? -1 : (contentA > contentB) ? 1 : 0;
      }));
 
-     $('#usersHeading').after($('div.userLabel').sort(function (a, b) {
+     $('#chatUsersHeading').after($('div.userLabel').sort(function (a, b) {
         var contentA = $(a).attr('data-name');
         var contentB = $(b).attr('data-name');
         return (contentA < contentB) ? -1 : (contentA > contentB) ? 1 : 0;
@@ -323,7 +322,7 @@ function getMoreMessages(channel_id) {
 }
 
 
-function newChannel() {
+function chatNewChannel() {
     bootbox.prompt('Channel name?', function (name) {
         socket.send(JSON.stringify({
             act: 'insert_chat_channel',
@@ -335,7 +334,7 @@ function newChannel() {
     });
 }
 
-function changeChannel(e) {
+function chatChangeChannel(e) {
     if (e.target.id.indexOf('Label') === -1) {
         return;
     }
@@ -403,7 +402,7 @@ $(window).on('load', function () {
     $('#chat').on('dragleave', chatDragAndDrop);
     $('#chat').on('drop', chatDragAndDrop);
 
-    $('#newChannel').click(newChannel);
+    $('#chatNewChannel').click(chatNewChannel);
 
     // capture enter key in chat input bar
     $("#messageInput").keypress(function (e) {

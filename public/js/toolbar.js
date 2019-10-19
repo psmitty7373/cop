@@ -1,72 +1,25 @@
 // ---------------------------- Toolbar Stuff  ----------------------------------
-var activeSubToolbar = null;
 var activeToolbar = null;
 var activeTable = 'chat';
 var toolbarState = false;
 
-function toggleToolbar(toolbar) {
+function toolbarToggle(toolbar) {
     if (toolbar === null) {
-        toggleToolbar('tools');
+        toolbarToggle('tools');
         return;
     }
 
     if ($('#toolbarBody').width() === 0) {
-        openToolbar(toolbar);
+        toolbarOpen(toolbar);
     } else {
         if (activeToolbar === toolbar)
-            closeToolbar();
+            toolbarClose();
         else
-            openToolbar(toolbar);
+            toolbarOpen(toolbar);
     }
 }
 
-// set toolbar for editing
-function toolbarEditObject() {
-    if (canvas.getActiveObjects().length > 1) {
-        $("#toolbarBody").addClass("disabledDiv");
-    } else {
-        $("#toolbarBody").removeClass("disabledDiv");
-    }
-
-    if (permissions.write_access) {
-        $('#toolbarTitle').html('Edit Object');
-    } else {
-        $('#toolbarTitle').text('View Object');
-    }
-
-    $('#propObjectGroup').show();
-    $('#editNotesButton').show();
-    $('#deleteObjectButton').show();
-    $('#newObjectButton').show();
-    $('#moveObject').show();
-    activeSubToolbar = 'editObject';
-}
-
-// set toolbar for new objects
-function toolbarNewObject() {
-    if (activeSubToolbar === 'newObject')
-        return;
-
-    $("#toolbarBody").removeClass("disabledDiv");
-    $('#toolbarTitle').html('New Object');
-    $('#propID').val('');
-    $('#propFillColor').val(lastFillColor);
-    $('#propFillColor').data('paletteColorPickerPlugin').reload();
-    $('#propStrokeColor').val(lastStrokeColor);
-    $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
-    $('#lockObject').prop('checked', false);
-    $('#propType').val('icon');
-    $('#prop-icon').val('00-000-icon-hub.png');
-    //$('#prop-icon').data('picker').sync_picker_with_select();
-    $('#moveObject').hide();
-    $('#newObjectButton').hide();
-    $('#editNotesButton').hide();
-    $('#deleteObjectButton').hide();
-
-    activeSubToolbar = 'newObject';
-}
-
-function openToolbar(toolbar) {
+function toolbarOpen(toolbar) {
     $('#toolbarButton').addClass('open');
     $('#' + activeToolbar + 'Tab').removeClass('activeTab');
     $('#' + toolbar + 'Tab').addClass('activeTab');
@@ -87,14 +40,6 @@ function openToolbar(toolbar) {
             $('#toolsForm').show();
             $('#notesForm').hide();
             $('#filesForm').hide();
-            $('#propFillColorSpan').show();
-            // editing an object
-            if (false) {
-                toolbarEditObject();
-            // new object
-            } else if (true) {
-                toolbarNewObject();
-            }
             break;
 
         case 'notes':
@@ -111,7 +56,7 @@ function openToolbar(toolbar) {
     }
 }
 
-function closeToolbar() {
+function toolbarClose() {
     if (activeToolbar) {
         $('#' + activeToolbar + 'Tab').removeClass('activeTab');
     }
@@ -123,37 +68,19 @@ function closeToolbar() {
 }
 
 // update the toolbox when a new icon is clicked
-function updateSelection(options) {
-    if (options) {
-        var o = options.target;
-        if (o && canvas.getActiveObject()) {
-            if (o.objType !== undefined) {
-                // selecting an object
-                $('#propID').val(o._id);
-                $('#propFillColor').val(o.fill);
-                $('#propFillColor').data('paletteColorPickerPlugin').reload();
-                $('#propStrokeColor').val(o.stroke);
-                $('#propStrokeColor').data('paletteColorPickerPlugin').reload();
-                $('#objectWidth').val(Math.round(o.width * o.scaleX));
-                $('#objectHeight').val(Math.round(o.height * o.scaleY));
-                $('#lockObject').prop('checked', o.locked);
-                if (toolbarState)
-                    openToolbar('tools');
-                if (options.e && options.e.ctrlKey)
-                    editDetails();
-
-                toolbarEditObject();
-
-            }
+function toolbarUpdateSelection(cell) {
+    if (cell) {
+        var style = graphGetCellStyle(cell);
+        $('#toolbarEditGroup').show();
+        if (style) {
+            $('#toolbarFillColor').val(style.fillColor);
+            $('#toolbarFillColor').data('paletteColorPickerPlugin').reload();
+            $('#toolbarStrokeColor').val(style.strokeColor);
+            $('#toolbarStrokeColor').data('paletteColorPickerPlugin').reload();
         }
-    // selected nothing, set toolbar for new object
     } else {
-        toolbarNewObject();
+        $('#toolbarEditGroup').hide();
     }
-}
-
-function newObject() {
-     openToolbar('tools');
 }
 
 function cancelMenu() {
@@ -161,142 +88,8 @@ function cancelMenu() {
     return false;
 }
 
-// change colors
-function updatePropFillColor(color) {
-    
-}
-
-function updatePropStrokeColor(color) {
-    
-}
-
-function editDetails(id, name) {
-    var rw = false;
-    if (!name) {
-        name = '';
-    }
-    if (!id) {
-        if (permissions.write_access) {
-            rw = true;
-        }
-    } else {
-        if (permissions.write_access)
-            rw = true;
-    }
-
-    if (id) {
-        if (name == '') {
-            name = "Note Editor";
-        }
-        $('#modal-title').text(name);
-        $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">Close</button>');
-        $('#modal-content').addClass('modal-details');
-        if (!openDocs[id]) {
-            openDocs[id] = shareDBConnection.get('sharedb', id);
-            openDocs[id].subscribe(function (err) {
-                if (openDocs[id].type === null) {
-                    console.log('create');
-                    openDocs[id].create('', 'rich-text');
-                }
-                if (err) throw err;
-                if (openDocs[id].type.name === 'rich-text') {
-                    // create window
-                    var w = windowManager.createWindow({
-                        sticky: false,
-                        title: name,
-                        effect: 'none',
-                        bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
-                        closeCallback: function () {
-                            openDocs[id].destroy();
-                            delete openDocs[id];
-                        }
-                    });
-
-                    // make dragable
-                    w.$el.draggable({
-                        handle: '.modal-header'
-                    }).children('.window-content').resizable({
-                        minHeight: 153,
-                        minWidth: 300
-                    });
-
-                    // start quill
-                    var quill = new Quill('#object_details_' + id, {
-                        theme: 'snow',
-                        readOnly: !rw,
-                        modules: {
-                            syntax: true,
-                            toolbar: [
-                                [{
-                                    header: [1, 2, false]
-                                }],
-                                ['bold', 'italic', 'underline'],
-                                ['link', 'image', 'code-block']
-                            ]
-                        }
-                    });
-
-                    quill.root.setAttribute('spellcheck', false)
-                    quill.setContents(openDocs[id].data);
-                    quill.on('text-change', function (delta, oldDelta, source) {
-                        if (source !== 'user') return;
-                        openDocs[id].submitOp(delta, {
-                            source: quill
-                        });
-                    });
-
-                    openDocs[id].on('op', function (op, source) {
-                        if (source === quill) return;
-                        quill.updateContents(op);
-                    });
-
-                    $('#object_details_' + id).overlayScrollbars({
-                        className: "os-theme-dark"
-                    });
-
-                } else {
-                    var disabled = ' disabled';
-                    if (permissions.write_access) {
-                        disabled = '';
-                    }
-
-                    // create window
-                    var w = windowManager.createWindow({
-                        sticky: false,
-                        title: name,
-                        effect: 'none',
-                        bodyContent: '<textarea id="object_details_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
-                        closeCallback: function () {
-                            openDocs[id].destroy();
-                            delete openDocs[id];
-                        }
-                    });
-
-                    // set scrollbars
-                    w.$el.children('.object-details').overlayScrollbars({
-                        className: "os-theme-dark"
-                    });
-
-                    // make dragable
-                    w.$el.draggable({
-                        handle: '.modal-header'
-                    }).children('.window-content').resizable({
-                        minHeight: 153,
-                        minWidth: 300
-                    });
-
-                    //var element = document.getElementById('object_details_' + id);
-                    //var binding = new StringBinding(element, openDocs[id]);
-                    //binding.setup();
-                }
-            });
-        } else
-            console.log('document already open');
-    }
-}
-
 // bottom table toggle
-function toggleTable(toolbar) {
+function tableToggle(toolbar) {
     if (toolbar === activeTable) {
         return;
     }
@@ -324,80 +117,157 @@ function toggleTable(toolbar) {
     }
 }
 
+function toolbarDropdownSetStyle(evt) {
+    if (evt) {
+        var selected = null;
+        if (evt.clickEvent && $.contains(evt.target, evt.clickEvent.target)) {
+            if ($(evt.clickEvent.target).is('img')) {
+                selected = evt.clickEvent.target;
+            } else {
+                selected = evt.clickEvent.target.children[0];
+            }
+            var style = $(selected).attr('data-style');
+            var currentSelection = evt.relatedTarget.firstChild;
+            if (selected && currentSelection) {
+                $(currentSelection).replaceWith($(selected).clone());
+            }
+
+            if(style) {
+                var cell = graphGetCurrentSelection();
+                graphCellSetStyleString(cell, style);
+            }
+        }
+    }
+}
+
 // READY!
 $(window).on('load', function () {
     // bind buttons
     if (permissions.write_access) {
-        $('#newObjectButton').prop('disabled', false).click(newObject);
-        $('#propFillColor').prop('disabled', false);
-        $('#propStrokeColor').prop('disabled', false);
-        $('#lockObject').prop('disabled', false);
-        $('#moveUp').prop('disabled', false).click(moveUp);
-        $('#moveDown').prop('disabled', false).click(moveDown);
-        $('#moveToFront').prop('disabled', false).click(moveToFront);
-        $('#moveToBack').prop('disabled', false).click(moveToBack);
-        $('#objectWidth').prop('disabled', false);
-        $('#objectHeight').prop('disabled', false);
-        $('#deleteObjectButton').prop('disabled', false).click(deleteObjectConfirm);;
+        $('#toolbarFillColor').prop('disabled', false);
+        $('#toolbarStrokeColor').prop('disabled', false);
+        $('#toolbarMoveUp').prop('disabled', false).click();
+        $('#toolbarMoveDown').prop('disabled', false).click();
+        $('#toolbarMoveToFront').prop('disabled', false).click();
+        $('#toolbarMoveToBack').prop('disabled', false).click();
+        $('#toolbarDeleteObject').prop('disabled', false).click();;
     }
 
-    if (permissions.write_access) {
-        $("#newNoteButton").prop('disabled', false);
-    }
-
-    $('#lockObject').change(function () {
-        toggleObjectLock($('#lockObject').is(':checked'))
-    });
-
-    $('#objectWidth').change(function () {
-        setObjectSize();
-    });
-
-    $('#objectHeight').change(function () {
-        setObjectSize();
-    });
-
-    $('#editNotesButton').click(function () {
-        editDetails();
-    });
-
-    $('#newNoteButton').click(function () {
-        newNote();
+    $('#toolbarEditNotes').click(function () {
+        var cell = graphGetCurrentSelection();
+        if (cell) {
+            notesEdit(cell.id, cell.value.split('\n')[0]);
+        }
     });
 
     // toolbar tabs
     $('#toolbarButton').click(function () {
-        toggleToolbar(activeToolbar);
+        toolbarToggle(activeToolbar);
     });
 
     $('#toolsTab').click(function () {
-        toggleToolbar('tools');
+        toolbarToggle('tools');
     });
 
     $('#notesTab').click(function () {
-        toggleToolbar('notes');
+        toolbarToggle('notes');
     });
 
     $('#filesTab').click(function () {
-        toggleToolbar('files');
+        toolbarToggle('files');
     });
 
-    // load SVG icons
-    for (var i = 0; i < icons.length; i++) {
-        $.ajax('/images/icons/' + icons[i], {
-            dataType: 'text',
-            processData: false,
-            success: function(data) {
-                $('#toolbarIcons').append('<img src=\'data:image/svg+xml;utf8,' + data + '\' class="icon">');
+    $('#toolbarIcons').overlayScrollbars({
+        className: "os-theme-dark",
+    });
+
+    $('[name="propFillColor"]').paletteColorPicker({
+        colors: [
+            {'#000000': '#000000'},
+            {'#808080': '#808080'},
+            {'#c0c0c0': '#c0c0c0'},
+            {'#ffffff': '#ffffff'},
+            {'#800000': '#800000'},
+            {'#ff0000': '#ff0000'},
+            {'#808000': '#808000'},
+            {'#ffff00': '#ffff00'},
+            {'#008000': '#008000'},
+            {'#00ff00': '#00ff00'},
+            {'#008080': '#008080'},
+            {'#00ffff': '#00ffff'},
+            {'#000080': '#000080'},
+            {'#0000ff': '#0000ff'},
+            {'#800080': '#800080'},
+            {'#ff00ff': '#ff00ff'},
+            {'#3f6ba3': '#3f6ba3'}
+        ],
+        clear_btn: null,
+        position: 'upside',
+        timeout: 2000,
+        close_all_but_this: true,
+        onchange_callback: function (color) {
+            if (color !== $('#propFillColor').val()) {
+                var cell = graphGetCurrentSelection();
+                var style = graphGetCellStyle(cell);
+                console.log(style, color);
+                if (cell && style.fillColor !== color) {
+                    graphCellSetStyle(cell, mxConstants.STYLE_FILLCOLOR, color);
+                }  
             }
-        });
-    }
-    /*$('#toolbarIcons').overlayScrollbars({
-        className: "os-theme-dark"
-    });*/
-
-    $('.icon').on('dragstart', function(evt) {
-        console.log('dragstart', evt);
+        }
     });
 
+    $('[name="propStrokeColor"]').paletteColorPicker({
+        colors: [
+            {'#000000': '#000000'},
+            {'#808080': '#808080'},
+            {'#c0c0c0': '#c0c0c0'},
+            {'#ffffff': '#ffffff'},
+            {'#800000': '#800000'},
+            {'#ff0000': '#ff0000'},
+            {'#808000': '#808000'},
+            {'#ffff00': '#ffff00'},
+            {'#008000': '#008000'},
+            {'#00ff00': '#00ff00'},
+            {'#008080': '#008080'},
+            {'#00ffff': '#00ffff'},
+            {'#000080': '#000080'},
+            {'#0000ff': '#0000ff'},
+            {'#800080': '#800080'},
+            {'#ff00ff': '#ff00ff'},
+            {'#3f6ba3': '#3f6ba3'}  
+        ],
+        position: 'upside',
+        timeout: 2000, // default -> 2000
+        close_all_but_this: true,
+        onchange_callback: function (color) {
+            if (color !== $('#propStrokeColor').val()) {
+                var cell = graphGetCurrentSelection();
+                var style = graphGetCellStyle(cell);
+                if (cell && style.strokeColor !== color) {
+                    graphCellSetStyle(cell, mxConstants.STYLE_STROKECOLOR, color);
+                }  
+            }
+        }
+    });
+
+    var iconHTML = '';
+    for (var i = 0; i < icons.length; i++) {
+        if (icons[i].type === 'divider') {
+            iconHTML += '<div class="toolbarIconDivider">' + icons[i].name + '</div>';
+        } else {
+            iconHTML += '<div class="toolbarIconOuter"><div class="toolbarIconInner"><img src="/images/icons/' + icons[i].icon + '" class="toolbarIcon" data-data=' + JSON.stringify(icons[i]) + '></div></div>';
+        }
+    }
+    $('#toolbarIconsHeader').after(iconHTML);
+
+    $('.toolbarIcon').on('dragstart', function(evt) {
+        if ($(evt.target).attr('data-data')) {
+            evt.originalEvent.dataTransfer.setData('text/plain', $(evt.target).attr('data-data'));
+        }
+    });
+
+    $('#toolbarEdgeDashOptions').on('hide.bs.dropdown', toolbarDropdownSetStyle);
+
+    $('#toolbarEdgeWaypointOptions').on('hide.bs.dropdown', toolbarDropdownSetStyle);
 });

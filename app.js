@@ -248,10 +248,8 @@ parser.parseStringPromise(emptyGraphXML).then(function(res) {
 })
 
 async function loadGraph(mission_id) {
-    console.log('loading');
     // make sure graph is in memory
     if (graphs.get(mission_id)) {
-        console.log('already loaded');
         return true;
     }
 
@@ -269,9 +267,7 @@ async function loadGraph(mission_id) {
     if (!mission.graph) {
         return false;
     }
-
-    console.log('got graph', mission.graph);
-
+    
     graphs.set(mission_id, JSON.parse(mission.graph));
     return true;
 }
@@ -287,9 +283,6 @@ async function saveGraph(mission_id, graph) {
         }, {
             $set: new_values
         });
-
-        console.log('saved:', new_values.graph.length);
-
         return true;
 
     } catch (err) {
@@ -299,11 +292,8 @@ async function saveGraph(mission_id, graph) {
 }
 
 function mxTerminalChange(js, graph) {
-    var found = false;
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].$.id === js.$.cell) {
-            found = true;
-            console.log(js.$.source);
             if (js.$.source == 1) {
                 if (js.$.terminal) {
                     graph.mxGraphModel.root.mxCell[i].$.source = js.$.terminal;
@@ -323,25 +313,30 @@ function mxTerminalChange(js, graph) {
 }
 
 function mxGeometryChange(js, graph) {
-    console.log(js);
-    var found = false;
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].$.id === js.$.cell) {
-            console.log(graph.mxGraphModel.root.mxCell[i].mxGeometry);
             graph.mxGraphModel.root.mxCell[i].mxGeometry = js.mxGeometry;
-            console.log(graph.mxGraphModel.root.mxCell[i].mxGeometry);
-            found = true;
             break;
         }
     }
 }
 
 function mxValueChange(js, graph) {
-    var found = false;
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].$.id === js.$.cell) {
             graph.mxGraphModel.root.mxCell[i].$.value = js.$.value;
-            found = true;
+            break;
+        }
+    }
+}
+
+function mxStyleChange(js, graph) {
+    console.log(js);
+    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        if (graph.mxGraphModel.root.mxCell[i].$.id === js.$.cell) {
+            console.log(graph.mxGraphModel.root.mxCell[i].$.style);
+            graph.mxGraphModel.root.mxCell[i].$.style = js.$.style;
+            console.log(graph.mxGraphModel.root.mxCell[i].$.style);
             break;
         }
     }
@@ -353,15 +348,16 @@ function mxRootChange(js, graph) {
 }
 
 function mxChildChange(js, graph) {
-    console.log(graph);
-    var found = false;
-    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxCell.$.id) {
-            found = true;
-            break;
+    // delete
+    if (js.$ && js.$.previous) {
+        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+            if (js.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.$.child) {
+                console.log('delete', graph.mxGraphModel.root.mxCell);
+                graph.mxGraphModel.root.mxCell.splice(i, 1);
+                break;
+            }
         }
-    }
-    if (!found) {
+    } else if (js.mxCell) {
         graph.mxGraphModel.root.mxCell.push(js.mxCell);
     }
 }
@@ -2271,6 +2267,8 @@ async function setupSocket(socket) {
                             return;
                         }
 
+                        console.log(msg.arg);
+
                         if (result.mxRootChange) {
                             mxRootChange(result.mxRootChange, graph);
                         }
@@ -2288,6 +2286,9 @@ async function setupSocket(socket) {
                         }
                         if (result.mxTerminalChange) {
                             mxTerminalChange(result.mxTerminalChange, graph);
+                        }
+                        if (result.mxStyleChange) {
+                            mxStyleChange(result.mxStyleChange, graph);
                         }
 
                         // save changes
@@ -2455,12 +2456,7 @@ app.get('/config', function (req, res) {
     }
 });
 
-function getSVGs(name) {
-    return name.endsWith('.svg');
-}
-
 app.get('/cop', function (req, res) {
-    var icons = [];
     if (req.session.loggedin) {
         if (req.query.mission !== undefined && req.query.mission && objectid.isValid(req.query.mission)) {
             try {
@@ -2474,23 +2470,20 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            fs.readdir('./public/images/icons', function (err, icons) {
-                                var mission_name = row[0].name;
-                                req.session.mission_permissions[req.query.mission] = {
-                                    manage_users: true,
-                                    write_access: true,
-                                    delete_access: true,
-                                    api_access: true
-                                }; //admin has all permissions
+                            var mission_name = row[0].name;
+                            req.session.mission_permissions[req.query.mission] = {
+                                manage_users: true,
+                                write_access: true,
+                                delete_access: true,
+                                api_access: true
+                            }; //admin has all permissions
 
-                                res.render('cop', {
-                                    title: 'cop - ' + mission_name,
-                                    permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
-                                    mission_name: mission_name,
-                                    user_id: req.session.user_id,
-                                    username: req.session.username,
-                                    icons: JSON.stringify(icons.filter(getSVGs))
-                                });
+                            res.render('cop', {
+                                title: 'cop - ' + mission_name,
+                                permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                mission_name: mission_name,
+                                user_id: req.session.user_id,
+                                username: req.session.username
                             });
                         } else {
                             res.redirect('login');
@@ -2521,24 +2514,21 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            fs.readdir('./public/images/icons', function (err, icons) {
-                                var mission_name = row[0].name;
-                                req.session.mission_permissions[req.query.mission] = row[0].permissions;
+                            var mission_name = row[0].name;
+                            req.session.mission_permissions[req.query.mission] = row[0].permissions;
 
-                                if (req.session.mission_permissions[req.query.mission]) { // always let admin in
-                                    res.render('cop', {
-                                        title: 'cop - ' + mission_name,
-                                        permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
-                                        mission_name: mission_name,
-                                        user_id: req.session.user_id,
-                                        username: req.session.username,
-                                        icons: icons.filter(getSVGs)
-                                    });
-                                }
-                                else {
-                                    res.redirect('login');
-                                }
-                            });
+                            if (req.session.mission_permissions[req.query.mission]) { // always let admin in
+                                res.render('cop', {
+                                    title: 'cop - ' + mission_name,
+                                    permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                    mission_name: mission_name,
+                                    user_id: req.session.user_id,
+                                    username: req.session.username
+                                });
+                            }
+                            else {
+                                res.redirect('login');
+                            }
                         } else {
                             res.redirect('login');
                             if (err)

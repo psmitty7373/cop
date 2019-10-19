@@ -1,7 +1,7 @@
 var graph;
 var model = new mxGraphModel();
 
-function startGraph(container)
+function graphStart(container)
 {
     // Checks if the browser is supported
     if (!mxClient.isBrowserSupported())
@@ -21,14 +21,27 @@ function startGraph(container)
         graph.setPanning(true);
         new mxRubberband(graph);
 
-        var style = {};
+        // outline (minimap)
+        var outline = new mxOutline(graph, document.getElementById('graphOutline'));
+
+        // styles
+        var style = graph.getStylesheet().getDefaultVertexStyle();
         style[mxConstants.STYLE_VERTICAL_LABEL_POSITION] = 'bottom';
         style[mxConstants.STYLE_VERTICAL_ALIGN] = 'top';
         style[mxConstants.STYLE_FONTSIZE] = '14';
-        style[mxConstants.STYLE_FONTCOLOR] = '#fff';
-        style[mxConstants.STYLE_FONTFAMILY] = 'Lato-Regular';
-        style['fontWeight'] = 'regular';
-        graph.getStylesheet().putDefaultVertexStyle(style);
+        style['fontColor'] = '#fff';
+        style['fontFamily'] = 'Lato-Regular';
+        style['strokeColor'] = '#000';
+        style['fillColor'] = '#3f6ba3';        
+
+        var edgeStyle = {};        
+        style = graph.getStylesheet().getDefaultEdgeStyle();
+        style['strokeColor'] = '#000000';
+        style['fontColor'] = '#000000';
+        style['fontStyle'] = '0';
+        style['fontStyle'] = '0';
+        style['startSize'] = '8';
+        style['endSize'] = '8';
 
         // load shapes into registry
         var req = mxUtils.load('/images/icons/icons.xml');
@@ -38,19 +51,27 @@ function startGraph(container)
         {
             if (shape.nodeType == mxConstants.NODETYPE_ELEMENT)
             {
-                console.log(shape.getAttribute('name'), shape);
                 mxStencilRegistry.addStencil(shape.getAttribute('name'), new mxStencil(shape));
             }            
             shape = shape.nextSibling;
         }
 
+        // keyboard listeners
+        var keyHandler = new mxKeyHandler(graph);
+        // delete key
+        keyHandler.bindKey(46, function(evt)
+        {
+            if (graph.isEnabled())
+            {
+                graph.removeCells();
+            }
+        });
+
         // drag-over listener
         mxEvent.addListener(container, 'dragover', function(evt)
         {
-            
             if (graph.isEnabled())
             {
-                console.log('over');
                 evt.stopPropagation();
                 evt.preventDefault();
             }
@@ -70,11 +91,34 @@ function startGraph(container)
                 var x = pt.x / scale - tr.x;
                 var y = pt.y / scale - tr.y;
 
-                if (evt.dataTransfer.files.length > 0) {
+                if (evt.dataTransfer.getData('text')) {
+                    /*
+                    var e4 = graph.insertEdge(parent, null, '');
+                    e4.geometry.setTerminalPoint(new mxPoint(1, 100), true); e4.geometry.setTerminalPoint(new mxPoint(100, 1), false);
+                    */
+                    
+                    var icon = JSON.parse(evt.dataTransfer.getData('text'));
+                    console.log(icon);
+                    
+                    if (icon.type === 'stencil') {
+                        var stencil = mxStencilRegistry.getStencil(icon.name);
+                        if (stencil) {
+                            console.log(stencil);
+                            graph.insertVertex(null, ObjectId(), '', x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
+                        }
+                    } else if (icon.type === 'edge') {
+                        graph.getModel().beginUpdate();
+                        var edge = graph.insertEdge(null,  ObjectId(), '', null, null, icon.style);
+                        edge.geometry.setTerminalPoint(new mxPoint(x - 25, y + 25), true);
+                        edge.geometry.setTerminalPoint(new mxPoint(x + 25,  y - 25), false);
+                        graph.getModel().endUpdate()
+                    }
+                    
+                } else if (evt.dataTransfer.files.length > 0) {
                     var filesArray = evt.dataTransfer.files;
                     for (var i = 0; i < filesArray.length; i++)
                     {
-                        handleDrop(graph, filesArray[i], x + i * 10, y + i * 10);
+                        handleDrop(graph, filesArray[i], (x - (w / 2)) + i * 10, (y - (h / 2)) + i * 10);
                     }
                 } else if (evt.dataTransfer.getData('URL') != '' && evt.dataTransfer.getData('URL').indexOf('<svg') !== -1) {
                     handleSVGDrop(evt.dataTransfer.getData('URL'), x, y);
@@ -89,7 +133,6 @@ function startGraph(container)
             var changes = evt.getProperty('edit').changes;
             for (var i = 0; i < changes.length; i++)
             {
-                console.log(changes[i]);
                 var node = codec.encode(changes[i]);
                 if (!evt.getProperty('self-inflicted')) {
                     socket.send(JSON.stringify({
@@ -104,12 +147,44 @@ function startGraph(container)
         // selection listener
         graph.getSelectionModel().addListener(mxEvent.CHANGE, function(sender, evt)
         {
-            selectionChanged(graph);
+            graphSelectionChanged(graph);
         });
     }
 };
 
-function handleSVGDrop(data,x,y) {
+function graphGetCurrentSelection() {
+    return graph.getSelectionCell();
+}
+
+function graphCellSetStyle(cell, styleElem, value) {
+    if (!cell) {
+        return;
+    }
+    var style = model.getStyle(cell);
+    style = mxUtils.setStyle(style, styleElem, value);
+    graph.setCellStyle(style, [cell]);
+}
+
+function graphCellSetStyleString(cell, styleStr) {
+    if (!cell) {
+        return;
+    }
+    var style = model.getStyle(cell);
+    var elems = styleStr.split(';');
+    for (var i = 0; i < elems.length; i++) {
+        if (elems[i].indexOf('=') !== -1) {
+            if (elems[i].split('=')[1] == '0') {
+                console.log('removing style');
+                style = mxUtils.setStyle(style, elems[i].split('=')[0], '');
+            } else {
+                style = mxUtils.setStyle(style, elems[i].split('=')[0], elems[i].split('=')[1]);
+            }
+        }
+    }
+    graph.setCellStyle(style, [cell]);
+}
+
+function handleSVGDrop(data, x, y) {
     var start = data.indexOf('<svg');
     var svgText = data.substring(start)
     var root = mxUtils.parseXml(svgText);
@@ -145,30 +220,23 @@ function handleSVGDrop(data,x,y) {
             h = Math.max(1, Math.round(h));
             
             data = 'data:image/svg+xml,' + btoa(mxUtils.getXml(svgs[0], '\n'));
-            graph.insertVertex(null, null, '', x, y, w, h, 'shape=image;image=' + data + ';');
+            graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
         }
     }
 }
 
-function selectionChanged(graph)
+function graphSelectionChanged(graph)
 {
     graph.container.focus();
-    // Gets the selection cell
     var cell = graph.getSelectionCell();
-    if (cell == null)
-    {
-        console.log('nothing');
+    toolbarUpdateSelection(cell);
+    if (cell) {
+    } else {
     }
-    else
-    {
-        console.log(cell.id);
-        var style=graph.getModel().getStyle(cell);
-        console.log(style);
-        var newStyle=mxUtils.setStyle(style,mxConstants.STYLE_STROKECOLOR,'red');
-        //var cs= new Array();
-        //cs[0]=cell;
-        //graph.setCellStyle(newStyle,cs);
-    }
+}
+
+function graphGetCellStyle(cell) {
+    return graph.getCellStyle(cell);
 }
 
 function handleDrop(graph, file, x, y)
@@ -217,7 +285,7 @@ function handleDrop(graph, file, x, y)
                         h = Math.max(1, Math.round(h));
                         
                         data = 'data:image/svg+xml,' + btoa(mxUtils.getXml(svgs[0], '\n'));
-                        graph.insertVertex(null, null, '', x, y, w, h, 'shape=image;image=' + data + ';');
+                        graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
                     }
                 }
             }
@@ -234,7 +302,7 @@ function handleDrop(graph, file, x, y)
                     {
                         data = data.substring(0, semi) + data.substring(data.indexOf(',', semi + 1));
                     }
-                    graph.insertVertex(null, null, '', x, y, w, h, 'shape=image;image=' + data + ';');
+                    graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
                 };                
                 img.src = data;
             }
@@ -244,14 +312,14 @@ function handleDrop(graph, file, x, y)
     }
 };
 
-function loadGraph(xml) {
+function graphLoad(xml) {
     var xmlDoc = mxUtils.parseXml(xml);
     var node = xmlDoc.documentElement;
     var dec = new mxCodec(node.ownerDocument);
     dec.decode(node, graph.getModel());
 }
 
-function changes(model, n) {
+function graphExecuteChanges(model, n) {
     var codec = new mxCodec();
     codec.lookup = function(id)
     {
@@ -281,5 +349,14 @@ function changes(model, n) {
 }
 
 $(window).on('load', function () {
-    startGraph(document.getElementById('canvas'));
+    graphStart(document.getElementById('canvas'));
+
+    $('#zoomInButton').click(function() {
+        console.log('z');
+        graph.zoomIn();
+    })
+
+    $('#zoomOutButton').click(function() {
+        graph.zoomOut();
+    })
 });

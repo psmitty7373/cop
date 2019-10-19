@@ -19,14 +19,6 @@ if (!permissions) {
     };
 }
 
-// ---------------------------- MINIMAP ----------------------------------
-var minimap = document.getElementById('minimapCanvas');
-var minimapBg = document.getElementById('minimapBgCanvas');
-var minimapCtx = minimap.getContext('2d');
-var minimapBgCtx = minimapBg.getContext('2d');
-minimap.width = minimapBg.width = 100;
-minimap.height = minimapBg.height = 100;
-
 // ---------------------------- GLOBALS ----------------------------------
 var settings = {
     'zoom': 1.0,
@@ -104,34 +96,6 @@ function updateSettings() {
     updateSettingsTimer = setTimeout(function () {
         document.cookie = "mcscop-settings=" + JSON.stringify(settings);
     }, 100);
-}
-
-
-// ---------------------------- Minimap Functions ----------------------------------
-function updateMinimap() {
-    var scaleX = 100 / (MAXWIDTH * 2);
-    var scaleY = 100 / (MAXHEIGHT * 2);
-    var mLeft = (MAXHEIGHT - settings.x / zoom) * scaleX;
-    var mTop = (MAXHEIGHT - settings.y / zoom) * scaleY;
-    //var mWidth = (canvas.width / zoom) * scaleX;
-    //var mHeight = (canvas.height / zoom) * scaleY;
-    minimapCtx.strokeStyle = '#ffffff';
-    minimapCtx.clearRect(0, 0, minimapCtx.canvas.width, minimapCtx.canvas.height);
-    minimapCtx.beginPath();
-    minimapCtx.rect(mLeft, mTop, mWidth, mHeight);
-    minimapCtx.stroke();
-}
-
-function updateMinimapBg() {
-    var scaleX = 100 / (MAXWIDTH * 2);
-    var scaleY = 100 / (MAXHEIGHT * 2);
-    minimapBgCtx.clearRect(0, 0, minimapCtx.canvas.width, minimapCtx.canvas.height);
-    for (var i = 0; i < canvas.getObjects().length; i++) {
-        if (canvas.item(i).objType === 'icon' || canvas.item(i).objType === 'shape') {
-            minimapBgCtx.fillStyle = '#ffffff';
-            minimapBgCtx.fillRect((MAXWIDTH + canvas.item(i).left) * scaleX, (MAXHEIGHT + canvas.item(i).top) * scaleY, 2, 2);
-        }
-    }
 }
 
 
@@ -610,7 +574,7 @@ $(window).on('load', function () {
     // ---------------------------- TABLES ----------------------------------   
     // bottom table tabs
     $('#chatTab').click(function () {
-        toggleTable('chat');
+        tableToggle('chat');
     });
     if (permissions.manage_users) {
         $('#settingsTab').show();
@@ -619,13 +583,13 @@ $(window).on('load', function () {
 
     // attach events to tab buttons
     $('#settingsTab').click(function () {
-        toggleTable('settings');
+        tableToggle('settings');
     });
     $('#eventsTab').click(function () {
-        toggleTable('events');
+        tableToggle('events');
     });
     $('#opnotesTab').click(function () {
-        toggleTable('opnotes');
+        tableToggle('opnotes');
     });
 
     // attach events to add buttons
@@ -917,14 +881,6 @@ $(window).on('load', function () {
     });
 
     // ---------------------------- BUTTONS ----------------------------------
-    $('#zoomInButton').click(function () {
-        zoomIn();
-    });
-
-    $('#zoomOutButton').click(function () {
-        zoomOut();
-    });
-
     $('#objectSearch').change(function () {
         objectSearch(this.value)
     });
@@ -968,62 +924,6 @@ $(window).on('load', function () {
     });
 
     // ---------------------------- MISC ----------------------------------
-    $('[name="propFillColor"]').paletteColorPicker({
-        colors: [
-            {'#000000': '#000000'},
-            {'#808080': '#808080'},
-            {'#c0c0c0': '#c0c0c0'},
-            {'#ffffff': '#ffffff'},
-            {'#800000': '#800000'},
-            {'#ff0000': '#ff0000'},
-            {'#808000': '#808000'},
-            {'#ffff00': '#ffff00'},
-            {'#008000': '#008000'},
-            {'#00ff00': '#00ff00'},
-            {'#008080': '#008080'},
-            {'#00ffff': '#00ffff'},
-            {'#000080': '#000080'},
-            {'#0000ff': '#0000ff'},
-            {'#800080': '#800080'},
-            {'#ff00ff': '#ff00ff'}  
-        ],
-        clear_btn: null,
-        position: 'upside',
-        timeout: 2000,
-        close_all_but_this: true,
-        onchange_callback: function (color) {
-            if (color !== $('#propFillColor').val())
-                updatePropFillColor(color);
-        }
-    });
-    $('[name="propStrokeColor"]').paletteColorPicker({
-        colors: [
-            {'#000000': '#000000'},
-            {'#808080': '#808080'},
-            {'#c0c0c0': '#c0c0c0'},
-            {'#ffffff': '#ffffff'},
-            {'#800000': '#800000'},
-            {'#ff0000': '#ff0000'},
-            {'#808000': '#808000'},
-            {'#ffff00': '#ffff00'},
-            {'#008000': '#008000'},
-            {'#00ff00': '#00ff00'},
-            {'#008080': '#008080'},
-            {'#00ffff': '#00ffff'},
-            {'#000080': '#000080'},
-            {'#0000ff': '#0000ff'},
-            {'#800080': '#800080'},
-            {'#ff00ff': '#ff00ff'}  
-        ],
-        position: 'upside',
-        timeout: 2000, // default -> 2000
-        close_all_but_this: true,
-        onchange_callback: function (color) {
-            if (color !== $('#propStrokeColor').val())
-                updatePropStrokeColor(color);
-        }
-    });
-
     // make the diagram resizable
     $("#diagramJumbo").resizable({
         handles: 's',
@@ -1162,15 +1062,14 @@ $(window).on('load', function () {
                 // getters
             case 'join':
                 // objects
-
                 break;
 
             case 'update_graph':
-                changes(model, msg.arg);
+                graphExecuteChanges(model, msg.arg);
                 break;
 
             case 'get_graph':
-                loadGraph(msg.arg);
+                graphLoad(msg.arg);
                 break;
 
             case 'get_opnotes':
@@ -1258,11 +1157,11 @@ $(window).on('load', function () {
 
                 // notes
             case 'get_notes':
-                addNotes(msg.arg);
+                notesAdd(msg.arg);
                 break;
 
             case 'insert_note':
-                addNotes([msg.arg]);
+                notesAdd([msg.arg]);
                 break;
 
             case 'update_note':

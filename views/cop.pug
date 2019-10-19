@@ -22,9 +22,10 @@ html
         div(style="font-weight: 900; color: #f9ff00;") #{username}@#{mission_name}
         div.clock#utc
         div
+        
       include nav.pug
       div.jumbotron#diagramJumbo(style='height:700px;')
-        div.canvas#diagram
+        div#graph
           div#canvas
           div#message
           div#objectSearchBar
@@ -33,13 +34,14 @@ html
             span.input-group-btn
               button.btn.btn-secondary#prevObjectSearch &#8249;
               button.btn.btn-secondary#nextObjectSearch &#8250;
+
           div#zoom-buttons
             button.zoomIn#zoomInButton.ui-icon.ui-icon-zoomin
             button.zoomOut#zoomOutButton.ui-icon.ui-icon-zoomout
             button.cancelLink#cancelLinkButton Cancel Link
-          div#minimap
-            canvas#minimapBgCanvas
-            canvas#minimapCanvas
+
+          div#graphOutline
+
         div#toolbar
           div.vertNav.vertNavOutsideLeft#toolbarNav
             div.vertTab.vertTabSm#toggleTab
@@ -47,47 +49,79 @@ html
             div.vertTab#toolsTab
             div.vertTab#notesTab
             div.vertTab#filesTab
+
           div.vertNav.vertNavOutsideLeft.click-through 
             div.tabText.tab-float.rotated#toolsTabTag TOOLS
             div.tabText.tab-float.rotated#notesTabTag NOTES
             div.tabText.tab-float.rotated#filesTabTag FILES
+
           div#toolbarBody
             div#notesForm.toolbar-form
-              //button.btn.btn-primary#newNoteButton(disabled) New Note
               div#notes
             div#filesForm.toolbar-form
               div#files
               div#progressbarContainer
                 div#progressbar
+
             div#toolsForm.toolbar-form
               div#tools
-                span.toolbarTitle#toolbarTitle Edit Object
-                div.form-group#propColorGroup
-                  label Color
-                  div.colors
-                    span#propFillColorSpan
-                      input#propFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
-                    span#propStrokeColorSpan
-                      input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
-                div.form-group#toolbarIcons
-                div.form-group#moveObject
-                    div.checkbox#lockObjectGroup
-                      label
-                        input(type="checkbox", value="0" disabled)#lockObject
-                        | Locked?
-                    div#sizeObject.input-group
-                      div.col-sm-4
-                        input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
-                      span.input-group-addon x
-                      div.col-sm-4
-                        input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
-                    button.propButton.btn.btn-secondary#moveUp(type='button' disabled) Up
-                    button.propButton.btn.btn-secondary#moveDown(type='button' disabled) Down
-                    button.propButton.btn.btn-secondary#moveToFront(type='button' disabled) Front
-                    button.propButton.btn.btn-secondary#moveToBack(type='button' disabled) Back
-                div.form-group#makeObject
-                    button.propButton.btn.btn-info#editNotesButton(type='button') Object Notes
-                    button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
+                div#toolbarNewGroup
+                  span.toolbarTitle New Object
+                  div#toolbarIcons
+                    div#toolbarIconsHeader
+
+                div#toolbarEditGroup(style="display: none")
+                  span.toolbarTitle Edit Object
+                  div.form-group
+                    div.colors
+                      span#toolbarFillColorSpan
+                        input#toolbarFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
+                      span#toolbarStrokeColorSpan
+                        input#toolbarStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+
+                  div#toolbarEdgeOptions
+                    div.form-group#toolbarEdgeDashOptions
+                      button.btn.btn-secondary.dropdown-toggle(type="button", data-toggle="dropdown" aria-haspopup="true", aria-expanded="false")
+                        img.dropdownImage.spriteSolidLine(src="/images/sprites.png")
+                        span.glyphicon.glyphicon-chevron-down
+                      ul.dropdown-menu
+                        li
+                          img.dropdownImage.spriteSolidLine(src="/images/sprites.png", data-style="dashed=0;dashPattern=0;")
+                          | Solid
+                        li
+                          img.dropdownImage.spriteDashedLine(src="/images/sprites.png", data-style="dashed=1;dashPattern=0;")
+                          | Dashed
+                        li
+                          img.dropdownImage.spriteDottedLine(src="/images/sprites.png", data-style="dashed=1;dashPattern=1 1;")
+                          | Dotted
+                        li
+                          img.dropdownImage.spriteDottedLine1(src="/images/sprites.png", data-style="dashed=1;dashPattern=1 2;")
+                          | Dotted (1)
+
+                    div.form-group#toolbarEdgeWaypointOptions
+                      button.btn.btn-secondary.dropdown-toggle(type="button", data-toggle="dropdown" aria-haspopup="true", aria-expanded="false")
+                        img.dropdownImage.spriteStraightLine(src="/images/sprites.png")
+                        span.glyphicon.glyphicon-chevron-down
+                      ul.dropdown-menu
+                        li
+                          img.dropdownImage.spriteStraightLine(src="/images/sprites.png", data-style="edgeStyle=0;")
+                          | Straight
+                        li
+                          img.dropdownImage.spriteOrthagonalLine(src="/images/sprites.png", data-style="edgeStyle=orthogonalEdgeStyle;elbow=vertical;")
+                          | Orthagonal
+                        li
+                          img.dropdownImage.spriteIsometricLine(src="/images/sprites.png", data-style="edgeStyle=isometricEdgeStyle;elbow=0;")
+                          | Isometric
+
+                  div.form-group
+                      button.propButton.btn.btn-secondary#toolbarMoveUp(type='button') Up
+                      button.propButton.btn.btn-secondary#toolbarMoveDown(type='button') Down
+                      button.propButton.btn.btn-secondary#toolbarMoveToFront(type='button') Front
+                      button.propButton.btn.btn-secondary#toolbarMoveToBack(type='button') Back
+
+                  div.form-group
+                      button.propButton.btn.btn-info#toolbarEditNotes(type='button') Object Notes
+                      button.propButton.btn.btn-danger#toolbarDeleteObject(type='button') Delete
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
@@ -96,11 +130,13 @@ html
               div#chatDropZoneBanner Drop the file here to upload to chat.
               div#chatProgressbarContainer
                 div#chatProgressbar
-            div#channelsWrapper
-              div#channels
-                div.channelHeading#channelsHeading Channels
-                div.channelHeading#usersHeading Users
-              div.channelHeading#newChannel +New Channel
+
+            div#chatChannelsWrapper
+              div#chatChannels
+                div.channelHeading#chatChannelsHeading Channels
+                div.channelHeading#chatUsersHeading Users
+              div.channelHeading#chatNewChannel +New Channel
+
             div#channelPanesWrapper
               div#channelPanes
               div#channelFooter
@@ -157,9 +193,10 @@ script(type="template/text", id="details_template")
       div.window-body.modal-body
       div.window-footer.modal-footer
 
-script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}"; var icons = !{icons};
+script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
+script(src='js/popper.min.js')
 script(src='js/jquery.overlayScrollbars.min.js')
 script(src='js/mxClient.min.js')
 script(src='js/toastr.min.js')
@@ -173,7 +210,7 @@ script(src='js/jstree.min.js')
 script(src='js/palette-color-picker.min.js')
 script(src='js/moment.min.js')
 script(src='js/tempusdominus-bootstrap-4.min.js')
-
+script(src='js/objectid.min.js')
 script(src='js/bootstrap-window.js')
 script(src='js/tabulator.js')
 script(src='js/helpers.js')
@@ -181,7 +218,8 @@ script(src='js/toolbar.js')
 script(src='js/notes.js')
 script(src='js/files.js')
 script(src='js/chat.js')
-script(src='js/diagram.js')
+script(src='js/graph.js')
 script(src='js/cop.js')
+script(src='images/icons/icons.js')
 
 //script(src='js/cop.min.js')

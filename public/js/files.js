@@ -183,7 +183,6 @@ $(window).on('load', function () {
                                 var _node = node;
                                 bootbox.prompt('Directory name?', function (name) {
                                     if (name !== null) {
-                                        console.log(node);
                                         socket.send(JSON.stringify({
                                             act: 'insert_file',
                                             arg: {
