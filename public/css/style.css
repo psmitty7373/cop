@@ -488,6 +488,48 @@ h4,
     float: right;
 }
 
+#channelPanes {
+    height: 100%;
+}
+
+#channelsWrapper {
+    background: #375a7f;
+    width: 200px;
+    height: 100%;
+    float: left;
+    position: relative;
+    display: flex;
+    flex-flow: column;
+}
+
+#channelPanesWrapper {
+    width: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#channelFooter {
+    width: 100%;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-right: 10px;
+}
+
+#channels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.channel-pane {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-left: 5px;
+    padding-right: 10px;
+    padding-top: 10px;
+}
+
 .vakata-context,
 .vakata-context ul {
     z-index: 15;

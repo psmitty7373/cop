@@ -282,6 +282,7 @@ function chatAddMessage(messages, bulk, scroll) {
 
         var newMsg = '<div class="messageWrapper" id="message' + messages[i]._id + '"><div class="message"><div class="messageGutter">' + avatar + '</div><div class="messageContent">' + header + '<span class="messageBody">' + messages[i].text + '</span></div>' + messageOptions + '</div></div>';
 
+
         if (bulk) {
             bulkMsg[channel_id].messages += newMsg;
             bulkMsg[channel_id].lastSender = tuser_id;
@@ -371,14 +372,40 @@ function getMoreMessages(channel_id) {
 
 
 function chatNewChannel() {
-    bootbox.prompt('Channel name?', function (name) {
-        socket.send(JSON.stringify({
-            act: 'insert_chat_channel',
-            arg: {
-                name: name
+    var msg = `
+<form>
+    <div class="form-group row">
+        <label for="ncName" class="col-sm-4 col-form-label">Channel Name:</label>
+        <div class="col-sm-8">
+            <input type="text" class="form-control" id="ncName">
+        </div>
+    </div>
+</form>`;
+
+    bootbox.dialog({
+        message: msg,
+        title: 'Add User',
+        buttons: {
+            confirm: {
+                label: 'Insert',
+                className: 'btn-primary',
+                callback: function () {
+                    var name = $('#ncName').val();
+                    socket.send(JSON.stringify({
+                        act: 'insert_chat_channel',
+                        arg: {
+                            name: name
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+>>>>>>> master
             },
-            msgId: msgHandler()
-        }));
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
     });
 }
 
