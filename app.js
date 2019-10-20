@@ -29,6 +29,7 @@ const path = require('path');
 const ShareDB = require('sharedb');
 const richText = require('rich-text');
 const rooms = new Map();
+const graphs = new Map();
 const upload = multer({
     dest: './temp_uploads'
 });
@@ -39,15 +40,18 @@ const ws = new wss.Server({
     server: http
 });
 
+var xml2js = require('xml2js');
+var parser = new xml2js.Parser({explicitArray : false});
+var builder = new xml2js.Builder({ renderOpts: { pretty: false }, headless: true });
+
 app.set('view engine', 'pug');
 app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
-app.use(pino)
+//app.use(pino)
 const logger = pino.logger;
-
 
 // session-mongodb connection
 app.use(session({
@@ -160,6 +164,17 @@ function dynamicSort(property) {
     }
 }
 
+// send a message to all rooms
+function sendToAllRooms(msg) {
+    rooms.forEach((room) => {
+        room.forEach((socket) => {
+            if (socket && socket.readyState === socket.OPEN) {
+                socket.send(msg);
+            }
+        });
+    });
+}
+
 // send a message to all sockets in a room
 function sendToRoom(room, msg, selfSocket, permRequired) {
     if (!selfSocket) {
@@ -226,157 +241,77 @@ const pingInterval = setInterval(function ping() {
     });
 }, 30000);
 
-// OBJECTS -------------------------------------------------------------------------------------------------------------------
-// get object listing
-async function getObjects(socket) {
+// MXGRAPH -------------------------------------------------------------------------------------------------------------------
+
+// generate a blank mxGraph model in JS
+var emptyGraphXML = `<mxGraphModel>
+<root>
+  <mxCell id="0"/>
+  <mxCell id="1" parent="0"/>
+</root>
+</mxGraphModel>`;
+
+var emptyGraph;
+parser.parseStringPromise(emptyGraphXML).then(function(res) {
+    emptyGraph = res;
+}).catch (function (err) {
+    logger.error(err);
+})
+
+async function loadGraph(mission_id) {
+    // make sure graph is in memory
+    if (graphs.get(mission_id)) {
+        return true;
+    }
+
+    var mission = await mdb.collection('missions').findOne({
+        _id: objectid(mission_id),
+        deleted: {
+            $ne: true
+        }
+    }, {
+        projection: {
+            graph: 1
+        }
+    });
+
+    if (!mission.graph) {
+        return false;
+    }
+    
+    graphs.set(mission_id, JSON.parse(mission.graph));
+    return true;
+}
+
+async function saveGraph(mission_id, graph) {
     try {
-        var objects = await mdb.collection('objects').find({
-            mission_id: objectid(socket.mission_id),
-            deleted: {
-                $ne: true
-            }
+        var new_values = {};
+
+        new_values.graph = JSON.stringify(graph);
+
+        var res = await mdb.collection('missions').updateOne({
+            _id: objectid(mission_id)
         }, {
-            projection: {
-                mission_id: 0
-            }      
-        }).sort({
-            z: 1
-        }).toArray();
-
-        socket.send(JSON.stringify({
-            act: 'get_objects',
-            arg: objects
-        }));
-
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error getting objects.'
-            }
-        }));
-        socket.send(JSON.stringify({
-            act: 'get_objects',
-            arg: []
-        }));
-        logger.error(err);
-    }
-}
-
-async function insertObject(socket, object) {
-    try {
-        object.rot = 0;
-        object.scale_x = 1;
-        object.scale_y = 1;
-        if (object.type === 'shape') {
-            object.scale_x = 65;
-            object.scale_y = 65;
-        }
-        object.type = xssFilters.inHTMLData(object.type);
-        object.name = xssFilters.inHTMLData(object.name);
-        object.fill_color = xssFilters.inHTMLData(object.fill_color);
-        object.stroke_color = xssFilters.inHTMLData(object.stroke_color);
-        object.image = xssFilters.inHTMLData(object.image);
-
-        // get object count for new z
-        var count = await mdb.collection('objects').count({
-            mission_id: objectid(socket.mission_id)
+            $set: new_values
         });
+        return true;
 
-        var new_object;
-        if (object.type === 'icon' || object.type === 'shape')
-            new_object = {
-                mission_id: objectid(socket.mission_id),
-                type: object.type,
-                name: object.name,
-                fill_color: object.fill_color,
-                stroke_color: object.stroke_color,
-                image: object.image,
-                scale_x: object.scale_x,
-                scale_y: object.scale_y,
-                rot: object.rot,
-                x: object.x,
-                y: object.y,
-                z: count,
-                locked: object.locked,
-                deleted: false
-            };
-        else if (object.type === 'link')
-            new_object = {
-                mission_id: objectid(socket.mission_id),
-                type: object.type,
-                name: object.name,
-                stroke_color: object.stroke_color,
-                image: object.image,
-                obj_a: objectid(object.obj_a),
-                obj_b: objectid(object.obj_b),
-                z: 0,
-                locked: object.locked,
-                deleted: false
-            };
-
-        // add object to db
-        var res = await mdb.collection('objects').insertOne(new_object);
-
-        if (res.result.ok === 1) {
-            // if link, push to back
-            if (object.type === 'link') {
-                var rows = await mdb.collection('objects').find({
-                    $and: [{
-                        mission_id: objectid(socket.mission_id)
-                    }, {
-                        deleted: {
-                            $ne: true
-                        }
-                    }]
-                }, {
-                    _id: 1
-                }).sort({
-                    z: 1
-                }).toArray();
-
-                var zs = rows.map(r => String(r._id));
-                zs.move(zs.indexOf(String(new_object._id)), 0);
-                async.forEachOf(zs, function (item, index, callback) {
-                    var new_values = {
-                        $set: {
-                            z: index
-                        }
-                    };
-                    mdb.collection('objects').updateOne({
-                        _id: objectid(item)
-                    }, new_values, function (err, result) {
-                        if (err)
-                            callback(err);
-                        else
-                            callback();
-                    });
-                }, function (err) {
-                    if (err) {
-                        throw(err);
-                    }
-                });
-            }
-            // push object back to room
-            insertLogEvent(socket, { text: 'Created ' + object.type + ': ' + object.name + '.' });
-            sendToRoom(socket.room, JSON.stringify({
-                act: 'insert_object',
-                arg: [new_object]
-            }));
-        } else {
-            throw('insert_object error.');
-        }
     } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error inserting object.'
-            }
-        }));
         logger.error(err);
+        return false;
     }
 }
 
+<<<<<<< HEAD
+function mxTerminalChange(js, graph) {
+    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxTerminalChange.$.cell) {
+            if (js.mxTerminalChange.$.source == 1) {
+                if (js.mxTerminalChange.$.terminal) {
+                    graph.mxGraphModel.root.mxCell[i].$.source = js.mxTerminalChange.$.terminal;
+                } else {
+                    delete graph.mxGraphModel.root.mxCell[i].$.source;
+=======
 async function pasteObject(socket, objects) {
     try {
         var args = [];
@@ -409,15 +344,16 @@ async function pasteObject(socket, objects) {
 
                     var res = await mdb.collection('objects').insertOne(row);
                     args.push(row);
+>>>>>>> master
                 }
-                callback();
-            } catch (err) {
-                callback(err);
-            }
-        }, function (err) {
-            if (err) {
-                throw(err);
             } else {
+<<<<<<< HEAD
+                if (js.mxTerminalChange.$.terminal) {
+                    graph.mxGraphModel.root.mxCell[i].$.target = js.mxTerminalChange.$.terminal;
+                } else {
+                    delete graph.mxGraphModel.root.mxCell[i].$.target;
+                }
+=======
                 insertLogEvent(socket, { text: 'Pasted some objects.' });
                 args.sort(dynamicSort('z'));
                 sendToRoom(socket.room, JSON.stringify({
@@ -431,147 +367,60 @@ async function pasteObject(socket, objects) {
             act: 'error',
             arg: {
                 text: 'Error inserting object.'
+>>>>>>> master
             }
-        }));
-        logger.error(err);
-    }
-}
-
-async function deleteObject(socket, object) {
-    //TO-DO: test this
-    try {
-        var query = {
-            $or: [{
-                _id: objectid(object._id)
-            }, {
-                obj_a: objectid(object._id)
-            }, {
-                obj_b: objectid(object._id)
-            }]
-        };
-        var o_rows = await mdb.collection('objects').find(query, {
-            _id: 1
-        }).toArray();
-
-        async.each(o_rows, function (row, callback) {
-            mdb.collection('objects').updateOne({
-                _id: objectid(row._id)
-            }, {
-                $set: {
-                    deleted: true
-                }
-            }, function (err, result) {
-                if (!err) {
-                    sendToRoom(socket.room, JSON.stringify({
-                        act: 'delete_object',
-                        arg: row._id
-                    }));
-                } else
-                    logger.error(err);
-            });
-
-        }, async function (err) {
-            if (err) {
-                throw(err);
-            } else {
-                var rows = await mdb.collection('objects').find({
-                    $and: [{
-                        mission_id: objectid(socket.mission_id)
-                    }, {
-                        deleted: {
-                            $ne: true
-                        }
-                    }]
-                }, {
-                    _id: 1
-                }).sort({
-                    z: 1
-                }).toArray();
-
-                var zs = rows.map(r => String(r._id));
-
-                async.forEachOf(zs, function (item, index, callback) {
-                    var new_values = {
-                        $set: {
-                            z: index
-                        }
-                    };
-                    mdb.collection('objects').updateOne({
-                        _id: objectid(item)
-                    }, new_values, function (err, result) {
-                        if (err)
-                            callback(err)
-                        else
-                            callback();
-                    });
-                });
-            }
-        });
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error deleting note.'
-            }
-        }));
-        logger.error(err);
-    }
-}
-
-async function changeObject(socket, object) {
-    try {
-        object.name = xssFilters.inHTMLData(object.name);
-        object.fill_color = xssFilters.inHTMLData(object.fill_color);
-        object.stroke_color = xssFilters.inHTMLData(object.stroke_color);
-        object.image = xssFilters.inHTMLData(object.image);
-
-        var new_values = {
-            $set: {
-                name: object.name,
-                fill_color: object.fill_color,
-                stroke_color: object.stroke_color,
-                image: object.image,
-                locked: object.locked
-            }
-        };
-
-        var res = await mdb.collection('objects').updateOne({
-            _id: objectid(object._id)
-        }, new_values);
-
-        if (res.result.ok === 1) {
-            insertLogEvent(socket, { text: 'Modified object: ' + object.name + ' ID: ' + object._id + '.' });
-            sendToRoom(socket.room, JSON.stringify({
-                act: 'change_object',
-                arg: object
-            }));
-
-        } else {
-            throw('changeObject error.');
+            break;
         }
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error updating object.'
-            }
-        }));
-        logger.error(err);
     }
+    return js;
 }
 
-async function moveObject(socket, objects) {
-    try {
-        objects.sort(dynamicSort('z'));
+function mxGeometryChange(js, graph) {
+    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxGeometryChange.$.cell) {
+            graph.mxGraphModel.root.mxCell[i].mxGeometry = js.mxGeometryChange.mxGeometry;
+            break;
+        }
+    }
+    return js;
+}
 
-        var args = []; // for x/y moves
-        var args_broadcast = []; // for z moves... to everyone
+function mxValueChange(js, graph) {
+    js.mxValueChange.$.value = xssFilters.inHTMLData(js.mxValueChange.$.value);
+    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxValueChange.$.cell) {
+            graph.mxGraphModel.root.mxCell[i].$.value = js.mxValueChange.$.value;
+            break;
+        }
+    }
+    return js;
+}
 
-        var rows = await mdb.collection('objects').find({
-            mission_id: objectid(socket.mission_id),
-            deleted: {
-                $ne: true
+function mxStyleChange(js, graph) {
+    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxStyleChange.$.cell) {
+            graph.mxGraphModel.root.mxCell[i].$.style = js.mxStyleChange.$.style;
+            break;
+        }
+    }
+    return js;
+}
+
+function mxRootChange(js, graph) {
+    graph.mxGraphModel.root.mxCell = js.mxRootChange.mxCell;
+    return '';
+}
+
+function mxChildChange(js, graph) {
+    // delete
+    if (js.mxChildChange.$ && js.mxChildChange.$.parent === undefined) {
+        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+            if (js.mxChildChange.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.mxChildChange.$.child) {
+                graph.mxGraphModel.root.mxCell.splice(i, 1);
+                break;
             }
+<<<<<<< HEAD
+=======
         }, {
             _id: 1,
             z: 1,
@@ -668,19 +517,23 @@ async function moveObject(socket, objects) {
             });
         } else {
             throw('moveObject error.');
+>>>>>>> master
         }
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error moving object.'
+    // move
+    } else if (js.mxChildChange.$ && js.mxChildChange.$.index && js.mxChildChange.$.child) {
+        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+            if (js.mxChildChange.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.mxChildChange.$.child) {
+                graph.mxGraphModel.root.mxCell.move(i, js.mxChildChange.$.index);
+                break;
             }
-        }));
-        logger.error(err);
+        }
+    // insert
+    } else if (js.mxChildChange.mxCell) {
+        graph.mxGraphModel.root.mxCell.push(js.mxChildChange.mxCell);
     }
-
+    return js;
 }
-// ------------------------------------------------------------------------------------------------------------------- /OBJECTS
+// ------------------------------------------------------------------------------------------------------------------- MXGRAPH
 
 // USERS -------------------------------------------------------------------------------------------------------------------
 // get user listing
@@ -705,6 +558,7 @@ async function getUsers(socket, limited) {
         }, {
             projection: projection
         }).toArray();
+
         socket.send(JSON.stringify({
             act: 'get_users',
             arg: users
@@ -736,12 +590,15 @@ async function insertUser(socket, user) {
         new_values.api = crypto.randomBytes(32).toString('hex');
         new_values.avatar = '';
         new_values.deleted = false;
-        new_values.channels = {};
         new_values.is_admin = user.is_admin;
     
         var res = await mdb.collection('users').insertOne(new_values);
+
+        var channel = { _id: objectid(res.ops[0]._id), name: '', deleted: false, type: 'user', members: [objectid(res.ops[0]._id)] };
+        await mdb.collection('channels').insertOne(channel);
+
         res.ops[0].password = '';
-        sendToRoom(socket.room, JSON.stringify({
+        sendToRoom('config', JSON.stringify({
             act: 'insert_user',
             arg: res.ops[0]
         }));
@@ -761,8 +618,7 @@ async function insertUser(socket, user) {
 async function updateUser(socket, user) {
     try {
         if (user.name === 'admin') {
-            user.is_admin = true; // make sure admin is always... admin
-            
+            user.is_admin = true; // make sure admin is always... admin            
         }
 
         var new_values = {};
@@ -783,7 +639,7 @@ async function updateUser(socket, user) {
             delete user.api;
             user.password = '';
 
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom('config', JSON.stringify({
                 act: 'update_user',
                 arg: user
             }));
@@ -821,7 +677,7 @@ async function deleteUser(socket, user) {
             }
         });
         if (res.result.ok === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom('config', JSON.stringify({
                 act: 'delete_user',
                 arg: user._id
             }));
@@ -894,11 +750,13 @@ async function insertMission(socket, mission) {
 
         var filesRoot = objectid(null);
         var chatFilesRoot = objectid(null);
+        var logChannel = objectid(null);
         var mission = {
+            graph: JSON.stringify(emptyGraph),
             name: mission.name,
             user_id: objectid(socket.user_id),
             mission_users: [],
-            channels: [{ _id: objectid(null), name: 'log', deleted: false, type: 'channel' }, { _id: objectid(null), name: 'general', deleted: false, type: 'channel' }],
+            log_channel: logChannel,
             files_root: filesRoot,
             chat_files_root: chatFilesRoot,
             files: [{ _id: filesRoot, name: '/', parent_id: '#', type: 'dir', level: 0, protected: true }, { _id: chatFilesRoot, name: 'chat_files', parent_id: filesRoot, type: 'dir', level: 1, protected: true }],
@@ -918,7 +776,12 @@ async function insertMission(socket, mission) {
         
         var res = await mdb.collection('missions').insertOne(mission);
         res.ops[0].username = socket.username;
-        sendToRoom(socket.room, JSON.stringify({
+
+        // create default chat channels
+        var channels = [{ _id: logChannel, mission_id: objectid(res.ops[0]._id), name: 'log', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }, { _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }];
+        await mdb.collection('channels').insert(channels);
+
+        sendToRoom('main', JSON.stringify({
             act: 'insert_mission',
             arg: res.ops[0]
         }));
@@ -948,7 +811,7 @@ async function updateMission(socket, mission) {
             _id: objectid(mission._id)
         }, new_values);
         if (res.result.ok === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom('main', JSON.stringify({
                 act: 'update_mission',
                 arg: mission
             }));
@@ -979,7 +842,7 @@ async function deleteMission(socket, mission) {
         });
 
         if (res.result.ok === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom('main', JSON.stringify({
                 act: 'delete_mission',
                 arg: mission._id
             }));
@@ -1003,22 +866,13 @@ async function deleteMission(socket, mission) {
 // get chats
 async function getChatChannels(socket) {
     try {
-        var channels = await mdb.collection('missions').aggregate([{
-            $match: {
-                _id: objectid(socket.mission_id),
-                deleted: {
-                    $ne: true
-                }
+        var channels = await mdb.collection('channels').find({
+            mission_id: objectid(socket.mission_id),
+            members: { $in: [ objectid(socket.user_id) ]},
+            deleted: {
+                $ne: true
             }
-        }, {
-            $unwind: '$channels'
-        }, {
-            $project: {
-                _id: '$channels._id',
-                name: '$channels.name',
-                type: 'channel'
-            }
-        }]).toArray();
+        }).toArray();
 
         var projection = {
             password: 0,
@@ -1039,23 +893,22 @@ async function getChatChannels(socket) {
         }).toArray();
 
         for (var i = 0; i < users.length; i++) {
-            channels.push({ _id: users[i]._id, name: users[i].username, type: 'user'});
+            users[i].status = 'offline';
+            if (users[i]._id == socket.user_id || (rooms.get(users[i]._id.toString()) && rooms.get(users[i]._id.toString()).size > 0)) {
+                users[i].status = 'online';
+            }
         }
 
-        /*
-        for (var i = rooms.get(socket.mission_id).values(), s = null; s = i.next().value; ) {
-            if (s.readyState === s.OPEN) {
-                if (users.indexOf(s.username) === -1) {
-                    users.push(s.username);
-                    channels.push({ _id: s.user_id, name: s.username, type: 'user'});
-                }
-            }
-        };*/
+        for (var i = 0; i < users.length; i++) {
+            channels.push({ _id: users[i]._id, name: users[i].username, type: 'user', status: users[i].status });
+        }
 
         socket.send(JSON.stringify({
             act: 'get_channels',
             arg: channels
         }));
+
+        return channels;
 
     } catch (err) {
         socket.send(JSON.stringify({
@@ -1069,6 +922,8 @@ async function getChatChannels(socket) {
             arg: []
         }));
         logger.error(err);
+
+        return [];
     }
 }
 
@@ -1076,8 +931,8 @@ async function getChatChannels(socket) {
 async function insertChatChannel(socket, channel) {
     try {
         // check if channel already exists
-        var count = await mdb.collection('missions').count({
-            _id: objectid(socket.mission_id),
+        var count = await mdb.collection('channels').count({
+            mission_id: objectid(socket.mission_id),
             'channels.name': channel.name
         });
 
@@ -1099,7 +954,7 @@ async function insertChatChannel(socket, channel) {
             });
 
             if (res.result.ok === 1) {
-                sendToRoom(socket.room, JSON.stringify({
+                sendToRoom(socket.mission_id, JSON.stringify({
                     act: 'insert_chat_channel',
                     arg: [new_values]
                 }));
@@ -1122,45 +977,9 @@ async function insertChatChannel(socket, channel) {
 }
 
 // get 50 most recent messages for chat
-async function getChats(socket) {
+async function getChats(socket, channels) {
     try {
         var chats = [];
-        var channels = await mdb.collection('missions').findOne({
-            _id: objectid(socket.mission_id),
-            deleted: {
-                $ne: true
-            }
-        }, {
-            projection: {
-                channels: 1
-            }
-        });
-
-        channels = channels['channels'];
-
-        var projection = {
-            password: 0,
-            deleted: 0,
-            api: 0,
-            avatar: 0,
-            name: 0,
-            permissions: 0,
-            is_admin: 0
-        }
-
-        var users = await mdb.collection('users').find({
-            deleted: {
-                $ne: true
-            }
-        }, {
-            projection: projection
-        }).toArray();
-
-        for (var i = 0; i < users.length; i++) {
-            if (users[i]._id !== socket.user_id) {
-                channels.push({ _id: users[i]._id, name: users[i].username, type: 'user'});
-            }
-        }
 
         for (var i = 0; i < channels.length; i++) {
             var match = {};
@@ -1211,7 +1030,6 @@ async function getChats(socket) {
                     _id: 1,
                     user_id: 1,
                     channel_id: objectid(channels[i]._id),
-                    test: 'blark',
                     text: 1,
                     timestamp: 1,
                     username: '$username.username'
@@ -1225,6 +1043,8 @@ async function getChats(socket) {
                 chats = chats.concat(rows);
             }
         }
+        
+
         socket.send(JSON.stringify({
             act: 'get_chats',
             arg: chats
@@ -1251,29 +1071,17 @@ async function insertLogEvent(socket, chat, filter) {
     }
     try {
         if (!chat.channel_id || chat.channel_id === '') {
-            var channels = await mdb.collection('missions').aggregate([{
-                $match: {
-                    _id: objectid(socket.mission_id),
-                    deleted: {
-                        $ne: true
-                    }
+            var logChannel = await mdb.collection('missions').findOne({
+                _id: objectid(socket.mission_id),
+                deleted: {
+                    $ne: true
                 }
-            }, {
-                $unwind: '$channels'
-            }, {
-                $match: {
-                    'channels.name': 'log'
-                }
-            }, {
-                $project: {
-                    channel_id: '$channels._id',
-                }
-            }]).toArray();
+            });
 
-            if (channels.length < 1) {
+            if (!logChannel) {
                 throw('insertLogEvent error.  Could not find log channel.')
             }
-            chat.channel_id = channels[0].channel_id;
+            chat.channel_id = logChannel.log_channel.toString();
             chat.type = 'channel';
         }
 
@@ -1298,51 +1106,49 @@ async function insertChat(socket, chat, filter) {
         }
         chat.timestamp = (new Date).getTime();
 
-        var count = 0;
-        if (chat.type === 'channel') {
-            count = await mdb.collection('missions').count({
-                _id: objectid(socket.mission_id),
-                'channels._id': objectid(chat.channel_id)
-            });
+        var count = await mdb.collection('channels').count({
+            _id: objectid(chat.channel_id)
+        });
+
+        if (count !== 1) {
+            throw('insertChat error.  Invalid channel.');
         }
 
-        if (chat.type === 'user' || count > 0) {
+        var chat_row = {
+            _id: objectid(null),
+            user_id: objectid(socket.user_id),
+            channel_id: objectid(chat.channel_id),
+            text: chat.text,
+            timestamp: chat.timestamp,
+            deleted: false
+        };
 
-            var chat_row = {
-                _id: objectid(null),
-                user_id: objectid(socket.user_id),
-                channel_id: objectid(chat.channel_id),
-                text: chat.text,
-                timestamp: chat.timestamp,
-                deleted: false
-            };
+        var res = await mdb.collection('chats').insertOne(chat_row);
 
-            var res = await mdb.collection('chats').insertOne(chat_row);
+        chat._id = res.ops[0]._id;
 
-            if (chat.type === 'user') {
-                sendToRoom(socket.user_id, JSON.stringify({
-                    act: 'chat',
-                    arg: [chat]
-                }));
+        // if private chat, send to both parties
+        if (chat.type === 'user' && chat.channel_id !== chat.user_id) {
+            // send message to sender (dup)
+            sendToRoom(chat.user_id, JSON.stringify({
+                act: 'chat',
+                arg: [chat]
+            }));
 
-                if (chat.channel_id !== chat.user_id) {
-                    var t_channel_id = chat.channel_id
-                    chat.channel_id = socket.user_id;
-                    sendToRoom(t_channel_id, JSON.stringify({
-                        act: 'chat',
-                        arg: [chat]
-                    }));
-                }
-
-            } else {
-                sendToRoom(socket.room, JSON.stringify({
-                    act: 'chat',
-                    arg: [chat]
-                }));
-            }
-
+            
+            // send message to receiver
+            var tchannel_id = chat.channel_id;
+            chat.channel_id = socket.user_id;
+            sendToRoom(tchannel_id, JSON.stringify({
+                act: 'chat',
+                arg: [chat]
+            }));
         } else {
-            throw('insertChat error.  Invalid channel.')
+            // send to channel
+            sendToRoom(chat.channel_id, JSON.stringify({
+                act: 'chat',
+                arg: [chat]
+            }));
         }
     } catch (err) {
         socket.send(JSON.stringify({
@@ -1352,6 +1158,53 @@ async function insertChat(socket, chat, filter) {
             }
         }));
         logger.error(err);
+    }
+}
+
+// delete chat
+async function deleteChat(socket, chat) {
+    try {
+        var tchat = await mdb.collection('chats').findOne({
+            _id: objectid(chat._id),
+            user_id: objectid(socket.user_id),
+            deleted: {
+                $ne: true
+            }
+        });
+
+        if (!tchat) {
+            throw ('deleteChat error. Chat does not exist.');
+        }
+
+        if (!socket.is_admin && socket.user_id != tchat.user_id) {
+            throw('deleteChat error. Permission denied.');
+        }
+
+        var res = await mdb.collection('chats').updateOne({
+            _id: objectid(chat._id)
+        }, {
+            $set: {
+                deleted: true
+            }
+        });
+
+        if (res.result.ok === 1) {
+            sendToRoom(tchat.channel_id.toString(), JSON.stringify({
+                act: 'delete_chat',
+                arg: chat._id
+            }));
+        } else {
+            throw('delete_chat error.')
+        }
+
+    } catch (err) {
+        logger.error(err);
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error deleting chat.'
+            }
+        }));
     }
 }
 
@@ -1488,6 +1341,7 @@ async function insertMissionUser(socket, user) {
                 user_id: objectid(user.user_id),
                 permissions: user.permissions
             };
+
             var res = await mdb.collection('missions').updateOne({
                 _id: objectid(socket.mission_id)
             }, {
@@ -1495,7 +1349,20 @@ async function insertMissionUser(socket, user) {
                     mission_users: new_values
                 }
             });
+
+            var res2 = await mdb.collection('channels').updateMany({
+                mission_id: objectid(socket.mission_id),
+                deleted: {
+                    $ne: true
+                }
+            }, {
+                $push: {
+                    members: objectid(user.user_id)
+                }
+            });
+
             if (res.result.ok === 1) {
+                // get username
                 var user = await mdb.collection('users').findOne({
                     _id: objectid(user.user_id),
                     deleted: {
@@ -1503,7 +1370,7 @@ async function insertMissionUser(socket, user) {
                     }
                 });
                 new_values.username = user.username;
-                sendToRoom(socket.room, JSON.stringify({
+                sendToRoom(socket.mission_id, JSON.stringify({
                     act: 'insert_mission_user',
                     arg: new_values
                 }));
@@ -1547,7 +1414,7 @@ async function updateMissionUser(socket, user) {
                 }
             });
             user.username = ouser.username;
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_mission_user',
                 arg: user
             }));
@@ -1582,7 +1449,7 @@ async function deleteMissionUser(socket, user) {
             }
         });
         if (res.ok === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_mission_user',
                 arg: user._id
             }));
@@ -1772,7 +1639,7 @@ async function insertFile(socket, file, allowDupName) {
             });
 
             if (res.result.ok === 1) {
-                sendToRoom(socket.room, JSON.stringify({
+                sendToRoom(socket.mission_id, JSON.stringify({
                     act: 'insert_file',
                     arg: new_value
                 }));
@@ -1802,7 +1669,7 @@ async function insertFile(socket, file, allowDupName) {
             });
 
             if (res.result.ok === 1) {
-                sendToRoom(socket.room, JSON.stringify({
+                sendToRoom(socket.mission_id, JSON.stringify({
                     act: 'update_file',
                     arg: file
                 }));
@@ -1872,7 +1739,7 @@ async function moveFile(socket, file) {
         });
 
         if (res.result.nModified === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_file',
                 arg: file
             }));
@@ -1906,7 +1773,7 @@ async function deleteFile(socket, file) {
         });
 
         if (res.result.ok === 1) {
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_file',
                 arg: file._id
             }));
@@ -1953,6 +1820,8 @@ async function getNotes(socket) {
             notes[i].type = 'note';
         }
 
+<<<<<<< HEAD
+=======
         var objects = await mdb.collection('objects').find({
             $and: [{
                 mission_id: objectid(socket.mission_id)
@@ -1974,9 +1843,10 @@ async function getNotes(socket) {
             objects[i].name = objects[i].name.split('\n')[0]
         }
 
+>>>>>>> master
         socket.send(JSON.stringify({
             act: 'get_notes',
-            arg: notes.concat(objects)
+            arg: notes
         }));
 
     } catch (err) {
@@ -2004,7 +1874,7 @@ async function insertNote(socket, note) {
     try {
         var res = await mdb.collection('notes').insertOne(note_row);
         insertLogEvent(socket, { text: 'Created note: ' + note.name + '.' });
-        sendToRoom(socket.room, JSON.stringify({
+        sendToRoom(socket.mission_id, JSON.stringify({
             act: 'insert_note',
             arg: {
                 _id: note_row._id,
@@ -2036,7 +1906,7 @@ async function updateNote(socket, note) {
             _id: objectid(note._id)
         }, new_values);
         insertLogEvent(socket, { text: 'Renamed note: ' + note._id + ' to: ' + note.name + '.' });
-        sendToRoom(socket.room, JSON.stringify({
+        sendToRoom(socket.mission_id, JSON.stringify({
             act: 'update_note',
             arg: {
                 _id: note._id,
@@ -2065,7 +1935,7 @@ async function deleteNote(socket, note) {
             }
         });
         insertLogEvent(socket, { text: 'Deleted note: ' + note._id + '.' });
-        sendToRoom(socket.room, JSON.stringify({
+        sendToRoom(socket.mission_id, JSON.stringify({
             act: 'delete_note',
             arg: note._id
         }));
@@ -2145,7 +2015,7 @@ async function insertOpnote(socket, opnote) {
         opnote._id = new_values._id;
         opnote.username = socket.username;
         insertLogEvent(socket, { text: 'Created opnote: ' + opnote.action + ' ID: ' + opnote._id + '.' });
-        sendToRoom(socket.room, JSON.stringify({act: 'insert_opnote', arg: opnote}));
+        sendToRoom(socket.mission_id, JSON.stringify({act: 'insert_opnote', arg: opnote}));
 
     } catch (err) {
         socket.send(JSON.stringify({
@@ -2173,7 +2043,7 @@ async function updateOpnote(socket, opnote) {
         if (res.result.ok === 1) {
             opnote.username = socket.username;
             insertLogEvent(socket, { text: 'Modified event: ' + opnote.action + ' ID: ' + opnote._id + '.' });
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_opnote',
                 arg: opnote
             }));
@@ -2204,7 +2074,7 @@ async function deleteOpnote(socket, opnote) {
         });
         if (res.result.ok === 1) {
             insertLogEvent(socket, { text: 'Deleted opnote ID: ' + opnote._id + '.' });
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_opnote',
                 arg: opnote._id
             }));
@@ -2315,7 +2185,7 @@ async function insertEvent(socket, event) {
         var res = await mdb.collection('events').insertOne(evt);
         event._id = evt._id;
         insertLogEvent(socket, { text: 'Created event: ' + event.event_type + ' ID: ' + event._id + '.' });
-        sendToRoom(socket.room, JSON.stringify({
+        sendToRoom(socket.mission_id, JSON.stringify({
             act: 'insert_event',
             arg: event
         }));
@@ -2365,7 +2235,7 @@ async function updateEvent(socket, event) {
         }, new_values);
         if (res.result.ok === 1) {
             insertLogEvent(socket, { text: 'Modified event: ' + event.event_type + ' ID: ' + event._id + '.' });
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_event',
                 arg: event
             }));
@@ -2396,7 +2266,7 @@ async function deleteEvent(socket, event) {
         });
         if (res.result.ok === 1) {
             insertLogEvent(socket, { text: 'Deleted event ID: ' + event._id + '.' });
-            sendToRoom(socket.room, JSON.stringify({
+            sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_event',
                 arg: event._id
             }));
@@ -2423,7 +2293,7 @@ function missionMessageCheck(socket, permission) {
     }
 
     if(socket.mission_id && objectid.isValid(socket.mission_id) && socket.user_id && objectid.isValid(socket.user_id)) {
-        if (permission !== '' && !socket.mission_permissions[socket.mission_id][permission]) {
+        if (!socket.mission_permissions || !socket.mission_permissions[socket.mission_id] || (permission !== '' && !socket.mission_permissions[socket.mission_id][permission])) {
             return false;
         }
         return true;
@@ -2438,7 +2308,7 @@ function adminMessageCheck(socket) {
     return socket.is_admin;
 }
 
-messageHandlers = {
+const messageHandlers = {
     insert_mission: { function: insertMission, checks: function() { return true; }, permission: '' },
     update_mission: { function: updateMission, checks: adminMessageCheck, permission: '' },
     delete_mission: { function: deleteMission, checks: adminMessageCheck },
@@ -2448,9 +2318,10 @@ messageHandlers = {
     delete_user: { function: deleteUser, checks: adminMessageCheck, permission: '' },
     get_chats: { function: getChats, checks: function() { return true; } },
     get_old_chats: { function:  getOldChats, checks: missionMessageCheck },
-    insert_chat: { function:  insertChat, checks: missionMessageCheck, permission: '' },
+    insert_chat: { function:  insertChat, checks: missionMessageCheck, permission: 'write_access' },
+    delete_chat: { function:  deleteChat, checks: missionMessageCheck, permission: 'delete_access' },
     get_chat_channels: { function:  getChatChannels, checks: missionMessageCheck, permission: '' },
-    insert_chat_channel: { function:  insertChatChannel, checks: missionMessageCheck, permission: '' },
+    insert_chat_channel: { function:  insertChatChannel, checks: missionMessageCheck, permission: 'write_access' },
     get_mission_users: { function:  getMissionUsers, checks: missionMessageCheck, permission: 'manage_users' },
     insert_mission_user: { function:  insertMissionUser, checks: missionMessageCheck, permission: 'manage_users' },
     update_mission_user: { function:  updateMissionUser, checks: missionMessageCheck, permission: 'manage_users' },
@@ -2470,12 +2341,7 @@ messageHandlers = {
     get_events: { function:  getEvents, checks: missionMessageCheck, permission: '' },
     insert_event: { function:  insertEvent, checks: missionMessageCheck, permission: 'write_access' },
     update_event: { function:  updateEvent, checks: missionMessageCheck, permission: 'write_access' },
-    delete_event: { function:  deleteEvent, checks: missionMessageCheck, permission: 'delete_access' },
-    insert_object: { function:  insertObject, checks: missionMessageCheck, permission: 'write_access' },
-    paste_object: { function:  pasteObject, checks: missionMessageCheck, permission: 'write_access' },
-    change_object: { function: changeObject, checks: missionMessageCheck, permission: 'write_access' },
-    move_object: { function: moveObject, checks: missionMessageCheck, permission: 'write_access' },
-    delete_object: { function:  deleteObject, checks: missionMessageCheck, permission: 'delete_access' }
+    delete_event: { function:  deleteEvent, checks: missionMessageCheck, permission: 'delete_access' }
 };
 
 // SOCKET -------------------------------------------------------------------------------------------------------------------
@@ -2491,12 +2357,24 @@ async function setupSocket(socket) {
 
     socket.on('close', function() {
         // cleanup closed sockets from rooms
-        if (rooms.get(socket.room)) {
-            rooms.get(socket.room).delete(socket);
-        }
+        if (socket.rooms) {
+            for (var i = 0; i < socket.rooms.length; i++) {
+                if (rooms.get(socket.rooms[i])) {
+                    rooms.get(socket.rooms[i]).delete(socket);
 
-        if (rooms.get(socket.user_id)) {
-            rooms.get(socket.user_id).delete(socket);
+                    if (rooms.get(socket.rooms[i]).size === 0) {
+                        rooms.delete(socket.rooms[i]);
+
+                        // user's last socket is gone
+                        if (socket.user_id && socket.rooms[i] === socket.user_id) {
+                            sendToAllRooms(JSON.stringify({
+                                act: 'update_user_status',
+                                arg: [{ _id: socket.user_id, status: 'offline' }]
+                            }));
+                        }
+                    }
+                }
+            }
         }
     })
 
@@ -2517,43 +2395,95 @@ async function setupSocket(socket) {
 
                     // join mission room
                 case 'join':
-                    socket.room = msg.arg.mission_id;
-                    socket.mission_id = msg.arg.mission_id;
-                    if (!rooms.get(msg.arg.mission_id)) {
-                        rooms.set(msg.arg.mission_id, new Set());
+                    // trying to join without perms
+                    if (!socket.mission_permissions || !socket.mission_permissions[msg.arg.mission_id]) {
+                        socket.send(JSON.stringify({
+                            act: 'error',
+                            arg: 'Denied.'
+                        }));
+                        socket.close();
+                        break;
                     }
 
+                    // grab the diagram and load it into memory if necessary
+                    if (!await loadGraph(msg.arg.mission_id)) {
+                        socket.send(JSON.stringify({
+                            act: 'error',
+                            arg: 'Invalid mission id.'
+                        }));
+                        socket.close();
+                        break;
+                    }
+
+                    socket.rooms = [ msg.arg.mission_id, socket.user_id ];
+                    socket.mission_id = msg.arg.mission_id;
+                    socket.type = 'graph';
+
+                    // mission socket room
+                    if (!rooms.get(socket.mission_id)) {
+                        rooms.set(socket.mission_id, new Set());
+                    }
+
+                    // user socket room
                     if (!rooms.get(socket.user_id)) {
                         rooms.set(socket.user_id, new Set());
+                        if (socket.type === 'graph') {
+                            sendToAllRooms(JSON.stringify({
+                                act: 'update_user_status',
+                                arg: [{ _id: socket.user_id, status: 'online' }]
+                            }));
+                        }
                     }
 
-                    rooms.get(msg.arg.mission_id).add(socket);
+                    // join mission room
+                    rooms.get(socket.mission_id).add(socket);
+
+                    // join personal room
                     rooms.get(socket.user_id).add(socket);
-                    socket.type = 'diagram';
 
                     var resp = {};
                     var limited = true;
-                    if (socket.mission_permissions[msg.arg.mission_id].manage_users) {
+
+                    socket.send(JSON.stringify({
+                        act: 'get_graph',
+                        arg: builder.buildObject(graphs.get(socket.mission_id))
+                    }));
+
+                    if (socket.mission_permissions[socket.mission_id].manage_users) {
                         getUsers(socket, true);
                         getMissionUsers(socket);
                     }
-                    getObjects(socket);
+
                     getNotes(socket);
-                    getChatChannels(socket);
                     getFiles(socket);
-                    getChats(socket);
                     getEvents(socket);
                     getOpnotes(socket);
+
+                    // get mission channels
+                    var channels = await getChatChannels(socket);
+
+                    // join mission channels
+                    for (var i = 0; i < channels.length; i++) {
+                        if (channels[i].type === 'channel') {
+                            if (!rooms.get(channels[i]._id.toString())) {
+                                rooms.set(channels[i]._id.toString(), new Set());
+                            }
+                            rooms.get(channels[i]._id.toString()).add(socket);
+                        }
+                    }
+
+                    getChats(socket, channels);
 
                     socket.send(JSON.stringify({
                         act: 'join',
                         arg: resp
                     }));
+
                     break;
 
                 case 'main':
                     // join main room
-                    socket.room = 'main';
+                    socket.rooms = [ 'main' ];
                     if (!rooms.get('main')) {
                         rooms.set('main', new Set());
                     }
@@ -2563,7 +2493,7 @@ async function setupSocket(socket) {
 
                 case 'config':
                     // join config room
-                    socket.room = 'config';
+                    socket.rooms = [ 'config' ];
                     if (!rooms.get('config')) {
                         rooms.set('config', new Set());
                     }
@@ -2573,6 +2503,62 @@ async function setupSocket(socket) {
 
                 case 'get_missions':
                     getMissions(socket);
+                    break;
+
+                case 'update_graph':
+                    parser.parseString(msg.arg, function(err, result) {
+                        if (err) {
+                            logger.error(err);
+                            return;
+                        }
+
+                        var graph = graphs.get(socket.mission_id);
+
+                        if (!graph) {
+                            socket.send(JSON.stringify({
+                                act: 'error',
+                                arg: 'Invalid mission id.'
+                            }));
+                            return;
+                        }
+
+                        var res = '';
+                        if (result.mxRootChange) {
+                            res = mxRootChange(result, graph);
+                        }
+                        if (result.mxChildChange) {
+                            res = mxChildChange(result, graph);
+                        }
+                        if (result.mxValueChange) {
+                            res = mxValueChange(result, graph);
+                        }
+                        if (result.mxGeometryChange) {
+                            res = mxGeometryChange(result, graph);
+                        }
+                        if (result.mxTerminalChange) {
+                            res = mxTerminalChange(result, graph);
+                        }
+                        if (result.mxTerminalChange) {
+                            res = mxTerminalChange(result, graph);
+                        }
+                        if (result.mxStyleChange) {
+                            res = mxStyleChange(result, graph);
+                        }
+
+                        // save changes
+                        if (!saveGraph(socket.mission_id, graph)) {
+                            socket.send(JSON.stringify({
+                                act: 'error',
+                                arg: 'Warning, error saving graph.'
+                            }));
+                        }
+
+                        if (res !== undefined && res  !== '') {
+                            // forward change to other clients
+                            sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph_o', arg: msg.arg }), socket);
+                            sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: builder.buildObject(res) }), socket);
+                        }
+                    });
                     break;
 
                 default:
@@ -2727,18 +2713,11 @@ app.get('/config', function (req, res) {
     }
 });
 
-function getPNGs(name) {
-    return name.endsWith('.png');
-}
-
 app.get('/cop', function (req, res) {
-    var icons = [];
-    var shapes = [];
-    var links = [];
     if (req.session.loggedin) {
         if (req.query.mission !== undefined && req.query.mission && objectid.isValid(req.query.mission)) {
             try {
-                if (req.session.username === 'admin' || req.session.is_admin) {
+                if (req.session.username === 'admin') {
                     mdb.collection('missions').aggregate([{
                         $match: {
                             _id: objectid(req.query.mission),
@@ -2748,36 +2727,26 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            fs.readdir('./public/images/icons', function (err, icons) {
-                                fs.readdir('./public/images/shapes', function (err, shapes) {
-                                    fs.readdir('./public/images/links', function (err, links) {
-                                        var mission_name = row[0].name;
-                                        req.session.mission_permissions[req.query.mission] = {
-                                            manage_users: true,
-                                            write_access: true,
-                                            delete_access: true,
-                                            api_access: true
-                                        }; //admin has all permissions
+                            var mission_name = row[0].name;
+                            req.session.mission_permissions[req.query.mission] = {
+                                manage_users: true,
+                                write_access: true,
+                                delete_access: true,
+                                api_access: true
+                            }; //admin has all permissions
 
-                                        res.render('cop', {
-                                            title: 'cop - ' + mission_name,
-                                            permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
-                                            mission_name: mission_name,
-                                            user_id: req.session.user_id,
-                                            username: req.session.username,
-                                            icons: icons.filter(getPNGs),
-                                            shapes: shapes.filter(getPNGs),
-                                            links: links.filter(getPNGs)
-                                        });
-                                    });
-                                });
+                            res.render('cop', {
+                                title: 'cop - ' + mission_name,
+                                permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                mission_name: mission_name,
+                                user_id: req.session.user_id,
+                                username: req.session.username
                             });
                         } else {
                             res.redirect('login');
                             if (err)
                                 logger.error(err);
                         }
-
                     });
                 }
                 else {
@@ -2802,30 +2771,21 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            fs.readdir('./public/images/icons', function (err, icons) {
-                                fs.readdir('./public/images/shapes', function (err, shapes) {
-                                    fs.readdir('./public/images/links', function (err, links) {
-                                        var mission_name = row[0].name;
-                                        req.session.mission_permissions[req.query.mission] = row[0].permissions;
+                            var mission_name = row[0].name;
+                            req.session.mission_permissions[req.query.mission] = row[0].permissions;
 
-                                        if (req.session.mission_permissions[req.query.mission]) { // always let admin in
-                                            res.render('cop', {
-                                                title: 'cop - ' + mission_name,
-                                                permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
-                                                mission_name: mission_name,
-                                                user_id: req.session.user_id,
-                                                username: req.session.username,
-                                                icons: icons.filter(getPNGs),
-                                                shapes: shapes.filter(getPNGs),
-                                                links: links.filter(getPNGs)
-                                            });
-                                        }
-                                        else {
-                                            res.redirect('login');
-                                        }
-                                    });
+                            if (req.session.mission_permissions[req.query.mission]) { // always let admin in
+                                res.render('cop', {
+                                    title: 'cop - ' + mission_name,
+                                    permissions: JSON.stringify(req.session.mission_permissions[req.query.mission]),
+                                    mission_name: mission_name,
+                                    user_id: req.session.user_id,
+                                    username: req.session.username
                                 });
-                            });
+                            }
+                            else {
+                                res.redirect('login');
+                            }
                         } else {
                             res.redirect('login');
                             if (err)

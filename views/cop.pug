@@ -7,7 +7,6 @@ html
     link(rel='stylesheet', href='css/tabulator_custom.css')
     link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
     link(rel='stylesheet', href='css/tempusdominus-bootstrap-4.min.css')
-    link(rel='stylesheet', href='css/image-picker.css')
     link(rel='stylesheet', href='css/quill.snow.css')
     link(rel='stylesheet', href='css/jstree.min.css')
     link(rel='stylesheet', href='css/palette-color-picker.css')
@@ -23,25 +22,25 @@ html
         div(style="font-weight: 900; color: #f9ff00;") #{username}@#{mission_name}
         div.clock#utc
         div
+        
       include nav.pug
       div.jumbotron#diagramJumbo(style='height:700px;')
-        div.canvas#diagram
-          canvas#background
-          canvas#canvas
+        div#graph
+          div#canvas
           div#message
-          div#objectSearchBar
-            input(type="text", placeholder="Search...").form-control#objectSearch
-            span#foundCount
-            span.input-group-btn
-              button.btn.btn-secondary#prevObjectSearch &#8249;
-              button.btn.btn-secondary#nextObjectSearch &#8250;
-          div#zoom-buttons
+          div#graphSearchBar
+            input(type="text", placeholder="Search...").form-control#graphSearchInput
+            span#graphSearchFoundCount
+            button.btn.btn-secondary.fa.fa-up-open#graphSearchPrevButton
+            button.btn.btn-secondary.fa.fa-down-open#graphSearchNextButton
+            button.btn.btn-secondary.fa.fa-cancel-circled#graphSearchClose
+
+          div#zoomButtons
             button.zoomIn#zoomInButton.ui-icon.ui-icon-zoomin
             button.zoomOut#zoomOutButton.ui-icon.ui-icon-zoomout
-            button.cancelLink#cancelLinkButton Cancel Link
-          div#minimap
-            canvas#minimapBgCanvas
-            canvas#minimapCanvas
+
+          div#graphOutline
+
         div#toolbar
           div.vertNav.vertNavOutsideLeft#toolbarNav
             div.vertTab.vertTabSm#toggleTab
@@ -49,73 +48,77 @@ html
             div.vertTab#toolsTab
             div.vertTab#notesTab
             div.vertTab#filesTab
+
           div.vertNav.vertNavOutsideLeft.click-through 
-            div.tabText.tab-float.rotated#toolsTabTag TOOLS
-            div.tabText.tab-float.rotated#notesTabTag NOTES
-            div.tabText.tab-float.rotated#filesTabTag FILES
+            div.tabText.tabFloat.rotated#toolsTabTag TOOLS
+            div.tabText.tabFloat.rotated#notesTabTag NOTES
+            div.tabText.tabFloat.rotated#filesTabTag FILES
+
           div#toolbarBody
-            div#notesForm.toolbar-form
-              //button.btn.btn-primary#newNoteButton(disabled) New Note
+            div#notesForm.toolbarForm
               div#notes
-            div#filesForm.toolbar-form
+            div#filesForm.toolbarForm
               div#files
               div#progressbarContainer
                 div#progressbar
-            div#toolsForm.toolbar-form
+
+            div#toolsForm.toolbarForm
               div#tools
-                span.toolbarTitle#toolbarTitle Edit Object
-                button.propButton.btn.btn-success#newObjectButton(type='button' disabled) New!
-                input(type="hidden", name="id")#propID
-                input(type="hidden", name="type")#propType
-                div.form-group#propNameGroup
-                  label Name
-                  textarea(name="name" disabled).form-control#propName
-                div.form-group#propColorGroup
-                  label Color
-                  div.colors
-                    span#propFillColorSpan
-                      input#propFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
-                    span#propStrokeColorSpan
-                      input#propStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
-                div.form-group#propObjectGroup
-                  ul
-                    li
-                      a(href="#tabs-icon") Icons
-                    li
-                      a(href="#tabs-shape") Shapes
-                    li
-                      a(href="#tabs-link") Links
-                  div#tabs-icon
-                    select.image-picker#prop-icon
-                      each icon in icons
-                        option(data-img-src="images/icons/" + icon, data-img-class="first", value=icon) icon
-                  div#tabs-shape
-                    select.image-picker#prop-shape
-                      each shape in shapes
-                        option(data-img-src="images/shapes/" + shape, data-img-class="first", value=shape) shape
-                  div#tabs-link
-                    select.image-picker#prop-link
-                      each link in links
-                        option(data-img-src="images/links/" + link, data-img-class="first", value=link) link
-                div.form-group#moveObject
-                    div.checkbox#lockObjectGroup
-                      label
-                        input(type="checkbox", value="0" disabled)#lockObject
-                        | Locked?
-                    div#sizeObject.input-group
-                      div.col-sm-4
-                        input(type="number" min="0" max="1000" disabled)#objectWidth.form-control
-                      span.input-group-addon x
-                      div.col-sm-4
-                        input(type="number" min="0" max="1000" disabled)#objectHeight.form-control
-                    button.propButton.btn.btn-secondary#moveUp(type='button' disabled) Up
-                    button.propButton.btn.btn-secondary#moveDown(type='button' disabled) Down
-                    button.propButton.btn.btn-secondary#moveToFront(type='button' disabled) Front
-                    button.propButton.btn.btn-secondary#moveToBack(type='button' disabled) Back
-                div.form-group#makeObject
-                    button.propButton.btn.btn-primary#insertObjectButton(type='button' disabled) Insert
-                    button.propButton.btn.btn-info#editNotesButton(type='button') Object Notes
-                    button.propButton.btn.btn-danger#deleteObjectButton(type='button' disabled) Delete
+                div#toolbarNewGroup
+                  span.toolbarTitle New Object
+                  div#toolbarIcons
+                    div#toolbarIconsHeader
+
+                div#toolbarEditGroup(style="display: none")
+                  span.toolbarTitle Edit Object
+                  div.form-group
+                    div.colors
+                      span#toolbarFillColorSpan
+                        input#toolbarFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
+                      span#toolbarStrokeColorSpan
+                        input#toolbarStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+
+                  div#toolbarEdgeOptions
+                    div.form-group#toolbarEdgeDashOptions
+                      button.btn.btn-secondary.dropdown-toggle(type="button", data-toggle="dropdown" aria-haspopup="true", aria-expanded="false")
+                        img.dropdownImage.spriteSolidLine(src="/images/sprites.png")
+                        span.glyphicon.glyphicon-chevron-down
+                      ul.dropdown-menu
+                        li
+                          img.dropdownImage.spriteSolidLine(src="/images/sprites.png", data-style="dashed=0;dashPattern=0;")
+                          | Solid
+                        li
+                          img.dropdownImage.spriteDashedLine(src="/images/sprites.png", data-style="dashed=1;dashPattern=0;")
+                          | Dashed
+                        li
+                          img.dropdownImage.spriteDottedLine(src="/images/sprites.png", data-style="dashed=1;dashPattern=1 1;")
+                          | Dotted
+                        li
+                          img.dropdownImage.spriteDottedLine1(src="/images/sprites.png", data-style="dashed=1;dashPattern=1 2;")
+                          | Dotted (1)
+
+                    div.form-group#toolbarEdgeWaypointOptions
+                      button.btn.btn-secondary.dropdown-toggle(type="button", data-toggle="dropdown" aria-haspopup="true", aria-expanded="false")
+                        img.dropdownImage.spriteStraightLine(src="/images/sprites.png")
+                        span.glyphicon.glyphicon-chevron-down
+                      ul.dropdown-menu
+                        li
+                          img.dropdownImage.spriteStraightLine(src="/images/sprites.png", data-style="edgeStyle=0;")
+                          | Straight
+                        li
+                          img.dropdownImage.spriteOrthagonalLine(src="/images/sprites.png", data-style="edgeStyle=orthogonalEdgeStyle;elbow=vertical;")
+                          | Orthagonal
+                        li
+                          img.dropdownImage.spriteIsometricLine(src="/images/sprites.png", data-style="edgeStyle=isometricEdgeStyle;elbow=0;")
+                          | Isometric
+
+                  div.form-group
+                      button.toolbarButton.btn.btn-secondary#toolbarMoveToFront(type='button') Front
+                      button.toolbarButton.btn.btn-secondary#toolbarMoveToBack(type='button') Back
+
+                  div.form-group
+                      button.toolbarButton.btn.btn-info#toolbarEditNotes(type='button') Object Notes
+                      button.toolbarButton.btn.btn-danger#toolbarDeleteButton(type='button') Delete
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
@@ -124,41 +127,43 @@ html
               div#chatDropZoneBanner Drop the file here to upload to chat.
               div#chatProgressbarContainer
                 div#chatProgressbar
-            div#channelsWrapper
-              div#channels
-                div.channelHeading#channelsHeading Channels
-                div.channelHeading#usersHeading Users
-              div.channelHeading#newChannel +New Channel
-            div#channelPanesWrapper
+
+            div#chatChannelsWrapper
+              div#chatChannels
+                div.channelHeading#chatChannelsHeading Channels
+                div.channelHeading#chatUsersHeading Users
+              div.channelHeading#chatNewChannel + New Channel
+
+            div#chatChannelPanesWrapper
               div#channelPanes
               div#channelFooter
-                input(type="text", name="messageInput")#messageInput.messageInput
+                input(type="text", name="messageInput" disabled)#messageInput.messageInput
 
           div#settings.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addUser(type='button') Add User
+              button.toolbarButton.btn.btn-primary.tableButton#addUser(type='button') Add User
               h4.tableTitle Settings
             div.tableBody
               table#settingsTable
 
           div#events.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
+              button.toolbarButton.btn.btn-primary.tableButton#addEvent(type='button') Add Event
               h4.tableTitle Events
               div.timelineButton
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineBack
-                  i.fa.fa-left-big
+                  i.fa.fa-up-open
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineCancel
                   i.fa.fa-cancel-circled
                 a.btn.btn-secondary(href="#")#timelineForward
-                  i.fa.fa-right-big
+                  i.fa.fa-down-open
                
             div.tableBody
               table#eventsTable
 
           div#opnotes.tableContainer(style="display: none;")
             div.tableHeader
-              button.propButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
+              button.toolbarButton.btn.btn-primary.tableButton#addOpnote(type='button') Add Opnote
               h4.tableTitle Opnotes
             div.tableBody
               table#opnotesTable
@@ -170,10 +175,10 @@ html
             div.vertTab#opnotesTab
             div.vertTab#settingsTab(style='display: none;')
             div.vertNav.click-through(style='position: absolute;')
-              div.tabText.tab-float.rotated#chatTabTag CHAT
-              div.tabText.tab-float.rotated#eventsTabTag EVENTS
-              div.tabText.tab-float.rotated#opnotesTabTag OPNOTES
-              div.tabText.tab-float.rotated#settingsTabTag(style='display: none;') SETTINGS
+              div.tabText.tabFloat.rotated#chatTabTag CHAT
+              div.tabText.tabFloat.rotated#eventsTabTag EVENTS
+              div.tabText.tabFloat.rotated#opnotesTabTag OPNOTES
+              div.tabText.tabFloat.rotated#settingsTabTag(style='display: none;') SETTINGS
 
     div#windowPane.windowPane
 
@@ -188,8 +193,9 @@ script(type="template/text", id="details_template")
 script var permissions = !{permissions}; var user_id = "#{user_id}"; var username = "#{username}";
 script(src='js/jquery-3.4.1.min.js')
 script(src='js/jquery-ui.min.js')
+script(src='js/popper.min.js')
 script(src='js/jquery.overlayScrollbars.min.js')
-script(src='js/fabric.min.js')
+script(src='js/mxClient.min.js')
 script(src='js/toastr.min.js')
 script(src='js/bootstrap.min.js')
 script(src='js/bootbox.min.js')
@@ -197,12 +203,11 @@ script(src='js/sharedb-client.min.js')
 script(src='js/rich-text.min.js')
 script(src='js/highlight.min.js')
 script(src='js/quill.min.js')
-script(src='js/image-picker.min.js')
 script(src='js/jstree.min.js')
 script(src='js/palette-color-picker.min.js')
 script(src='js/moment.min.js')
 script(src='js/tempusdominus-bootstrap-4.min.js')
-
+script(src='js/objectid.min.js')
 script(src='js/bootstrap-window.js')
 script(src='js/tabulator.js')
 script(src='js/helpers.js')
@@ -210,7 +215,8 @@ script(src='js/toolbar.js')
 script(src='js/notes.js')
 script(src='js/files.js')
 script(src='js/chat.js')
-script(src='js/diagram.js')
+script(src='js/graph.js')
 script(src='js/cop.js')
+script(src='images/icons/icons.js')
 
 //script(src='js/cop.min.js')

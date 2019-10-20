@@ -1,6 +1,7 @@
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const MongoClient = require('mongodb').MongoClient;
+const objectid = require('mongodb').ObjectID;
 var mc;
 var mdb;
 
@@ -41,7 +42,9 @@ async function create_user() {
             var user = { username: 'admin', name: 'admin', password: hash, is_admin: true, api: api, avatar: '', deleted: false };
             var row = await mdb.collection('users').findOne({ username: 'admin' });
             if (!row) {
-                await mdb.collection('users').insertOne(user);
+                var res = await mdb.collection('users').insertOne(user);
+                var channel = { _id: objectid(res.ops[0]._id), name: '', deleted: false, type: 'user', members: [objectid(res.ops[0]._id)] };
+                await mdb.collection('channels').insertOne(channel);
             } else {
                 await mdb.collection('users').updateOne({ _id: row._id }, { $set: user });
             }
