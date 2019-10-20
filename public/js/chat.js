@@ -399,7 +399,6 @@ function chatNewChannel() {
                         msgId: msgHandler()
                     }));
                 }
->>>>>>> master
             },
             cancel: {
                 label: 'Cancel',
