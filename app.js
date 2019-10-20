@@ -302,7 +302,6 @@ async function saveGraph(mission_id, graph) {
     }
 }
 
-<<<<<<< HEAD
 function mxTerminalChange(js, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxTerminalChange.$.cell) {
@@ -311,63 +310,13 @@ function mxTerminalChange(js, graph) {
                     graph.mxGraphModel.root.mxCell[i].$.source = js.mxTerminalChange.$.terminal;
                 } else {
                     delete graph.mxGraphModel.root.mxCell[i].$.source;
-=======
-async function pasteObject(socket, objects) {
-    try {
-        var args = [];
-
-        var count = await mdb.collection('objects').count({
-            mission_id: objectid(socket.mission_id),
-            deleted: {
-                $ne: true
-            }
-        });
-
-        async.forEachOf(objects, async function (o, index, callback) {
-        //if (ajv.validate(validators.paste_object, o)) {
-            try {
-                var row = await mdb.collection('objects').findOne({
-                    _id: objectid(o._id),
-                    type: {
-                        $ne: 'link'
-                    },
-                    deleted: {
-                        $ne: true
-                    }
-                });
-
-                if (row) {
-                    row._id = objectid(null);
-                    row.z = count + index;
-                    row.x = o.x;
-                    row.y = o.y;
-
-                    var res = await mdb.collection('objects').insertOne(row);
-                    args.push(row);
->>>>>>> master
                 }
             } else {
-<<<<<<< HEAD
                 if (js.mxTerminalChange.$.terminal) {
                     graph.mxGraphModel.root.mxCell[i].$.target = js.mxTerminalChange.$.terminal;
                 } else {
                     delete graph.mxGraphModel.root.mxCell[i].$.target;
                 }
-=======
-                insertLogEvent(socket, { text: 'Pasted some objects.' });
-                args.sort(dynamicSort('z'));
-                sendToRoom(socket.room, JSON.stringify({
-                    act: 'insert_object',
-                    arg: args
-                }));
-            }
-        });        
-    } catch (err) {
-        socket.send(JSON.stringify({
-            act: 'error',
-            arg: {
-                text: 'Error inserting object.'
->>>>>>> master
             }
             break;
         }
@@ -419,105 +368,6 @@ function mxChildChange(js, graph) {
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
                 break;
             }
-<<<<<<< HEAD
-=======
-        }, {
-            _id: 1,
-            z: 1,
-            name: 1
-        }).sort({
-            z: 1
-        }).toArray();
-
-        if (rows) {
-            var zs = rows.map(r => String(r._id));
-            async.eachOf(objects, async function (o, index, callback) {
-                // move objects (z-axis)
-                if (o.z !== zs.indexOf(o._id)) {
-                    o.z = Math.floor(o.z);
-                    o.x = Math.round(o.x);
-                    o.y = Math.round(o.y);
-                    zs.move(zs.indexOf(String(o._id)), o.z);
-                    async.forEachOf(zs, async function (item, index, callback) {
-                        try {
-                            var new_values = {
-                                $set: {
-                                    x: o.x,
-                                    y: o.y,
-                                    z: index
-                                }
-                            };
-                            var res = await mdb.collection('objects').updateOne({
-                                _id: objectid(item)
-                            }, new_values);
-
-                            if (res.result.ok === 1) {
-                                if (item === o._id)
-                                    args_broadcast.push(o);
-
-                                callback();
-                            } else {
-                                callback('Error updating object.');
-                            }                                
-                        } catch (err) {
-                            callback(err);
-                        }                            
-                    }, function (err) { // async 2 callback
-                        if (err)
-                            callback(err);
-                        else
-                            callback();
-                    });
-
-                // move objects (x/y axis)
-                } else {
-                    try {
-                        o.x = Math.round(o.x);
-                        o.y = Math.round(o.y);
-                        var new_values = {
-                            $set: {
-                                x: o.x,
-                                y: o.y,
-                                scale_x: o.scale_x,
-                                scale_y: o.scale_y,
-                                rot: o.rot
-                            }
-                        };
-
-                        var res = await mdb.collection('objects').updateOne({
-                            _id: objectid(o._id)
-                        }, new_values);
-
-                        if (res.result.ok === 1) {
-                            args.push(o);
-                            callback();
-                        } else {
-                            callback('moveObject error.');
-                        }
-                    } catch (err) {
-                        callback(err);
-                    }
-                }
-            }, function (err) { // async 1 callback
-                if (err) {
-                    throw(err);
-                } else {
-                    // send object moves only to everyone else
-                    sendToRoom(socket.room, JSON.stringify({
-                        act: 'move_object',
-                        arg: args.concat(args_broadcast)
-                    }), socket);
-
-                    // send z-moves to everyone
-                    socket.send(JSON.stringify({
-                        act: 'move_object',
-                        arg: args_broadcast
-                    }));
-                }
-            });
-        } else {
-            throw('moveObject error.');
->>>>>>> master
         }
     // move
     } else if (js.mxChildChange.$ && js.mxChildChange.$.index && js.mxChildChange.$.child) {
@@ -1820,30 +1670,6 @@ async function getNotes(socket) {
             notes[i].type = 'note';
         }
 
-<<<<<<< HEAD
-=======
-        var objects = await mdb.collection('objects').find({
-            $and: [{
-                mission_id: objectid(socket.mission_id)
-            }, {
-                deleted: {
-                    $ne: true
-                },
-            }, {
-                name: {
-                    $ne: ''
-                }
-            }]
-        },{ projection: projection }).sort({
-            name: 1
-        }).toArray();
-
-        for (var i = 0; i < objects.length; i++) {
-            objects[i].type = 'object';
-            objects[i].name = objects[i].name.split('\n')[0]
-        }
-
->>>>>>> master
         socket.send(JSON.stringify({
             act: 'get_notes',
             arg: notes
