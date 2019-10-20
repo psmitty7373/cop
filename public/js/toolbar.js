@@ -153,6 +153,8 @@ $(window).on('load', function () {
         $('#toolbarStrokeColor').prop('disabled', false);
         $('#toolbarMoveToFront').prop('disabled', false).click(graphMoveCellsFront);
         $('#toolbarMoveToBack').prop('disabled', false).click(graphMoveCellsBack);
+    }
+    if (permissions.delete_access) {
         $('#toolbarDeleteObject').prop('disabled', false).click();;
     }
 
@@ -163,6 +165,10 @@ $(window).on('load', function () {
         }
     });
 
+    $('#toolbarDeleteButton').click(function() {
+        deleteConfirm('graphDeleteSelectedCell()');
+    })
+    
     // toolbar tabs
     $('#toolbarButton').click(function () {
         toolbarToggle(activeToolbar);
@@ -181,7 +187,7 @@ $(window).on('load', function () {
     });
 
     $('#toolbarIcons').overlayScrollbars({
-        className: "os-theme-dark",
+        className: "os-theme-light",
     });
 
     $('[name="propFillColor"]').paletteColorPicker({
@@ -212,7 +218,6 @@ $(window).on('load', function () {
             if (color !== $('#propFillColor').val()) {
                 var cell = graphGetCurrentSelection();
                 var style = graphGetCellStyle(cell);
-                console.log(style, color);
                 if (cell && style.fillColor !== color) {
                     graphCellSetStyle(cell, mxConstants.STYLE_FILLCOLOR, color);
                 }  

@@ -190,8 +190,8 @@ $(window).on('load', function () {
                 'select_node': false,
                 'items': function (node) {
                     if (!node.li_attr.isLeaf) {
-                        if (node.id === 'notes') {
-                            return { renamenote: {
+                        if (permissions.write_access && node.id === 'notes' ) {
+                            return { newnote: {
                                 'separator_before': false,
                                 'separator_after': false,
                                 'label': 'New Note',

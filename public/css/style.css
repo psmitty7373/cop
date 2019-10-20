@@ -209,6 +209,47 @@ h4,
     padding: 10px;
 }
 
+#channelPanes {
+    height: 100%;
+}
+
+#chatChannelsWrapper {
+    background: #375a7f;
+    width: 200px;
+    height: 100%;
+    float: left;
+    position: relative;
+    display: flex;
+    flex-flow: column;
+}
+
+#chatChannelPanesWrapper {
+    width: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#channelFooter {
+    width: 100%;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-right: 10px;
+}
+
+#chatChannels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.channel-pane {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-left: 5px;
+    padding-right: 10px;
+}
+
 #chatProgressbar {
     width: 100%;
     height: 25px;
@@ -223,42 +264,14 @@ h4,
     padding: 10px;
 }
 
-#globalSearchText {
-    height: 23px;
+.chatStatusIndicator {
+    margin-right: 5px;
+    font-size: 14px;
+    color: red;
 }
 
-#download {
-    display: none;
-}
-
-.navbar {
-    height: 36px;
-    min-height: 32px !important
-}
-
-.navbar-nav>li>a {
-    padding-top: 5px !important;
-    padding-bottom: 5px !important;
-}
-#tools {
-    height: 100%;
-}
-
-#tools,
-#files,
-#notes {
-    padding: 10px;
-}
-
-.bottomContainer {
-    padding-top: 0px;
-    padding-bottom: 0px;
-    padding-left: 0px;
-    padding-right: 36px;
-    height: 100%;
-    position: absolute;
-    left: 0px;
-    right: 0px;
+.chatStatusOnline {
+    color: #39e500;
 }
 
 #chat.dragging * {
@@ -314,6 +327,81 @@ h4,
     padding: 5px;
 }
 
+#chatNewChannel {
+    cursor: pointer;
+}
+
+
+#graphSearchBar {
+    display: flex;
+    flex-flow: row;
+    width: 360px;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+    display: none;
+}
+
+#graphSearchInput {
+    border-radius: 0px;
+}
+
+#graphSearchFoundCount {
+    position: absolute;
+    left: 250px;
+    top: 10px;
+    background: #459fcc;
+    font-size: 10px;
+    border-radius: 15px;
+    padding: 1px 10px;
+    color: #ffffff;
+    line-height: 16px;
+    z-index: 5;
+    display: none;
+}
+
+#graphSearchPrevButton, #graphSearchNextButton, #graphSearchClose {
+    border-radius: 0px;
+}
+
+#globalSearchText {
+    height: 23px;
+}
+
+#download {
+    display: none;
+}
+
+.navbar {
+    height: 36px;
+    min-height: 32px !important
+}
+
+.navbar-nav>li>a {
+    padding-top: 5px !important;
+    padding-bottom: 5px !important;
+}
+#tools {
+    height: 100%;
+}
+
+#tools,
+#files,
+#notes {
+    padding: 10px;
+}
+
+.bottomContainer {
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 0px;
+    padding-right: 36px;
+    height: 100%;
+    position: absolute;
+    left: 0px;
+    right: 0px;
+}
+
 .tablesPane {
     width: 100%;
     height: 100%;
@@ -335,20 +423,6 @@ h4,
     background: #ffffff;
     border: 1px solid transparent;
     box-shadow: 0 0 2px rgba(0, 0, 0, .25);
-}
-
-#foundCount {
-    position: absolute;
-    left: 305px;
-    top: 8px;
-    background: #459fcc;
-    font-size: 10px;
-    border-radius: 15px;
-    padding: 1px 10px;
-    color: #ffffff;
-    line-height: 16px;
-    z-index: 5;
-    display: none;
 }
 
 .channelUnread {
@@ -414,47 +488,6 @@ h4,
     float: right;
 }
 
-#channelPanes {
-    height: 100%;
-}
-
-#chatChannelsWrapper {
-    background: #375a7f;
-    width: 200px;
-    height: 100%;
-    float: left;
-    position: relative;
-    display: flex;
-    flex-flow: column;
-}
-
-#channelPanesWrapper {
-    width: auto;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-}
-
-#channelFooter {
-    width: 100%;
-    padding-left: 5px;
-    padding-top: 5px;
-    padding-right: 10px;
-}
-
-#chatChannels {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.channel-pane {
-    height: 100%;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    padding-left: 5px;
-    padding-right: 10px;
-}
-
 .vakata-context,
 .vakata-context ul {
     z-index: 15;
@@ -469,10 +502,6 @@ h4,
 #newNoteButton {
     margin-left: 10px;
     margin-top: 10px;
-}
-
-#prevObjectSearch {
-    margin-right: 5px;
 }
 
 .palette-color-picker-bubble {
@@ -660,7 +689,7 @@ h1 {
     position: absolute;
     bottom: 30px;
     left: 5px;
-    width: 100px;
+    width: 180px;
     height: 100px;
     background-color: #101010;
 }
@@ -693,14 +722,6 @@ h1 {
 
 .toolbarButton {
     margin-right: 10px;
-}
-
-#objectSearchBar {
-    width: 300px;
-    left: 10px;
-    top: 10px;
-    position: absolute;
-    display: none;
 }
 
 #message {

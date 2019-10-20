@@ -30,7 +30,6 @@ var settings = {
 };
 var earliest_messages = {}; //= 2147483647000;
 var userSelect = [];
-var objectSelect = [{ _id: '', name: '' }];
 var objectsLoaded = null;
 var updatingObject = false;
 var socket;
@@ -38,8 +37,6 @@ var firstNode = null;
 var SVGCache = {};
 var resizeTimer = null;
 var updateSettingsTimer = null;
-var objectSearchResults = [];
-var objectSearchPtr = null;
 
 var lastClick = null;
 var msgId = 0;
@@ -178,29 +175,35 @@ function startTime() {
     var t = setTimeout(startTime, 500);
 }
 
-function deleteObjectConfirm() {
+function deleteConfirm(f) {
     $('#modal-title').text('Are you sure?');
-    $('#modal-body').html('<p>Are you sure you want to delete this object?</p><p>Deleting an object will delete all attached notes.</p>');
-    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="deleteObject();">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
+    $('#modal-body').html('<p>Are you sure you want to delete this?</p><p>Deleting things will also remove any attached notes or files.</p>');
+    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="' + f + ';">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
     $('#modal-content').removeAttr('style');
     $('#modal-content').removeClass('modal-details');
     $('#modal').modal('show')
 }
 
 function sortByName(a, b) {
-    console.log(a,b);
     return a.name.localeCompare(b.name);
 }
 
 function timelineCancel() {
     $('#message').hide();
+    graphRemoveHighlights();
     eventsTabulator.deselectRow();
     timeline = null;
     timelinePosition = 0;
 }
 
 function timelineAdvance(offset) {
+    // remove highlights
+    graphRemoveHighlights();
+
+    // deslect any selected rows
     eventsTabulator.deselectRow();
+
+    // advance timeline
     if (timeline === null) {
         timeline = eventsTabulator.getColumn('_id').getCells();
         timelinePosition = 0;
@@ -214,9 +217,19 @@ function timelineAdvance(offset) {
         }
     }
 
+    // highlight, show message, etc
     if (timeline) {
         var row = timeline[timelinePosition].getData();
         eventsTabulator.selectRow(row._id);
+
+        if (row.source_object) {
+            graphHighlightCellById(row.source_object);
+        }
+
+        if (row.dest_object) {
+            graphHighlightCellById(row.dest_object);
+        }
+
         $('#message').html('<span class="messageHeader">' + row.event_time + '</span><br/><span class="messageBody">' + row.short_desc.replace('\n','<br>') + '</span>');
         $('#message').show();
     }
@@ -289,7 +302,7 @@ function addUser() {
 // add event to event table dialog box
 function addEvent() {
     // sort the objects
-    objectSelect.sort(sortByName);
+    graphCellsSelect.sort(sortByName);
 
     var msg = `
 <form>
@@ -320,8 +333,8 @@ function addEvent() {
         <div class="col-sm-8">
             <select class="form-control" id="neSourceObject">`;
 
-    for (var i = 0; i < objectSelect.length; i++) {
-        msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
+    for (var i = 0; i < graphCellsSelect.length; i++) {
+        msg += '<option value="' + graphCellsSelect[i]._id + '">' + graphCellsSelect[i].name + '</option>';
     }
 
     msg += `
@@ -333,8 +346,8 @@ function addEvent() {
         <div class="col-sm-8">
             <select class="form-control" id="neDestObject">`;
 
-    for (var i = 0; i < objectSelect.length; i++) {
-        msg += '<option value="' + objectSelect[i]._id + '">' + objectSelect[i].name + '</option>';
+    for (var i = 0; i < graphCellsSelect.length; i++) {
+        msg += '<option value="' + graphCellsSelect[i]._id + '">' + graphCellsSelect[i].name + '</option>';
     }
 
     msg += `
@@ -391,7 +404,7 @@ function addEvent() {
 
 function addOpnote() {
     // sort the objects
-    objectSelect.sort(sortByName);
+    graphCellsSelect.sort(sortByName);
 
     var msg = `
 <form>
@@ -724,12 +737,11 @@ $(window).on('load', function () {
                 editor: 'select',
                 editable: function() { return permissions.write_access },
                 editorParams: function () {
-                    console.log(objectSelect);
-                    objectSelect.sort(sortByName);
+                    graphCellsSelect.sort(sortByName);
 
                     var vals = {};
-                    for (var i = 0; i < objectSelect.length; i++) {
-                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    for (var i = 0; i < graphCellsSelect.length; i++) {
+                        vals[graphCellsSelect[i]._id] = graphCellsSelect[i].name;
                     }
                     return {
                         values: vals
@@ -737,7 +749,7 @@ $(window).on('load', function () {
                 },
                 formatter: function (cell, formatterParams, onRendered) {
                     if (cell.getValue() !== undefined && cell.getValue()) {
-                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        var res = graphCellsSelect.find(obj => obj._id == cell.getValue());
                         if (res && res.name) {
                             return res.name;
                         } else {
@@ -754,11 +766,11 @@ $(window).on('load', function () {
                 editor: 'select',
                 editable: function() { return permissions.write_access },
                 editorParams: function () {
-                    objectSelect.sort(sortByName);
+                    graphCellsSelect.sort(sortByName);
 
                     var vals = {};
-                    for (var i = 0; i < objectSelect.length; i++) {
-                        vals[objectSelect[i]._id] = objectSelect[i].name;
+                    for (var i = 0; i < graphCellsSelect.length; i++) {
+                        vals[graphCellsSelect[i]._id] = graphCellsSelect[i].name;
                     }
                     return {
                         values: vals
@@ -766,7 +778,7 @@ $(window).on('load', function () {
                 },
                 formatter: function (cell, formatterParams, onRendered) {
                     if (cell.getValue() !== undefined && cell.getValue()) {
-                        var res = objectSelect.find(obj => obj._id == cell.getValue());
+                        var res = graphCellsSelect.find(obj => obj._id == cell.getValue());
                         if (res && res.name) {
                             return res.name;
                         } else {
@@ -883,18 +895,6 @@ $(window).on('load', function () {
     });
 
     // ---------------------------- BUTTONS ----------------------------------
-    $('#objectSearch').change(function () {
-        objectSearch(this.value)
-    });
-
-    $('#nextObjectSearch').click(function () {
-        nextObjectSearch();
-    });
-
-    $('#prevObjectSearch').click(function () {
-        prevObjectSearch();
-    });
-
     $('#downloadEventsButton').click(function () {
         downloadEvents();
     });
@@ -972,36 +972,6 @@ $(window).on('load', function () {
         }, 100);
     });
 
-    // capture keys
-    window.addEventListener("keydown", function (e) {
-        // copy
-        if (lastClick === canvas.upperCanvasEl) {
-            if (e.ctrlKey && (e.keyCode === 'c'.charCodeAt(0) || e.keyCode === 'C'.charCodeAt(0))) {
-
-                // paste
-            } else if (e.ctrlKey && (e.keyCode === 'v'.charCodeAt(0) || e.keyCode === 'V'.charCodeAt(0))) {
-
-                // delete
-            } else if (e.keyCode === 46) {
-
-                // arrows
-            } else if (e.keyCode >= 37 && e.keyCode <= 40 && canvas.getActiveObject()) {
-
-                // search (ctrl + f)
-            } else if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
-                e.preventDefault();
-                if (!$('#objectSearchBar').is(':visible')) {
-                    $('#objectSearchBar').show().css('display', 'table');
-                    $('#objectSearch').focus();
-                } else {
-                    $('#foundCount').hide();
-                    $('#objectSearchBar').hide();
-                    $('#objectSearch').val('');
-                }
-            }
-        }
-    })
-
     // set focus to diagram
     $('#diagramJumbo').focus();
 
@@ -1076,20 +1046,28 @@ $(window).on('load', function () {
 
                 // chat
             case 'get_chats':
-                addChatMessage(msg.arg, true, true);
+                chatAddMessage(msg.arg, true, true);
+                break;
+
+            case 'delete_chat':
+                chatDeleteMessage(msg.arg);
                 break;
 
             case 'bulk_chat':
-                addChatMessage(msg.arg, true);
+                chatAddMessage(msg.arg, true);
                 break;
 
             case 'chat':
-                addChatMessage(msg.arg);
+                chatAddMessage(msg.arg);
+                break;
+
+            case 'update_user_status':
+                chatUpdateUserStatus(msg.arg);
                 break;
             
             case 'get_channels':
             case 'insert_chat_channel':
-                addChatChannels(msg.arg)
+                chatAddChannels(msg.arg)
                 break;
 
                 // events

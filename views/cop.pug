@@ -28,12 +28,12 @@ html
         div#graph
           div#canvas
           div#message
-          div#objectSearchBar
-            input(type="text", placeholder="Search...").form-control#objectSearch
-            span#foundCount
-            span.input-group-btn
-              button.btn.btn-secondary#prevObjectSearch &#8249;
-              button.btn.btn-secondary#nextObjectSearch &#8250;
+          div#graphSearchBar
+            input(type="text", placeholder="Search...").form-control#graphSearchInput
+            span#graphSearchFoundCount
+            button.btn.btn-secondary.fa.fa-up-open#graphSearchPrevButton
+            button.btn.btn-secondary.fa.fa-down-open#graphSearchNextButton
+            button.btn.btn-secondary.fa.fa-cancel-circled#graphSearchClose
 
           div#zoomButtons
             button.zoomIn#zoomInButton.ui-icon.ui-icon-zoomin
@@ -118,7 +118,7 @@ html
 
                   div.form-group
                       button.toolbarButton.btn.btn-info#toolbarEditNotes(type='button') Object Notes
-                      button.toolbarButton.btn.btn-danger#toolbarDeleteObject(type='button') Delete
+                      button.toolbarButton.btn.btn-danger#toolbarDeleteButton(type='button') Delete
       
       div.jumbotron#bottomJumbo(style="overflow: visible")
         div.bottomContainer
@@ -132,12 +132,12 @@ html
               div#chatChannels
                 div.channelHeading#chatChannelsHeading Channels
                 div.channelHeading#chatUsersHeading Users
-              div.channelHeading#chatNewChannel +New Channel
+              div.channelHeading#chatNewChannel + New Channel
 
-            div#channelPanesWrapper
+            div#chatChannelPanesWrapper
               div#channelPanes
               div#channelFooter
-                input(type="text", name="messageInput")#messageInput.messageInput
+                input(type="text", name="messageInput" disabled)#messageInput.messageInput
 
           div#settings.tableContainer(style="display: none;")
             div.tableHeader
@@ -152,11 +152,11 @@ html
               h4.tableTitle Events
               div.timelineButton
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineBack
-                  i.fa.fa-left-big
+                  i.fa.fa-up-open
                 a.btn.btn-secondary(href="#", style='margin-right: 5px')#timelineCancel
                   i.fa.fa-cancel-circled
                 a.btn.btn-secondary(href="#")#timelineForward
-                  i.fa.fa-right-big
+                  i.fa.fa-down-open
                
             div.tableBody
               table#eventsTable

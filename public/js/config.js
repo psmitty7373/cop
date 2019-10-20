@@ -262,6 +262,8 @@ $(window).on('load', function () {
                 delete row.username;
                 delete row.avatar;
                 delete row.deleted;
+                delete row.channels;
+                delete row.status;
                 socket.send(JSON.stringify({
                     act: 'update_user',
                     arg: row,
@@ -314,7 +316,7 @@ $(window).on('load', function () {
                     align: 'center',
                     cellClick: function (e, cell) {
                         socket.send(JSON.stringify({
-                            act: 'delete_event',
+                            act: 'delete_user',
                             arg: {
                                 _id: cell.getRow().getData()['_id']
                             },

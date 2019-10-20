@@ -592,6 +592,7 @@ const empty = {
 module.exports = {
     get_users: empty,
     insert_chat: insert_chat,
+    delete_chat: delete_row,
     get_old_chats: get_old_chats,
     insert_chat_channel: insert_chat_channel,
     insert_user: insert_user,

@@ -37,6 +37,8 @@
 .fa-up-open:before { content: '\e80c'; } /* '' */
 .fa-right-open:before { content: '\e80d'; } /* '' */
 .fa-left-open:before { content: '\e80e'; } /* '' */
+.fa-circle-empty:before { content: '\f10c'; } /* '' */
+.fa-circle:before { content: '\f111'; } /* '' */
 .fa-trash:before { content: '\f1f8'; } /* '' */
 
 

@@ -1,5 +1,9 @@
 var graph;
 var model = new mxGraphModel();
+var graphSearchResults = [];
+var graphSearchPtr = null;
+var graphHighlights = [];
+var graphCellsSelect = [{ _id: '', name: '' }];
 
 function graphStart(container)
 {
@@ -21,6 +25,8 @@ function graphStart(container)
         graph.setPanning(true);
         new mxRubberband(graph);
 
+        graph.setEnabled(permissions.write_access);
+
         // outline (minimap)
         var outline = new mxOutline(graph, document.getElementById('graphOutline'));
 
@@ -30,7 +36,7 @@ function graphStart(container)
         style[mxConstants.STYLE_VERTICAL_ALIGN] = 'top';
         style[mxConstants.STYLE_FONTSIZE] = '14';
         style[mxConstants.STYLE_FONTCOLOR] = '#fff';
-        style[mxConstants.STYLE_FONTFAMILY] = 'Lato-Regular';
+        style[mxConstants.STYLE_FONTFAMILY] = 'lato';
         style[mxConstants.STYLE_STROKECOLOR] = '#000';
         style[mxConstants.STYLE_FILLCOLOR] = '#3f6ba3';        
 
@@ -40,7 +46,7 @@ function graphStart(container)
         style[mxConstants.STYLE_VERTICAL_ALIGN] = 'top';
         style[mxConstants.STYLE_FONTSIZE] = '14';
         style[mxConstants.STYLE_FONTCOLOR] = '#fff';
-        style[mxConstants.STYLE_FONTFAMILY] = 'Lato-Regular';
+        style[mxConstants.STYLE_FONTFAMILY] = 'lato';
         style[mxConstants.STYLE_STROKECOLOR] = '#fff';
 
         // load shapes into registry
@@ -90,20 +96,15 @@ function graphStart(container)
                 var scale = graph.view.scale;
                 var x = pt.x / scale - tr.x;
                 var y = pt.y / scale - tr.y;
+                var w = 0;
+                var h = 0;
 
                 if (evt.dataTransfer.getData('text')) {
-                    /*
-                    var e4 = graph.insertEdge(parent, null, '');
-                    e4.geometry.setTerminalPoint(new mxPoint(1, 100), true); e4.geometry.setTerminalPoint(new mxPoint(100, 1), false);
-                    */
-                    
                     var icon = JSON.parse(evt.dataTransfer.getData('text'));
-                    console.log(icon);
                     
                     if (icon.type === 'stencil') {
                         var stencil = mxStencilRegistry.getStencil(icon.name);
                         if (stencil) {
-                            console.log(stencil);
                             graph.insertVertex(null, ObjectId(), '', x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
                         }
                     } else if (icon.type === 'edge') {
@@ -133,6 +134,28 @@ function graphStart(container)
             var changes = evt.getProperty('edit').changes;
             for (var i = 0; i < changes.length; i++)
             {
+                if (changes[i].constructor == mxValueChange) {
+                    var id = changes[i].cell.id;
+                    var value = changes[i].value;
+                    var node = $('#notes').jstree(true).get_node(id, true);
+                    if (node) {
+                        if (value !== '') {
+                            $('#notes').jstree().rename_node(id, escapeHtml(value.split('\n')[0]));
+                        } else {
+                            $('#notes').jstree(true).delete_node(node);
+                        }
+                    } else if (value !== '') {
+                        notesAdd([{ _id: id, name: escapeHtml(value.split('\n')[0]), type: 'object' }]);
+                    }
+                } else if (changes[i].constructor == mxChildChange && changes[i].index === undefined) {
+                    var id = changes[i].child.id;
+
+                    var node = $('#notes').jstree(true).get_node(id, true);
+                    if (node) {
+                        $('#notes').jstree(true).delete_node(node);
+                    }
+                }
+
                 var node = codec.encode(changes[i]);
                 if (!evt.getProperty('self-inflicted')) {
                     socket.send(JSON.stringify({
@@ -143,8 +166,8 @@ function graphStart(container)
                 }
             }
 
-            // update the objectSelect array
-            objectSelect = graphGetCellsByNameAndId();
+            // update the graphCellsSelect array
+            graphCellsSelect = graphGetCellsByNameAndId();
         });
 
         // selection listener
@@ -335,16 +358,96 @@ function graphLoad(xml) {
     var dec = new mxCodec(node.ownerDocument);
     dec.decode(node, graph.getModel());
 
-    objectSelect = graphGetCellsByNameAndId();
+    graphCellsSelect = graphGetCellsByNameAndId();
+
+    for (var i = 0; i < graphCellsSelect.length; i++) {
+        if (graphCellsSelect[i].name !== '') {
+            notesAdd([{ _id: graphCellsSelect[i]._id, name: escapeHtml(graphCellsSelect[i].name.split('\n')[0]), type: 'object' }]);
+        }
+    }
+}
+
+
+function graphSearch(search) {
+    graphSearchResults = [];
+    graphSearchPtr = -1;
+    if (search !== '') {
+        var cells = graph.getChildCells(graph.getDefaultParent(), true, true);
+        for (var i = 0; i < cells.length; i++) {
+            if (cells[i].value !== undefined && cells[i].value.toLowerCase().indexOf(search.toLowerCase()) !== -1) {
+                graphSearchResults.push(cells[i].id);
+            }
+        }
+    }
+    graphNextSearchResult();
+
+}
+
+function graphNextSearchResult() {
+    graphRemoveHighlights();
+    if (graphSearchResults.length > 0) {
+        graphSearchPtr ++;
+        if (graphSearchPtr >= graphSearchResults.length || graphSearchPtr < 0)
+            graphSearchPtr = 0;
+        $('#graphSearchFoundCount').text(graphSearchPtr + 1 + '/' + graphSearchResults.length);
+        $('#graphSearchFoundCount').show();
+
+        var cell = model.getCell(graphSearchResults[graphSearchPtr]);
+        if (cell) {
+            graphHighlightCell(cell);
+        }
+    } else {
+        $('#graphSearchFoundCount').hide();
+    }
+}
+
+function graphPrevSearchResult() {
+    graphRemoveHighlights();
+    if (graphSearchResults.length > 0) {
+        graphSearchPtr --;
+        if (graphSearchPtr < 0)
+            graphSearchPtr = graphSearchResults.length - 1;
+        $('#graphSearchFoundCount').text(graphSearchPtr + 1 + '/' + graphSearchResults.length);
+        var cell = model.getCell(graphSearchResults[graphSearchPtr]);
+        if (cell) {
+            graphHighlightCell(cell);
+        }
+    }
+}
+
+function graphHighlightCellById(id) {
+    var cell = model.getCell(id);
+    if (cell) {
+        graphHighlightCell(cell);
+    }
+}
+
+function graphHighlightCell(cell) {
+    var highlight = new mxCellHighlight(graph, '#ff0000', 2, true);
+    highlight.highlight(graph.view.getState(cell));
+    graphHighlights.push(highlight);
+}
+
+function graphRemoveHighlights() {
+    for (var i = 0; i < graphHighlights.length; i++) {
+        graphHighlights[i].destroy();
+    }
+    graphHighlights = [];
 }
 
 function graphGetCellsByNameAndId() {
     var res = [{ _id: '', name: '' }];
     var cells = graph.getChildCells(graph.getDefaultParent(), true, true);
     for (var i = 0; i < cells.length; i++) {
-        res.push({ _id: [cells[i].id], name: cells[i].value.split('\n')[0]});
+        if (cells[i].value.split('\n')[0] != '') {
+            res.push({ _id: [cells[i].id], name: cells[i].value.split('\n')[0]});
+        }
     }
     return res;
+}
+
+function graphDeleteSelectedCell() {
+    graph.removeCells();
 }
 
 function graphExecuteChanges(model, n) {
@@ -378,6 +481,44 @@ function graphExecuteChanges(model, n) {
 
 $(window).on('load', function () {
     graphStart(document.getElementById('canvas'));
+
+    $('#graphSearchInput').on('input', function () {
+        graphSearch(this.value)
+    });
+
+    $('#graphSearchNextButton').click(function () {
+        graphNextSearchResult();
+    });
+
+    $('#graphSearchPrevButton').click(function () {
+        graphPrevSearchResult();
+    });
+
+    $('#graphSearchClose').click(function () {
+        graphSearch('');
+        $('#graphFoundCount').hide();
+        $('#graphSearchBar').hide();
+        $('#graphSearchInput').val('');
+    });
+
+    // capture keys
+    window.addEventListener("keydown", function (e) {
+        // copy
+        if ($.contains($('#canvas')[0], lastClick)) {
+            if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+                e.preventDefault();
+                if (!$('#graphSearchBar').is(':visible')) {
+                    $('#graphSearchBar').show().css('display', 'flex');
+                    $('#graphSearch').focus();
+                } else {
+                    graphSearch('');
+                    $('#graphFoundCount').hide();
+                    $('#graphSearchBar').hide();
+                    $('#graphSearchInput').val('');
+                }
+            }
+        }
+    })
 
     $('#zoomInButton').click(function() {
         console.log('z');
