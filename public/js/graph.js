@@ -64,12 +64,31 @@ function graphStart(container)
 
         // keyboard listeners
         var keyHandler = new mxKeyHandler(graph);
+
         // delete key
         keyHandler.bindKey(46, function(evt)
         {
             if (graph.isEnabled())
             {
                 graph.removeCells();
+            }
+        });
+
+        // ctrl+c key
+        keyHandler.bindControlKey(67, function(evt)
+        {
+            if (graph.isEnabled() && mxEvent.isControlDown(evt))
+            {
+                mxClipboard.copy(graph);
+            }
+        });
+
+        // ctrl+c key
+        keyHandler.bindControlKey(86, function(evt)
+        {
+            if (graph.isEnabled() && mxEvent.isControlDown(evt))
+            {
+                mxClipboard.paste(graph);
             }
         });
 
@@ -132,8 +151,10 @@ function graphStart(container)
         {
             var codec = new mxCodec();
             var changes = evt.getProperty('edit').changes;
+            var nodes = [];
             for (var i = 0; i < changes.length; i++)
             {
+                
                 if (changes[i].constructor == mxValueChange) {
                     var id = changes[i].cell.id;
                     var value = changes[i].value;
@@ -157,13 +178,14 @@ function graphStart(container)
                 }
 
                 var node = codec.encode(changes[i]);
-                if (!evt.getProperty('self-inflicted')) {
-                    socket.send(JSON.stringify({
-                        act: 'update_graph',
-                        arg: mxUtils.getXml(node),
-                        msgId: msgHandler()
-                    }));
-                }
+                nodes.push(mxUtils.getXml(node));
+            }
+            if (!evt.getProperty('self-inflicted')) {
+                socket.send(JSON.stringify({
+                    act: 'update_graph',
+                    arg: nodes,
+                    msgId: msgHandler()
+                }));
             }
 
             // update the graphCellsSelect array
@@ -178,11 +200,54 @@ function graphStart(container)
     }
 };
 
+function graphCopyCells(cells)
+{
+    if (cells.length > 0)
+    {
+        var clones = graph.cloneCells(cells);
+        
+        // Checks for orphaned relative children and makes absolute
+        for (var i = 0; i < clones.length; i++)
+        {
+            var state = graph.view.getState(cells[i]);
+            
+            if (state != null)
+            {
+                var geo = graph.getCellGeometry(clones[i]);
+                
+                if (geo != null && geo.relative)
+                {
+                    geo.relative = false;
+                    geo.x = state.x / state.view.scale - state.view.translate.x;
+                    geo.y = state.y / state.view.scale - state.view.translate.y;
+                }
+            }
+        }
+        
+        textInput.value = mxClipboard.cellsToString(clones);
+    }
+    
+    textInput.select();
+    lastPaste = textInput.value;
+};
+
 function graphGetCurrentSelection() {
     return graph.getSelectionCell();
 }
 
-function graphCellSetStyle(cell, styleElem, value) {
+function graphCompareCellStyleToObject(cellStyle, styleObject) {
+    var keys = Object.keys(styleObject);
+     for (var i = 0; i < keys.length; i++) {
+        if (styleObject[keys[i]] == cellStyle[keys[i]] || (styleObject[keys[i]] == 0 && cellStyle[keys[i]] == undefined)) {
+            continue;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+function graphSetCellStyle(cell, styleElem, value) {
     if (!cell) {
         return;
     }
@@ -191,20 +256,17 @@ function graphCellSetStyle(cell, styleElem, value) {
     graph.setCellStyle(style, [cell]);
 }
 
-function graphCellSetStyleString(cell, styleStr) {
+function graphSetCellStyleObject(cell, styleObject) {
     if (!cell) {
         return;
     }
     var style = model.getStyle(cell);
-    var elems = styleStr.split(';');
-    for (var i = 0; i < elems.length; i++) {
-        if (elems[i].indexOf('=') !== -1) {
-            if (elems[i].split('=')[1] == '0') {
-                console.log('removing style');
-                style = mxUtils.setStyle(style, elems[i].split('=')[0], '');
-            } else {
-                style = mxUtils.setStyle(style, elems[i].split('=')[0], elems[i].split('=')[1]);
-            }
+    var keys = Object.keys(styleObject);
+    for (var i = 0; i < keys.length; i++) {
+        if (styleObject[keys[i]] == '0') {
+            style = mxUtils.setStyle(style, keys[i], '');
+        } else {
+          style = mxUtils.setStyle(style, keys[i], styleObject[keys[i]]);
         }
     }
     graph.setCellStyle(style, [cell]);
@@ -451,32 +513,34 @@ function graphDeleteSelectedCell() {
 }
 
 function graphExecuteChanges(model, n) {
-    var codec = new mxCodec();
-    codec.lookup = function(id)
-    {
-        return model.getCell(id);
+    for (var i = 0; i < n.length; i++) {
+        var codec = new mxCodec();
+        codec.lookup = function(id)
+        {
+            return model.getCell(id);
+        }
+
+        var c = mxUtils.parseXml(n[i]);
+
+        var changes = [];
+        var change = codec.decode(c.documentElement);
+
+        change.model = model;
+        change.execute();
+        changes.push(change);
+
+        var edit = new mxUndoableEdit(model, true);
+        edit.changes = changes;
+
+        edit.notify = function()
+        {
+        edit.source.fireEvent(new mxEventObject(mxEvent.CHANGE, 'edit', edit, 'changes', edit.changes));
+        edit.source.fireEvent(new mxEventObject(mxEvent.NOTIFY, 'edit', edit, 'changes', edit.changes));
+        }
+        
+        model.fireEvent(new mxEventObject(mxEvent.UNDO, 'edit', edit));
+        model.fireEvent(new mxEventObject(mxEvent.CHANGE, 'edit', edit, 'changes', changes, 'self-inflicted', true));
     }
-
-    n = mxUtils.parseXml(n);
-
-    var changes = [];
-    var change = codec.decode(n.documentElement);
-
-    change.model = model;
-    change.execute();
-    changes.push(change);
-
-    var edit = new mxUndoableEdit(model, true);
-    edit.changes = changes;
-
-    edit.notify = function()
-    {
-      edit.source.fireEvent(new mxEventObject(mxEvent.CHANGE, 'edit', edit, 'changes', edit.changes));
-      edit.source.fireEvent(new mxEventObject(mxEvent.NOTIFY, 'edit', edit, 'changes', edit.changes));
-    }
-    
-    model.fireEvent(new mxEventObject(mxEvent.UNDO, 'edit', edit));
-    model.fireEvent(new mxEventObject(mxEvent.CHANGE, 'edit', edit, 'changes', changes, 'self-inflicted', true));
 }
 
 $(window).on('load', function () {

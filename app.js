@@ -2332,59 +2332,63 @@ async function setupSocket(socket) {
                     break;
 
                 case 'update_graph':
-                    parser.parseString(msg.arg, function(err, result) {
-                        if (err) {
-                            logger.error(err);
-                            return;
-                        }
+                    var results = [];
+                    for (var i = 0; i < msg.arg.length; i++) {
+                        parser.parseString(msg.arg[i], function(err, result) {
+                            if (err) {
+                                logger.error(err);
+                                return;
+                            }
 
-                        var graph = graphs.get(socket.mission_id);
+                            var graph = graphs.get(socket.mission_id);
 
-                        if (!graph) {
-                            socket.send(JSON.stringify({
-                                act: 'error',
-                                arg: 'Invalid mission id.'
-                            }));
-                            return;
-                        }
+                            if (!graph) {
+                                socket.send(JSON.stringify({
+                                    act: 'error',
+                                    arg: 'Invalid mission id.'
+                                }));
+                                return;
+                            }
 
-                        var res = '';
-                        if (result.mxRootChange) {
-                            res = mxRootChange(result, graph);
-                        }
-                        if (result.mxChildChange) {
-                            res = mxChildChange(result, graph);
-                        }
-                        if (result.mxValueChange) {
-                            res = mxValueChange(result, graph);
-                        }
-                        if (result.mxGeometryChange) {
-                            res = mxGeometryChange(result, graph);
-                        }
-                        if (result.mxTerminalChange) {
-                            res = mxTerminalChange(result, graph);
-                        }
-                        if (result.mxTerminalChange) {
-                            res = mxTerminalChange(result, graph);
-                        }
-                        if (result.mxStyleChange) {
-                            res = mxStyleChange(result, graph);
-                        }
+                            var res = '';
+                            if (result.mxRootChange) {
+                                res = mxRootChange(result, graph);
+                            }
+                            if (result.mxChildChange) {
+                                res = mxChildChange(result, graph);
+                            }
+                            if (result.mxValueChange) {
+                                res = mxValueChange(result, graph);
+                            }
+                            if (result.mxGeometryChange) {
+                                res = mxGeometryChange(result, graph);
+                            }
+                            if (result.mxTerminalChange) {
+                                res = mxTerminalChange(result, graph);
+                            }
+                            if (result.mxTerminalChange) {
+                                res = mxTerminalChange(result, graph);
+                            }
+                            if (result.mxStyleChange) {
+                                res = mxStyleChange(result, graph);
+                            }
 
-                        // save changes
-                        if (!saveGraph(socket.mission_id, graph)) {
-                            socket.send(JSON.stringify({
-                                act: 'error',
-                                arg: 'Warning, error saving graph.'
-                            }));
-                        }
+                            // save changes
+                            if (!saveGraph(socket.mission_id, graph)) {
+                                socket.send(JSON.stringify({
+                                    act: 'error',
+                                    arg: 'Warning, error saving graph.'
+                                }));
+                            }
 
-                        if (res !== undefined && res  !== '') {
-                            // forward change to other clients
-                            sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph_o', arg: msg.arg }), socket);
-                            sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: builder.buildObject(res) }), socket);
-                        }
-                    });
+                            if (res !== undefined && res  !== '') {
+                                // forward change to other clients
+                                //sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph_o', arg: msg.arg }), socket);
+                                results.push(builder.buildObject(res));
+                            }
+                        });
+                    }
+                    sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: results }), socket);
                     break;
 
                 default:

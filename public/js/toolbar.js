@@ -71,6 +71,7 @@ function toolbarClose() {
 function toolbarUpdateSelection(cell) {
     if (cell) {
         var style = graphGetCellStyle(cell);
+
         $('#toolbarEditGroup').show();
         if (style) {
             $('#toolbarFillColor').val(style.fillColor);
@@ -78,7 +79,28 @@ function toolbarUpdateSelection(cell) {
             $('#toolbarStrokeColor').val(style.strokeColor);
             $('#toolbarStrokeColor').data('paletteColorPickerPlugin').reload();
             if (cell.edge) {
+                // set edge dash options dropdown
+                var options = $('#toolbarEdgeDashOptions').find('img');
+                for (var i = 0; i < options.length; i++) {
+                    if ($(options[i]).attr('data-style') !== undefined) {
+                        if (graphCompareCellStyleToObject(style, JSON.parse($(options[i]).attr('data-style')))) {
+                            $($('#toolbarEdgeDashOptions').find('button')[0].firstChild).replaceWith($(options[i]).clone())
+                        }
+                    }
+                }
+                // set edge type dropdown
+                options = $('#toolbarEdgeWaypointOptions').find('img');
+                for (var i = 0; i < options.length; i++) {
+                    if ($(options[i]).attr('data-style') !== undefined) {
+                        if (graphCompareCellStyleToObject(style, JSON.parse($(options[i]).attr('data-style')))) {
+                            $($('#toolbarEdgeWaypointOptions').find('button')[0].firstChild).replaceWith($(options[i]).clone())
+                        }
+                    }
+                }
                 $('#toolbarEdgeOptions').show();
+                
+
+
             } else {
                 $('#toolbarEdgeOptions').hide();
             }
@@ -131,7 +153,9 @@ function toolbarDropdownSetStyle(evt) {
             } else {
                 selected = evt.clickEvent.target.children[0];
             }
-            var style = $(selected).attr('data-style');
+            var style = JSON.parse($(selected).attr('data-style'));
+            console.log(style);
+            
             var currentSelection = evt.relatedTarget.firstChild;
             if (selected && currentSelection) {
                 $(currentSelection).replaceWith($(selected).clone());
@@ -139,7 +163,7 @@ function toolbarDropdownSetStyle(evt) {
 
             if(style) {
                 var cell = graphGetCurrentSelection();
-                graphCellSetStyleString(cell, style);
+                graphSetCellStyleObject(cell, style);
             }
         }
     }
@@ -219,7 +243,7 @@ $(window).on('load', function () {
                 var cell = graphGetCurrentSelection();
                 var style = graphGetCellStyle(cell);
                 if (cell && style.fillColor !== color) {
-                    graphCellSetStyle(cell, mxConstants.STYLE_FILLCOLOR, color);
+                    graphSetCellStyle(cell, mxConstants.STYLE_FILLCOLOR, color);
                 }  
             }
         }
@@ -253,7 +277,7 @@ $(window).on('load', function () {
                 var cell = graphGetCurrentSelection();
                 var style = graphGetCellStyle(cell);
                 if (cell && style.strokeColor !== color) {
-                    graphCellSetStyle(cell, mxConstants.STYLE_STROKECOLOR, color);
+                    graphSetCellStyle(cell, mxConstants.STYLE_STROKECOLOR, color);
                 }  
             }
         }
