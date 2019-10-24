@@ -287,7 +287,7 @@ async function saveGraph(mission_id, graph) {
     try {
         var new_values = {};
 
-        new_values.graph = JSON.stringify(graph);
+        new_values.graph = graph;
 
         var res = await mdb.collection('missions').updateOne({
             _id: objectid(mission_id)
@@ -302,86 +302,86 @@ async function saveGraph(mission_id, graph) {
     }
 }
 
-function mxTerminalChange(js, graph) {
+function mxTerminalChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxTerminalChange.$.cell) {
-            if (js.mxTerminalChange.$.source == 1) {
-                if (js.mxTerminalChange.$.terminal) {
-                    graph.mxGraphModel.root.mxCell[i].$.source = js.mxTerminalChange.$.terminal;
+        if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
+            if (change.source == 1) {
+                if (change.terminal) {
+                    graph.mxGraphModel.root.mxCell[i].source = change.terminal;
                 } else {
-                    delete graph.mxGraphModel.root.mxCell[i].$.source;
+                    delete graph.mxGraphModel.root.mxCell[i].source;
                 }
             } else {
-                if (js.mxTerminalChange.$.terminal) {
-                    graph.mxGraphModel.root.mxCell[i].$.target = js.mxTerminalChange.$.terminal;
+                if (change.terminal) {
+                    graph.mxGraphModel.root.mxCell[i].target = change.terminal;
                 } else {
-                    delete graph.mxGraphModel.root.mxCell[i].$.target;
+                    delete graph.mxGraphModel.root.mxCell[i].target;
                 }
             }
             break;
         }
     }
-    return js;
+    return change;
 }
 
-function mxGeometryChange(js, graph) {
+function mxGeometryChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxGeometryChange.$.cell) {
-            graph.mxGraphModel.root.mxCell[i].mxGeometry = js.mxGeometryChange.mxGeometry;
+        if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
+            graph.mxGraphModel.root.mxCell[i].mxGeometry = change.mxGeometry;
             break;
         }
     }
-    return js;
+    return change;
 }
 
-function mxValueChange(js, graph) {
-    js.mxValueChange.$.value = xssFilters.inHTMLData(js.mxValueChange.$.value);
+function mxValueChange(change, graph) {
+    change.value = xssFilters.inHTMLData(change.value);
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxValueChange.$.cell) {
-            graph.mxGraphModel.root.mxCell[i].$.value = js.mxValueChange.$.value;
+        if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
+            graph.mxGraphModel.root.mxCell[i].value = change.value;
             break;
         }
     }
-    return js;
+    return change;
 }
 
-function mxStyleChange(js, graph) {
+function mxStyleChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].$.id === js.mxStyleChange.$.cell) {
-            graph.mxGraphModel.root.mxCell[i].$.style = js.mxStyleChange.$.style;
+        if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
+            graph.mxGraphModel.root.mxCell[i].style = change.style;
             break;
         }
     }
-    return js;
+    return change;
 }
 
-function mxRootChange(js, graph) {
-    graph.mxGraphModel.root.mxCell = js.mxRootChange.mxCell;
+function mxRootChange(change, graph) {
+    graph.mxGraphModel.root.mxCell = change.mxCell;
     return '';
 }
 
-function mxChildChange(js, graph) {
+function mxChildChange(change, graph) {
     // delete
-    if (js.mxChildChange.$ && js.mxChildChange.$.parent === undefined) {
+    if (change.parent === undefined) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-            if (js.mxChildChange.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.mxChildChange.$.child) {
+            if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
                 break;
             }
         }
     // move
-    } else if (js.mxChildChange.$ && js.mxChildChange.$.index && js.mxChildChange.$.child) {
+    } else if (change.index !== undefined && change.child !== undefined) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-            if (js.mxChildChange.$ && graph.mxGraphModel.root.mxCell[i].$.id === js.mxChildChange.$.child) {
-                graph.mxGraphModel.root.mxCell.move(i, js.mxChildChange.$.index);
+            if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
+                graph.mxGraphModel.root.mxCell.move(i, change.index);
                 break;
             }
         }
     // insert
-    } else if (js.mxChildChange.mxCell) {
-        graph.mxGraphModel.root.mxCell.push(js.mxChildChange.mxCell);
+    } else if (change.mxCell) {
+        graph.mxGraphModel.root.mxCell.push(change.mxCell);
     }
-    return js;
+    return change;
 }
 // ------------------------------------------------------------------------------------------------------------------- MXGRAPH
 
@@ -604,7 +604,7 @@ async function insertMission(socket, mission) {
 
         var mission = {
             //graph: JSON.stringify(emptyGraph),
-            graph: { mxGraphModel: { root: [ { 'mxCell': { id: '0' } }, { 'mxCell': { id: '1', parent: '0' } } ] } },
+            graph: { mxGraphModel: { root: { mxCell: [] } } },
             name: mission.name,
             user_id: objectid(socket.user_id),
             mission_users: [],
@@ -1215,13 +1215,13 @@ async function insertMissionUser(socket, user) {
 
             if (res.result.ok === 1) {
                 // get username
-                var user = await mdb.collection('users').findOne({
+                var u = await mdb.collection('users').findOne({
                     _id: objectid(user.user_id),
                     deleted: {
                         $ne: true
                     }
                 });
-                new_values.username = user.username;
+                new_values.username = u.username;
                 sendToRoom(socket.mission_id, JSON.stringify({
                     act: 'insert_mission_user',
                     arg: new_values
@@ -1955,6 +1955,7 @@ async function getEvents(socket) {
                 source_port: 1,
                 dest_port: 1,
                 short_desc: 1,
+                assigned_user_id: 1,
                 username: '$username.username'
             }
         }]).toArray();
@@ -1995,6 +1996,7 @@ async function insertEvent(socket, event) {
             event_type: event.event_type,
             short_desc: event.short_desc,
             user_id: objectid(socket.user_id),
+            assigned_user_id: null,
             deleted: false
         };
 
@@ -2006,8 +2008,8 @@ async function insertEvent(socket, event) {
             evt.dest_object = objectid(event.dest_object);
         }
 
-        if (event.assignment && objectid.isValid(event.assignment)) {
-            evt.assignment = objectid(event.assignment);
+        if (event.assigned_user_id && objectid.isValid(event.assigned_user_id)) {
+            evt.assigned_user_id = objectid(event.assigned_user_id);
         }
 
         var res = await mdb.collection('events').insertOne(evt);
@@ -2047,7 +2049,7 @@ async function updateEvent(socket, event) {
                 dest_port: event.dest_port,
                 event_type: event.event_type,
                 short_desc: event.short_desc,
-                assignment: null
+                assigned_user_id: null
             }
         };
 
@@ -2055,8 +2057,8 @@ async function updateEvent(socket, event) {
             new_values.$set.source_object = objectid(event.source_object);
         if (event.dest_object && objectid.isValid(event.dest_object))
             new_values.$set.dest_object = objectid(event.dest_object);
-        if (event.assignment && objectid.isValid(event.assignment))
-            new_values.$set.assignment = objectid(event.assignment);
+        if (event.assigned_user_id && objectid.isValid(event.assigned_user_id))
+            new_values.$set.assigned_user_id = objectid(event.assigned_user_id);
 
         var res = await mdb.collection('events').updateOne({
             _id: objectid(event._id)
@@ -2279,9 +2281,9 @@ async function setupSocket(socket) {
 
                     if (socket.mission_permissions[socket.mission_id].manage_users) {
                         getUsers(socket, true);
-                        getMissionUsers(socket);
                     }
 
+                    getMissionUsers(socket);
                     getNotes(socket);
                     getFiles(socket);
                     getEvents(socket);
@@ -2335,70 +2337,53 @@ async function setupSocket(socket) {
 
                 case 'update_graph':
                     var results = [];
-                    msg.arg = JSON.parse(msg.arg);
-                    for (var i = 0; i < msg.arg.length; i++) {
-                        console.log(msg.arg[i]);
-                        //console.log(msg.arg[i]);
-                        
-                        /*parser.parseString(msg.arg[i], function(err, result) {
-                            if (err) {
-                                logger.error(err);
-                                return;
-                            }
-                        */
-                        var graph = graphs.get(socket.mission_id);
 
-                        if (!graph) {
-                            socket.send(JSON.stringify({
-                                act: 'error',
-                                arg: 'Invalid mission id.'
-                            }));
-                            return;
-                        }
-                        console.log(JSON.stringify(graph));
-                        /*
-                           
-                            var res = '';
-                            if (result.mxRootChange) {
-                                res = mxRootChange(result, graph);
-                            }
-                            if (result.mxChildChange) {
-                                res = mxChildChange(result, graph);
-                            }
-                            if (result.mxValueChange) {
-                                res = mxValueChange(result, graph);
-                            }
-                            if (result.mxGeometryChange) {
-                                res = mxGeometryChange(result, graph);
-                            }
-                            if (result.mxTerminalChange) {
-                                res = mxTerminalChange(result, graph);
-                            }
-                            if (result.mxTerminalChange) {
-                                res = mxTerminalChange(result, graph);
-                            }
-                            if (result.mxStyleChange) {
-                                res = mxStyleChange(result, graph);
-                            }
+                    var graph = graphs.get(socket.mission_id);
 
-                            // save changes
-                            if (!saveGraph(socket.mission_id, graph)) {
-                                socket.send(JSON.stringify({
-                                    act: 'error',
-                                    arg: 'Warning, error saving graph.'
-                                }));
-                            }
-
-                            if (res !== undefined && res  !== '') {
-                                // forward change to other clients
-                                //sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph_o', arg: msg.arg }), socket);
-                                results.push(builder.buildObject(res));
-                            }
-                            
-                        });*/
-                        
+                    if (!graph) {
+                        socket.send(JSON.stringify({
+                            act: 'error',
+                            arg: 'Invalid mission id.'
+                        }));
+                        return;
                     }
-                    sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: msg.arg }), socket);
+
+                    for (var i = 0; i < msg.arg.length; i++) {
+                        var type = msg.arg[i].type;
+                        var res = { type: type };
+                        
+                        switch(type) {
+                            case 'mxChildChange':
+                                res[type] = mxChildChange(msg.arg[i].mxChildChange, graph);
+                                break;
+                            case 'mxGeometryChange':
+                                res[type] = mxGeometryChange(msg.arg[i].mxGeometryChange, graph);
+                                break;
+                            case 'mxStyleChange':
+                                res[type] = mxStyleChange(msg.arg[i].mxStyleChange, graph);
+                                break;
+                            case 'mxTerminalChange':
+                                res[type] = mxTerminalChange(msg.arg[i].mxTerminalChange, graph);
+                                break;
+                            case 'mxValueChange':
+                                res[type] = mxValueChange(msg.arg[i].mxValueChange, graph);
+                                break;
+
+                        }
+                        if (res[type] !== undefined) {
+                            results.push(res);
+                        }
+                    }
+
+                    // save changes
+                    if (!saveGraph(socket.mission_id, graph)) {
+                        socket.send(JSON.stringify({
+                            act: 'error',
+                            arg: 'Warning, error saving graph.'
+                        }));
+                    }
+                      
+                    sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: results }), socket);
                     break;
 
                 default:
@@ -2896,6 +2881,6 @@ app.get("/images/file_types/*", function (req, res, next) {
 
 // -------------------------------------------------------------------------
 
-http.listen(3000, function () {
+http.listen(3001, function () {
     logger.info('Server listening on port 3000!');
 });

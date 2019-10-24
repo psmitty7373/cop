@@ -40,7 +40,7 @@ var icons = [
         name: "01_switch", type: "stencil", style: "shape=01_switch;", icon: "01_switch.svg"
     },
     {
-        name: "01_wireless_modem", type: "stencil", style: "shape01_wireless_modemfillColor=#3f6ba3;", icon: "01_wireless_modem.svg"
+        name: "01_wireless_modem", type: "stencil", style: "shape=01_wireless_modem;", icon: "01_wireless_modem.svg"
     },
     {
         name: "01_firewall", type: "stencil", style: "shape=01_firewall;", icon: "01_firewall.svg"
@@ -145,12 +145,18 @@ var icons = [
         name: "01_virus", type: "stencil", style: "shape=01_virus;", icon: "01_virus.svg"
     },
     {
-        name: "Links", type: "divider"
+        name: "Shapes", type: "divider"
     },
     {
         name: "line", type: "edge", style: "endArrow=none;", icon: "02_line.svg"
     },
     {
         name: "dashed_line", type: "edge", style: "dashed=1;endArrow=none;", icon: "02_dashed_line.svg"
+    },
+    {
+        name: "rectangle", type: "shape", style: "rounded=0;strokeColor=#000000;fillColor=#ffffff;", icon: "02_rectangle.svg"
+    },
+    {
+        name: "text", type: "shape", style: "text;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;verticalLabelPosition=middle;", icon: "02_text.svg", value: "Text"
     },
 ];

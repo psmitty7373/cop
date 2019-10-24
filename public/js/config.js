@@ -315,16 +315,21 @@ $(window).on('load', function () {
                     width: 40,
                     align: 'center',
                     cellClick: function (e, cell) {
-                        socket.send(JSON.stringify({
-                            act: 'delete_user',
-                            arg: {
-                                _id: cell.getRow().getData()['_id']
-                            },
-                            msgId: msgHandler()
-                        }));
+                        deleteConfirm('deleteUser(\'' + cell.getRow().getData()['_id'] + '\')');
+                        
                     }
                 }
             ]
         });
     }
 });
+
+function deleteUser(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_user',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}

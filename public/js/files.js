@@ -163,13 +163,7 @@ $(window).on('load', function () {
                             'separator_after': false,
                             'label': 'Delete',
                             'action': function (obj) {
-                                socket.send(JSON.stringify({
-                                    act: 'delete_file',
-                                    arg: {
-                                        _id: node.id
-                                    },
-                                    msgId: msgHandler()
-                                }));
+                                deleteConfirm('filesDelete(\'' + node.id + '\')');
                             }
                         };
                     }
@@ -214,3 +208,13 @@ $(window).on('load', function () {
         }));
     });
 });
+
+function filesDelete(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_file',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}

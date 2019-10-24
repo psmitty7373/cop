@@ -30,6 +30,7 @@ var settings = {
 };
 var earliest_messages = {}; //= 2147483647000;
 var userSelect = [];
+var missionUserSelect = [{ _id: '', user_id: '', username: '' }];
 var objectsLoaded = null;
 var updatingObject = false;
 var socket;
@@ -175,17 +176,12 @@ function startTime() {
     var t = setTimeout(startTime, 500);
 }
 
-function deleteConfirm(f) {
-    $('#modal-title').text('Are you sure?');
-    $('#modal-body').html('<p>Are you sure you want to delete this?</p><p>Deleting things will also remove any attached notes or files.</p>');
-    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="' + f + ';">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
-    $('#modal-content').removeAttr('style');
-    $('#modal-content').removeClass('modal-details');
-    $('#modal').modal('show')
-}
-
 function sortByName(a, b) {
     return a.name.localeCompare(b.name);
+}
+
+function sortByUsername(a, b) {
+    return a.username.localeCompare(b.username);
 }
 
 function timelineCancel() {
@@ -303,6 +299,7 @@ function addUser() {
 function addEvent() {
     // sort the objects
     graphCellsSelect.sort(sortByName);
+    missionUserSelect.sort(sortByUsername);
 
     var msg = `
 <form>
@@ -355,6 +352,19 @@ function addEvent() {
         </div>
     </div>
     <div class="form-group row">
+        <label for="neAssignedUserId" class="col-sm-4 col-form-label">Assigned User:</label>
+        <div class="col-sm-8">
+            <select class="form-control" id="neAssignedUserId">`;
+
+    for (var i = 0; i < missionUserSelect.length; i++) {
+        msg += '<option value="' + missionUserSelect[i].user_id + '">' + missionUserSelect[i].username + '</option>';
+    }
+
+    msg += `
+            </select>
+        </div>
+    </div>
+    <div class="form-group row">
         <label for="neEventType" class="col-sm-4 col-form-label">Event Type:</label>
         <div class="col-sm-8">
             <input type="text" class="form-control" id="neEventType">
@@ -387,6 +397,7 @@ function addEvent() {
                     event.dest_object = $('#neDestObject').val();
                     event.event_type = $('#neEventType').val();
                     event.short_desc = $('#neShortDesc').val();
+                    event.assigned_user_id = $('#neAssignedUserId').val();
                     socket.send(JSON.stringify({
                         act: 'insert_event',
                         arg: event,
@@ -508,15 +519,43 @@ var dateEditor = function (cell, onRendered, success, cancel) {
 
     editor.addEventListener("change", successFunc);
     editor.addEventListener("blur", successFunc);
-    // remove on scroll also
-    //window.addEventListener("scroll", successFunc, true);
 
     return editor;
 }
 
+function deleteMissionUser(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_mission_user',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}
+
+function deleteOpnote(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_opnote',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}
+
+function deleteEvent(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_event',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}
+
 // READY!
 $(window).on('load', function () {
-    $('#modal-title').text('Please wait...!');
+    $('#modal-title').text('Please wait...');
     $('#modal-body').html('<p>Loading COP, please wait...</p><img src="images/loading.gif"/>');
     $('#modal-footer').html('');
     //$('#modal').modal('show');
@@ -686,13 +725,7 @@ $(window).on('load', function () {
                 width: 40,
                 align: 'center',
                 cellClick: function (e, cell) {
-                    socket.send(JSON.stringify({
-                        act: 'delete_mission_user',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
+                    deleteConfirm('deleteMissionUser(\'' + cell.getRow().getData()['_id'] + '\')');
                 }
             },
         ]
@@ -803,6 +836,36 @@ $(window).on('load', function () {
                 editable: function() { return permissions.write_access }
             },
             {
+                title: 'Assignment',
+                field: 'assigned_user_id',
+                editor: 'select',
+                editable: function() { return permissions.write_access },
+                editorParams: function () {
+                    missionUserSelect.sort(sortByUsername);
+
+                    var vals = {};
+                    for (var i = 0; i < missionUserSelect.length; i++) {
+                        vals[missionUserSelect[i].user_id] = missionUserSelect[i].username;
+                    }
+                    console.log(vals);
+                    return {
+                        values: vals
+                    }
+                },
+                formatter: function (cell, formatterParams, onRendered) {
+                    if (cell.getValue() !== undefined && cell.getValue()) {
+                        var res = missionUserSelect.find(obj => obj.user_id == cell.getValue());
+                        if (res && res.username) {
+                            return res.username;
+                        } else {
+                            return 'USER DELETED';
+                        }
+                    } else {
+                        return ''
+                    }
+                }
+            },
+            {
                 title: 'User',
                 field: 'username'
             }, {
@@ -814,13 +877,8 @@ $(window).on('load', function () {
                     if (!permissions.write_access) {
                         return false;
                     }
-                    socket.send(JSON.stringify({
-                        act: 'delete_event',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
+                    deleteConfirm('deleteEvent(\'' + cell.getRow().getData()['_id'] + '\')');
+                    
                 }
             }
         ]
@@ -882,13 +940,7 @@ $(window).on('load', function () {
                     if (!permissions.write_access) {
                         return false;
                     }
-                    socket.send(JSON.stringify({
-                        act: 'delete_opnote',
-                        arg: {
-                            _id: cell.getRow().getData()['_id']
-                        },
-                        msgId: msgHandler()
-                    }));
+                    deleteConfirm('deleteOpnote(\'' + cell.getRow().getData()['_id'] + '\')');
                 }
             }
         ]
@@ -1146,10 +1198,15 @@ $(window).on('load', function () {
 
                 // users
             case 'get_mission_users':
+                missionUserSelect = [{ _id: '', user_id: '', username: '' }];
+                for (var i = 0; i < msg.arg.length; i++) {
+                    missionUserSelect.push({ _id: msg.arg[i]._id, user_id: msg.arg[i].user_id, username: msg.arg[i].username})
+                }
                 settingsTabulator.setData(msg.arg);
                 break;
 
             case 'insert_mission_user':
+                missionUserSelect.push({ _id: msg.arg.user_id, user_id: msg.arg.user_id, username: msg.arg.username})
                 settingsTabulator.addRow(msg.arg);
                 break;
 
@@ -1158,6 +1215,13 @@ $(window).on('load', function () {
                 break;
 
             case 'delete_mission_user':
+                for (var i = 0; i < missionUserSelect.length; i++) {
+                    if (missionUserSelect[i]._id === msg.arg) {
+                        console.log('delete');
+                        missionUserSelect.splice(i, 1);
+                        break;
+                    }
+                }
                 settingsTabulator.deleteRow(msg.arg);
                 break; 
         }

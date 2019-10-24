@@ -4,7 +4,7 @@ var graphSearchResults = [];
 var graphSearchPtr = null;
 var graphHighlights = [];
 var graphCellsSelect = [{ _id: '', name: '' }];
-var graphReady = true;
+var graphReady = false;
 
 class JsonCodec extends mxObjectCodec {
     constructor() {
@@ -14,7 +14,7 @@ class JsonCodec extends mxObjectCodec {
         var res = {};
         for (let prop in value) {
             if (value[prop] !== undefined && value[prop] !== null && value[prop] !== false) {
-                if (prop === 'x' || prop === 'y' || prop === 'width' || prop === 'height' || prop === 'sourcePoint' || prop === 'targetPoint') {
+                if (prop === 'x' || prop === 'y' || prop === 'width' || prop === 'height' || prop === 'sourcePoint' || prop === 'targetPoint' || prop == 'offset' || prop == 'points') {
                     res[prop] = value[prop];
                 }
             }
@@ -81,7 +81,6 @@ class JsonCodec extends mxObjectCodec {
                 }
             }
         }
-        console.log(res);
         return res;
     }
 
@@ -90,11 +89,16 @@ class JsonCodec extends mxObjectCodec {
             var t = value['mxGraphModel'];
             var cells = [];
 
-            for (var i = 0; i < t.root.length; i++) {
-                var cell = this.decode(t.root[i], 'mxCell');
-                if (cell) {
-                    cells.push(cell);
+            if (t.root !== undefined && t.root.mxCell !== undefined) {
+                model.beginUpdate();
+                for (var i = 0; i < t.root.mxCell.length; i++) {
+                    var cell = this.decode(t.root.mxCell[i], 'mxCell');
+                    if (cell) {
+                        // add the cell to the model / graph
+                        model.add(graph.getDefaultParent(), cell, i);
+                    }
                 }
+                model.endUpdate();
             }
             return cells;
 
@@ -106,14 +110,6 @@ class JsonCodec extends mxObjectCodec {
                 geometry = this.decode(value['mxGeometry'], 'mxGeometry');
             }
     
-            if (geometry && value['geometry'] !== undefined && value['geometry'].sourcePoint) {
-                var sp = new mxPoint(value['geometry'].sourcePoint.x, value['geometry'].sourcePoint.y);
-                geometry.sourcePoint = sp;
-            }
-            if (geometry && value['geometry'] !== undefined && value['geometry'].sourcePoint) {
-                var tp = new mxPoint(value['geometry'].targetPoint.x, value['geometry'].targetPoint.y);
-                geometry.targetPoint = tp;
-            }
             var cell = new mxCell(value.value, geometry, value.style);
             cell.id = value.id;
             cell.parent = undefined;
@@ -123,10 +119,38 @@ class JsonCodec extends mxObjectCodec {
             if (value.vertex) {
                 cell.vertex = 1;
             }
+            if (value.target) {
+                cell.target = this.lookup(value.target);
+            }
+            if (value.source) {
+                cell.source = this.lookup(value.source);
+            }
             return cell;
 
         } else if (type === 'mxGeometry') {
             var geometry = new mxGeometry(value.x, value.y, value.width, value.height);
+            if (geometry) {
+                if (value.sourcePoint) {
+                    var sp = new mxPoint(value.sourcePoint.x, value.sourcePoint.y);
+                    geometry.sourcePoint = sp;
+                }
+                if (value.sourcePoint) {
+                    var tp = new mxPoint(value.targetPoint.x, value.targetPoint.y);
+                    geometry.targetPoint = tp;
+                }
+                if (value.offset) {
+                    var op = new mxPoint(value.offset.x, value.offset.y);
+                    geometry.offset = op;
+                }
+                if (value.points) {
+                    geometry.points = [];
+                    for (var i = 0; i < value.points.length; i++) {
+                        var p = new mxPoint(value.points[i].x, value.points[i].y);
+                        geometry.points.push(p);
+                    }
+                }
+            }
+            
             return geometry;
 
         } else if (type === 'mxGeometryChange') {
@@ -176,7 +200,6 @@ class JsonCodec extends mxObjectCodec {
 
             // new cell
             if (value.previous === undefined) {
-                console.log(value);
                 var cell = this.decode(value['mxCell'], 'mxCell');
                 var change = new mxChildChange(undefined, this.lookup(value.parent), cell, value.index);
                 return change;
@@ -184,7 +207,6 @@ class JsonCodec extends mxObjectCodec {
             // move index 
             } else {
                 var cell = this.lookup(value.child);
-
                 if (cell) {
                     change = new mxChildChange(undefined, this.lookup(value.parent), cell, value.index);
                 }
@@ -259,7 +281,7 @@ function graphStart(container)
         {
             if (graph.isEnabled())
             {
-                graph.removeCells();
+                deleteConfirm('graphDeleteSelectedCell()');
             }
         });
 
@@ -278,6 +300,26 @@ function graphStart(container)
             if (graph.isEnabled() && mxEvent.isControlDown(evt))
             {
                 mxClipboard.paste(graph);
+            }
+        });
+
+        graph.addMouseListener({
+            mouseDown: function(sender, evt) {
+            },
+            mouseMove: function(sender, evt) {
+            },
+            mouseUp: function(sender, evt) {
+                if (graph.isEnabled()) {
+                    if (evt.state !== undefined && evt.state.cell !== undefined) {
+                        if (evt.evt.altKey) {
+                            var name = evt.state.cell.id;
+                            if (evt.state.cell.value !== '') {
+                                name = evt.state.cell.value.split('\n')[0]
+                            }
+                            notesEdit(evt.state.cell.id, name);
+                        }
+                    }
+                }
             }
         });
 
@@ -306,18 +348,26 @@ function graphStart(container)
                 var y = pt.y / scale - tr.y;
                 var w = 0;
                 var h = 0;
+                var value = '';
 
                 if (evt.dataTransfer.getData('text')) {
                     var icon = JSON.parse(evt.dataTransfer.getData('text'));
+
+                    if (icon.value !== undefined) {
+                        value = icon.value;
+                    }
                     
                     if (icon.type === 'stencil') {
                         var stencil = mxStencilRegistry.getStencil(icon.name);
                         if (stencil) {
-                            graph.insertVertex(graph.getDefaultParent(), ObjectId(), '', x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
+                            graph.insertVertex(graph.getDefaultParent(), ObjectId(), value, x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
                         }
+                    } else if (icon.type === 'shape') {
+                        graph.insertVertex(graph.getDefaultParent(), ObjectId(), value, x - (30/2), y - (30/2), 30, 30, icon.style);
+
                     } else if (icon.type === 'edge') {
                         graph.getModel().beginUpdate();
-                        var edge = graph.insertEdge(graph.getDefaultParent(),  ObjectId(), '', null, null, icon.style);
+                        var edge = graph.insertEdge(graph.getDefaultParent(),  ObjectId(), value, null, null, icon.style);
                         edge.geometry.setTerminalPoint(new mxPoint(x - 25, y + 25), true);
                         edge.geometry.setTerminalPoint(new mxPoint(x + 25,  y - 25), false);
                         graph.getModel().endUpdate()
@@ -338,17 +388,18 @@ function graphStart(container)
         // changes listener
         model.addListener(mxEvent.CHANGE, function(sender, evt)
         {
-            if (!graphReady) {
-                return;
-            }
             var codec = new JsonCodec();
-            var codec2 = new mxCodec();
             var changes = evt.getProperty('edit').changes;
             var nodes = [];
             var parsedChanges = [];
             var jsonChange = {};
+
+            if (!graphReady) {
+                return;
+            }
+
             for (var i = 0; i < changes.length; i++)
-            {                
+            {
                 if (changes[i].constructor == mxValueChange) {
                     var id = changes[i].cell.id;
                     var value = changes[i].value;
@@ -372,15 +423,13 @@ function graphStart(container)
                 }
                 if (!evt.getProperty('self-inflicted')) {
                     var node = codec.encode(changes[i]);
-                    //var node2 = codec2.encode(changes[i]);
-                    //console.log(mxUtils.getXml(node2));
                     nodes.unshift(node);
                 }
             }
             if (!evt.getProperty('self-inflicted')) {
                 socket.send(JSON.stringify({
                     act: 'update_graph',
-                    arg: JSON.stringify(nodes),
+                    arg: nodes,
                     msgId: msgHandler()
                 }));
             }
@@ -396,34 +445,6 @@ function graphStart(container)
         });
     }
 };
-
-function stringifyWithoutCircular(json) {
-    return JSON.stringify(
-        json,
-        (key, value) => {
-            if (key === 'model' || value === null) {
-                return undefined;
-            }
-            if (key === 'child') {
-                return 'mxCell';
-            }
-            if ((key === 'parent' || key == 'source' || key == 'target' ) && value !== null) {
-                return value.id;
-            } else if (key === 'child' && value !== null && value !== undefined && value.localName) {
-                let results = {};
-                Object.keys(value.attributes).forEach(
-                    (attrKey) => {
-                        const attribute = value.attributes[attrKey];
-                        results[attribute.nodeName] = attribute.nodeValue;
-                    }
-                )
-                return results;
-            }
-            return value;
-        },
-        4
-    );
-}
 
 function graphCopyCells(cells)
 {
@@ -568,7 +589,6 @@ function graphGetCellStyle(cell) {
 
 function handleDrop(graph, file, x, y)
 {
-    console.log('drop');
     if (file.type.substring(0, 5) == 'image')
     {
         var reader = new FileReader();
@@ -640,16 +660,17 @@ function handleDrop(graph, file, x, y)
 };
 
 function graphLoad(jsonGraph) {
-    var g = JSON.parse(jsonGraph);
-    var codec = new JsonCodec();
-    var cells = codec.decode(g, 'mxGraphModel');
-    console.log(cells);
-    //graph.addCells(cells);
-    console.log(g);
-    //dec.decode(node, graph.getModel());
-    //console.log(dec.decode(node));
+    var jsonGraph = JSON.parse(jsonGraph);
 
-    //graphCellsSelect = graphGetCellsByNameAndId();
+    var codec = new JsonCodec();
+    codec.lookup = function(id)
+    {
+        return model.getCell(id);
+    }
+    codec.decode(jsonGraph, 'mxGraphModel');
+    graphReady = true;
+
+    graphCellsSelect = graphGetCellsByNameAndId();
 
     for (var i = 0; i < graphCellsSelect.length; i++) {
         if (graphCellsSelect[i].name !== '') {
@@ -751,9 +772,7 @@ function graphExecuteChanges(model, jsChanges) {
         }
 
         var changes = [];
-        console.log(jsChanges[i]);
         var change = codec.decode(jsChanges[i][type], type);
-        console.log(change);
 
         change.model = model;
         change.execute();
@@ -815,7 +834,6 @@ $(window).on('load', function () {
     })
 
     $('#zoomInButton').click(function() {
-        console.log('z');
         graph.zoomIn();
     })
 

@@ -185,6 +185,10 @@ $(window).on('load', function () {
     $('#toolbarEditNotes').click(function () {
         var cell = graphGetCurrentSelection();
         if (cell) {
+            var name = cell.id;
+            if (cell.value !== '') {
+                name = cell.value.split('\n')[0]
+            }
             notesEdit(cell.id, cell.value.split('\n')[0]);
         }
     });

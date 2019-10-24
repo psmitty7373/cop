@@ -6,43 +6,6 @@ if (typeof(is_admin) === 'undefined' || is_admin === null) {
     is_admin = false;
 }
 
-function deleteRowConfirm(table, id) {
-    $('#modal-title').text('Are you sure?');
-    $('#modal-body').html('<p>Are you sure you want to delete this row?</p>');
-    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="main.deleteRow(\'' + table + '\', \'' + id + '\');">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
-    $('#modal-content').removeAttr('style');
-    $('#modal-content').removeClass('modal-details');
-    $('#modal').modal('show')
-}
-
-function getDate() {
-    var date = new Date();
-    return date.getFullYear() + '-' + addZero(date.getMonth() + 1) + '-' + addZero(date.getDate()) + ' ' + addZero(date.getHours()) + ':' + addZero(date.getMinutes()) + ':' + addZero(date.getSeconds()) + '.' + date.getMilliseconds();
-}
-
-function getKeyByValue(object, value) {
-    return Object.keys(object).find(key => object[key] === value);
-}
-
-function dateStringToEpoch(value) {
-    var parts = value.match(/(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2})\.(\d+)/);
-    return (Date.UTC(parts[1], parts[2] - 1, parts[3], parts[4], parts[5], parts[6], parts[7]));
-}
-
-function epochToDateString(value) {
-    if (isNaN(value))
-        return value;
-    var date = new Date(parseInt(value));
-    return (date.getFullYear() + '-' + addZero(date.getMonth() + 1) + '-' + addZero(date.getDate()) + ' ' + addZero(date.getHours()) + ':' + addZero(date.getMinutes()) + ':' + addZero(date.getSeconds()) + '.' + date.getMilliseconds());
-}
-
-function addZero(i) {
-    if (i < 10) {
-        i = "0" + i;
-    }
-    return i;
-}
-
 function newMission() {
     bootbox.dialog({
         message: '<form><div class="form-group row"><label for="nmName" class="col-sm-2 col-form-label">Mission Name</label><div class="col-sm-10"><input type="text" class="form-control" id="nmName" value=""></div></div></form>',
@@ -217,15 +180,20 @@ $(window).on('load', function () {
             width: 40,
             align: 'center',
             cellClick: function (e, cell) {
-                socket.send(JSON.stringify({
-                    act: 'delete_mission',
-                    arg: {
-                        _id: cell.getRow().getData()['_id']
-                    },
-                    msgId: msgHandler()
-                }));
+                deleteConfirm('deleteMission(\'' + cell.getRow().getData()['_id'] + '\')');
+                
             }
         }, false, null);
     }
 
 });
+
+function deleteMission(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_mission',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}

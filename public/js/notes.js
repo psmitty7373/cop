@@ -253,13 +253,7 @@ $(window).on('load', function () {
                                 'separator_after': false,
                                 'label': 'Delete Note',
                                 'action': function (obj) {
-                                    socket.send(JSON.stringify({
-                                        act: 'delete_note',
-                                        arg: {
-                                            _id: node.id
-                                        },
-                                        msgId: msgHandler()
-                                    }));
+                                    deleteConfirm('notesDelete(\'' + node.id + '\')');
                                 }
                             };
                         }
@@ -269,3 +263,13 @@ $(window).on('load', function () {
             }
         });
 });
+
+function notesDelete(id) {
+    socket.send(JSON.stringify({
+        act: 'delete_note',
+        arg: {
+            _id: id
+        },
+        msgId: msgHandler()
+    }));
+}

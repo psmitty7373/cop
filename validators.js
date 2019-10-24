@@ -302,6 +302,10 @@ const insert_event = {
             type: 'string',
             maxLength: 1024 * 512
         },
+        assigned_user_id: {
+            type: 'string',
+            pattern: '^$|^[a-fA-F0-9]{24}$'
+        }
     },
     required: ['event_time', 'discovery_time'],
     additionalProperties: false
@@ -346,6 +350,10 @@ const update_event = {
             type: 'string',
             maxLength: 1024 * 512
         },
+        assigned_user_id: {
+            type: 'string',
+            pattern: '^$|^[a-fA-F0-9]{24}$'
+        }
     },
     required: ['_id', 'event_time', 'discovery_time'],
     additionalProperties: false
