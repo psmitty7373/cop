@@ -41,8 +41,8 @@ const ws = new wss.Server({
 });
 
 var xml2js = require('xml2js');
-var parser = new xml2js.Parser({explicitArray : false});
-var builder = new xml2js.Builder({ renderOpts: { pretty: false }, headless: true });
+var parser = new xml2js.Parser({ explicitArray : false, attrkey: 'cell$' });
+var builder = new xml2js.Builder({ renderOpts: { pretty: false }, headless: true, attrkey: 'cell$' });
 
 app.set('view engine', 'pug');
 app.use(express.static('public'));
@@ -279,7 +279,7 @@ async function loadGraph(mission_id) {
         return false;
     }
     
-    graphs.set(mission_id, JSON.parse(mission.graph));
+    graphs.set(mission_id, mission.graph);
     return true;
 }
 
@@ -601,8 +601,10 @@ async function insertMission(socket, mission) {
         var filesRoot = objectid(null);
         var chatFilesRoot = objectid(null);
         var logChannel = objectid(null);
+
         var mission = {
-            graph: JSON.stringify(emptyGraph),
+            //graph: JSON.stringify(emptyGraph),
+            graph: { mxGraphModel: { root: [ { 'mxCell': { id: '0' } }, { 'mxCell': { id: '1', parent: '0' } } ] } },
             name: mission.name,
             user_id: objectid(socket.user_id),
             mission_users: [],
@@ -2272,7 +2274,7 @@ async function setupSocket(socket) {
 
                     socket.send(JSON.stringify({
                         act: 'get_graph',
-                        arg: builder.buildObject(graphs.get(socket.mission_id))
+                        arg: JSON.stringify(graphs.get(socket.mission_id))
                     }));
 
                     if (socket.mission_permissions[socket.mission_id].manage_users) {
@@ -2333,23 +2335,29 @@ async function setupSocket(socket) {
 
                 case 'update_graph':
                     var results = [];
+                    msg.arg = JSON.parse(msg.arg);
                     for (var i = 0; i < msg.arg.length; i++) {
-                        parser.parseString(msg.arg[i], function(err, result) {
+                        console.log(msg.arg[i]);
+                        //console.log(msg.arg[i]);
+                        
+                        /*parser.parseString(msg.arg[i], function(err, result) {
                             if (err) {
                                 logger.error(err);
                                 return;
                             }
+                        */
+                        var graph = graphs.get(socket.mission_id);
 
-                            var graph = graphs.get(socket.mission_id);
-
-                            if (!graph) {
-                                socket.send(JSON.stringify({
-                                    act: 'error',
-                                    arg: 'Invalid mission id.'
-                                }));
-                                return;
-                            }
-
+                        if (!graph) {
+                            socket.send(JSON.stringify({
+                                act: 'error',
+                                arg: 'Invalid mission id.'
+                            }));
+                            return;
+                        }
+                        console.log(JSON.stringify(graph));
+                        /*
+                           
                             var res = '';
                             if (result.mxRootChange) {
                                 res = mxRootChange(result, graph);
@@ -2386,9 +2394,11 @@ async function setupSocket(socket) {
                                 //sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph_o', arg: msg.arg }), socket);
                                 results.push(builder.buildObject(res));
                             }
-                        });
+                            
+                        });*/
+                        
                     }
-                    sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: results }), socket);
+                    sendToRoom(socket.mission_id, JSON.stringify({ act: 'update_graph', arg: msg.arg }), socket);
                     break;
 
                 default:

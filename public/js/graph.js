@@ -4,6 +4,195 @@ var graphSearchResults = [];
 var graphSearchPtr = null;
 var graphHighlights = [];
 var graphCellsSelect = [{ _id: '', name: '' }];
+var graphReady = true;
+
+class JsonCodec extends mxObjectCodec {
+    constructor() {
+      super((value)=>{});
+    }
+    encodeMxGeometry(value) {
+        var res = {};
+        for (let prop in value) {
+            if (value[prop] !== undefined && value[prop] !== null && value[prop] !== false) {
+                if (prop === 'x' || prop === 'y' || prop === 'width' || prop === 'height' || prop === 'sourcePoint' || prop === 'targetPoint') {
+                    res[prop] = value[prop];
+                }
+            }
+        }
+        return res;
+    }
+
+    encodeMxCell(value) {
+        var res = {};
+        for (let prop in value) {
+            if (value[prop] !== undefined && value[prop] !== null && value[prop] !== false) {
+                if (prop === 'id' || prop === 'style' || prop === 'value' || prop === 'vertex' || prop === 'edge') {
+                    res[prop] = value[prop];
+                }
+                if (prop === 'parent') {
+                    res[prop] = value[prop].id;
+                }
+                if (value[prop].constructor === mxGeometry) {
+                    res['mxGeometry'] = this.encodeMxGeometry(value[prop]);
+                }
+            }
+        }
+        return res;
+    }
+
+    encode(value) {
+        var type = value.constructor.name;
+        var res = { type: type };
+        res[type] = {};
+        for(let prop in value) {
+            if (value[prop] !== undefined && value[prop] !== null && value[prop] !== false) {
+                if (prop === 'child' && value.constructor === mxChildChange && value.previous !== null) {
+                    res[type]['child'] = value.child.id;
+                }
+                if (prop === 'cell') {
+                    res[type]['cell'] = value[prop].id;
+                }
+                if (prop === 'terminal') {
+                    res[type]['terminal'] = value.terminal.id;
+                    res[type]['source']  = value.source;
+                }             
+                if (prop === 'parent') {
+                    res[type][prop] = value[prop].id;
+                }
+                if (prop === 'value') {
+                    res[type][prop] = value[prop];
+                }
+                if (prop === 'geometry' && value[prop].constructor === mxGeometry) {
+                    res[type]['mxGeometry'] = this.encodeMxGeometry(value[prop]);
+                }
+                if (value.constructor === mxChildChange) {
+                    if (prop === 'index' || prop === 'style' || prop === 'edge') {
+                        res[type][prop] = value[prop];
+                    }
+                    if (value.previous !== null) {
+                        res[type]['previous'] = value.previous.id;
+                    }
+                    if (value[prop].constructor === mxCell && value.previous === null) {
+                        res[type]['mxCell'] = this.encodeMxCell(value[prop]);                
+                    }
+                }
+                if (value.constructor === mxStyleChange) {
+                    res[type]['style'] = value.cell.style;
+                }
+            }
+        }
+        console.log(res);
+        return res;
+    }
+
+    decode(value, type) {
+        if (type === 'mxGraphModel') {
+            var t = value['mxGraphModel'];
+            var cells = [];
+
+            for (var i = 0; i < t.root.length; i++) {
+                var cell = this.decode(t.root[i], 'mxCell');
+                if (cell) {
+                    cells.push(cell);
+                }
+            }
+            return cells;
+
+        } else if (type === 'mxCell') {
+            var cell = null;
+            var geometry = null;
+
+            if (value['mxGeometry'] !== undefined) {
+                geometry = this.decode(value['mxGeometry'], 'mxGeometry');
+            }
+    
+            if (geometry && value['geometry'] !== undefined && value['geometry'].sourcePoint) {
+                var sp = new mxPoint(value['geometry'].sourcePoint.x, value['geometry'].sourcePoint.y);
+                geometry.sourcePoint = sp;
+            }
+            if (geometry && value['geometry'] !== undefined && value['geometry'].sourcePoint) {
+                var tp = new mxPoint(value['geometry'].targetPoint.x, value['geometry'].targetPoint.y);
+                geometry.targetPoint = tp;
+            }
+            var cell = new mxCell(value.value, geometry, value.style);
+            cell.id = value.id;
+            cell.parent = undefined;
+            if (value.edge) {
+                cell.edge = 1;
+            }
+            if (value.vertex) {
+                cell.vertex = 1;
+            }
+            return cell;
+
+        } else if (type === 'mxGeometry') {
+            var geometry = new mxGeometry(value.x, value.y, value.width, value.height);
+            return geometry;
+
+        } else if (type === 'mxGeometryChange') {
+            var change = null;
+            var geometry = null;
+            if (value['mxGeometry'] !== undefined) {
+                geometry = this.decode(value['mxGeometry'], 'mxGeometry');
+            }
+            var cell = this.lookup(value.cell);
+            
+            if (cell) {
+                change = new mxGeometryChange(null, cell, geometry);
+            }
+            return change;
+        
+        } else if (type === 'mxStyleChange') {
+            var change = null;
+            var cell = this.lookup(value.cell);
+
+            if (cell) {
+                change = new mxStyleChange(null, cell, value['style']);
+            }
+            return change;
+
+        } else if (type === 'mxValueChange') {
+            var change = null;
+            var cell = this.lookup(value.cell);
+
+            if (cell) {
+                change = new mxValueChange(null, cell, value['value']);
+            }
+            return change;
+
+        } else if (type === 'mxTerminalChange') {
+            var change = null;
+            var terminal = this.lookup(value['terminal']);
+            var source = value['source'];
+            var cell = this.lookup(value.cell);
+
+            if (cell && terminal) {
+                change = new mxTerminalChange(null, cell, terminal, source);
+            }
+            return change;
+
+        } else if (type === 'mxChildChange') {
+            var change = null;
+
+            // new cell
+            if (value.previous === undefined) {
+                console.log(value);
+                var cell = this.decode(value['mxCell'], 'mxCell');
+                var change = new mxChildChange(undefined, this.lookup(value.parent), cell, value.index);
+                return change;
+
+            // move index 
+            } else {
+                var cell = this.lookup(value.child);
+
+                if (cell) {
+                    change = new mxChildChange(undefined, this.lookup(value.parent), cell, value.index);
+                }
+                return change;
+            }
+        }
+    }
+}
 
 function graphStart(container)
 {
@@ -124,11 +313,11 @@ function graphStart(container)
                     if (icon.type === 'stencil') {
                         var stencil = mxStencilRegistry.getStencil(icon.name);
                         if (stencil) {
-                            graph.insertVertex(null, ObjectId(), '', x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
+                            graph.insertVertex(graph.getDefaultParent(), ObjectId(), '', x - (stencil.w0/2), y - (stencil.h0/2), stencil.w0, stencil.h0, icon.style);
                         }
                     } else if (icon.type === 'edge') {
                         graph.getModel().beginUpdate();
-                        var edge = graph.insertEdge(null,  ObjectId(), '', null, null, icon.style);
+                        var edge = graph.insertEdge(graph.getDefaultParent(),  ObjectId(), '', null, null, icon.style);
                         edge.geometry.setTerminalPoint(new mxPoint(x - 25, y + 25), true);
                         edge.geometry.setTerminalPoint(new mxPoint(x + 25,  y - 25), false);
                         graph.getModel().endUpdate()
@@ -149,12 +338,17 @@ function graphStart(container)
         // changes listener
         model.addListener(mxEvent.CHANGE, function(sender, evt)
         {
-            var codec = new mxCodec();
+            if (!graphReady) {
+                return;
+            }
+            var codec = new JsonCodec();
+            var codec2 = new mxCodec();
             var changes = evt.getProperty('edit').changes;
             var nodes = [];
+            var parsedChanges = [];
+            var jsonChange = {};
             for (var i = 0; i < changes.length; i++)
-            {
-                
+            {                
                 if (changes[i].constructor == mxValueChange) {
                     var id = changes[i].cell.id;
                     var value = changes[i].value;
@@ -176,14 +370,17 @@ function graphStart(container)
                         $('#notes').jstree(true).delete_node(node);
                     }
                 }
-
-                var node = codec.encode(changes[i]);
-                nodes.push(mxUtils.getXml(node));
+                if (!evt.getProperty('self-inflicted')) {
+                    var node = codec.encode(changes[i]);
+                    //var node2 = codec2.encode(changes[i]);
+                    //console.log(mxUtils.getXml(node2));
+                    nodes.unshift(node);
+                }
             }
             if (!evt.getProperty('self-inflicted')) {
                 socket.send(JSON.stringify({
                     act: 'update_graph',
-                    arg: nodes,
+                    arg: JSON.stringify(nodes),
                     msgId: msgHandler()
                 }));
             }
@@ -199,6 +396,34 @@ function graphStart(container)
         });
     }
 };
+
+function stringifyWithoutCircular(json) {
+    return JSON.stringify(
+        json,
+        (key, value) => {
+            if (key === 'model' || value === null) {
+                return undefined;
+            }
+            if (key === 'child') {
+                return 'mxCell';
+            }
+            if ((key === 'parent' || key == 'source' || key == 'target' ) && value !== null) {
+                return value.id;
+            } else if (key === 'child' && value !== null && value !== undefined && value.localName) {
+                let results = {};
+                Object.keys(value.attributes).forEach(
+                    (attrKey) => {
+                        const attribute = value.attributes[attrKey];
+                        results[attribute.nodeName] = attribute.nodeValue;
+                    }
+                )
+                return results;
+            }
+            return value;
+        },
+        4
+    );
+}
 
 function graphCopyCells(cells)
 {
@@ -322,7 +547,7 @@ function handleSVGDrop(data, x, y) {
             h = Math.max(1, Math.round(h));
             
             data = 'data:image/svg+xml,' + btoa(mxUtils.getXml(svgs[0], '\n'));
-            graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
+            graph.insertVertex(graph.getDefaultParent(), ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
         }
     }
 }
@@ -387,7 +612,7 @@ function handleDrop(graph, file, x, y)
                         h = Math.max(1, Math.round(h));
                         
                         data = 'data:image/svg+xml,' + btoa(mxUtils.getXml(svgs[0], '\n'));
-                        graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
+                        graph.insertVertex(graph.getDefaultParent(), ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
                     }
                 }
             }
@@ -404,7 +629,7 @@ function handleDrop(graph, file, x, y)
                     {
                         data = data.substring(0, semi) + data.substring(data.indexOf(',', semi + 1));
                     }
-                    graph.insertVertex(null, ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
+                    graph.insertVertex(graph.getDefaultParent(), ObjectId(), '', x, y, w, h, 'shape=image;image=' + data + ';');
                 };                
                 img.src = data;
             }
@@ -414,13 +639,17 @@ function handleDrop(graph, file, x, y)
     }
 };
 
-function graphLoad(xml) {
-    var xmlDoc = mxUtils.parseXml(xml);
-    var node = xmlDoc.documentElement;
-    var dec = new mxCodec(node.ownerDocument);
-    dec.decode(node, graph.getModel());
+function graphLoad(jsonGraph) {
+    var g = JSON.parse(jsonGraph);
+    var codec = new JsonCodec();
+    var cells = codec.decode(g, 'mxGraphModel');
+    console.log(cells);
+    //graph.addCells(cells);
+    console.log(g);
+    //dec.decode(node, graph.getModel());
+    //console.log(dec.decode(node));
 
-    graphCellsSelect = graphGetCellsByNameAndId();
+    //graphCellsSelect = graphGetCellsByNameAndId();
 
     for (var i = 0; i < graphCellsSelect.length; i++) {
         if (graphCellsSelect[i].name !== '') {
@@ -512,18 +741,19 @@ function graphDeleteSelectedCell() {
     graph.removeCells();
 }
 
-function graphExecuteChanges(model, n) {
-    for (var i = 0; i < n.length; i++) {
-        var codec = new mxCodec();
+function graphExecuteChanges(model, jsChanges) {
+    for (var i = 0; i < jsChanges.length; i++) {
+        var type = jsChanges[i].type;
+        var codec = new JsonCodec();
         codec.lookup = function(id)
         {
             return model.getCell(id);
         }
 
-        var c = mxUtils.parseXml(n[i]);
-
         var changes = [];
-        var change = codec.decode(c.documentElement);
+        console.log(jsChanges[i]);
+        var change = codec.decode(jsChanges[i][type], type);
+        console.log(change);
 
         change.model = model;
         change.execute();
