@@ -154,7 +154,6 @@ function toolbarDropdownSetStyle(evt) {
                 selected = evt.clickEvent.target.children[0];
             }
             var style = JSON.parse($(selected).attr('data-style'));
-            console.log(style);
             
             var currentSelection = evt.relatedTarget.firstChild;
             if (selected && currentSelection) {

@@ -207,7 +207,7 @@ function chatAddChannels(c) {
         $('#channelPanes').append('<div class="channel-pane" id="pane' + c[i]._id + '" style="' + style +'"><div id="messages' + c[i]._id + '"></div></div>');
         $('#label' + c[i]._id).click(chatChangeChannel);
         if(deleteButton !== '') {
-            $('#' + c[i]._id + 'Delete').click(deleteChannel);
+            $('#' + c[i]._id + 'Delete').click(chatDeleteChannel);
         }
         $('#pane' + c[i]._id).overlayScrollbars({
             className: "os-theme-light"
@@ -491,5 +491,9 @@ $(window).on('load', function () {
                 $("#messageInput").val('');
             }
         }
+    });
+
+    $('#chatChannels').overlayScrollbars({
+        className: "os-theme-light",
     });
 });

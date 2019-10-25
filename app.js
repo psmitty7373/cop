@@ -785,35 +785,63 @@ async function insertChatChannel(socket, channel) {
         // check if channel already exists
         var count = await mdb.collection('channels').count({
             mission_id: objectid(socket.mission_id),
-            'channels.name': channel.name
+            'name': channel.name
         });
 
         // don't add existing channel
         if (count === 0) {
             var new_values = {
                 _id: objectid(null),
+                mission_id: objectid(socket.mission_id),
                 name: channel.name,
                 deleted: false,
+                members: [],
                 type: 'channel'
             };
 
-            var res = await mdb.collection('missions').updateOne({
-                _id: objectid(socket.mission_id)
-            }, {
-                $push: {
-                    channels: new_values
+            var users = await mdb.collection('missions').aggregate([{
+                $match: {
+                    _id: objectid(socket.mission_id),
+                    deleted: {
+                        $ne: true
+                    }
                 }
-            });
+            }, {
+                $unwind: '$mission_users'
+            }, {
+                $project: {
+                    _id: '$mission_users.user_id',
+                }
+            }]).toArray();
 
-            if (res.result.ok === 1) {
-                sendToRoom(socket.mission_id, JSON.stringify({
-                    act: 'insert_chat_channel',
-                    arg: [new_values]
-                }));
-
-            } else {
-                throw('insertChatChannel error.')
+            for (var i = 0; i < users.length; i ++) {
+                new_values.members.push(users[i]._id);
             }
+
+            var res = await mdb.collection('channels').insertOne(new_values);
+
+            delete new_values.deleted;
+            delete new_values.members;
+
+            // create a room for the new channel
+            if (!rooms.get(new_values._id.toString())) {
+                rooms.set(new_values._id.toString(), new Set());
+            }
+            var room = rooms.get(new_values._id.toString());
+
+            // join everyone in the mission to it
+            if (rooms.get(socket.mission_id)) {
+                var missionRoom = rooms.get(socket.mission_id);
+                missionRoom.forEach((socket) => {
+                    room.add(socket);
+                });
+            }
+
+            sendToRoom(socket.mission_id, JSON.stringify({
+                act: 'insert_chat_channel',
+                arg: [new_values]
+            }));
+
         } else {
             throw('insertChatChannel already exists.')
         }
@@ -821,7 +849,7 @@ async function insertChatChannel(socket, channel) {
         socket.send(JSON.stringify({
             act: 'error',
             arg: {
-                text: 'Error inserting channel. Already exists?'
+                text: 'Error inserting channel.'
             }
         }));
         logger.error(err);

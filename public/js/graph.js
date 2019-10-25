@@ -413,6 +413,15 @@ function graphStart(container)
                     } else if (value !== '') {
                         notesAdd([{ _id: id, name: escapeHtml(value.split('\n')[0]), type: 'object' }]);
                     }
+
+                    var objects = eventsTabulator.getColumn('dest_object').getCells();
+                    objects = objects.concat(eventsTabulator.getColumn('source_object').getCells());
+                    for (var j = 0; j < objects.length; j++) {
+                        if (objects[j].getValue() === id) {
+                            $(objects[j].getElement()).text(value);
+                        }
+                    }
+
                 } else if (changes[i].constructor == mxChildChange && changes[i].index === undefined) {
                     var id = changes[i].child.id;
 

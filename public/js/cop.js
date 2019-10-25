@@ -1075,9 +1075,9 @@ $(window).on('load', function () {
                 $('#modal').removeData('bs.modal').modal({});
                 break;
 
-                // getters
+            // getters
             case 'join':
-                // objects
+            // objects
                 break;
 
             case 'update_graph':
@@ -1096,7 +1096,7 @@ $(window).on('load', function () {
                 userSelect = msg.arg;
                 break;
 
-                // chat
+            // chat
             case 'get_chats':
                 chatAddMessage(msg.arg, true, true);
                 break;
@@ -1122,7 +1122,7 @@ $(window).on('load', function () {
                 chatAddChannels(msg.arg)
                 break;
 
-                // events
+            // events
             case 'get_events':
                 eventsTabulator.setData(msg.arg);
                 break;
@@ -1156,7 +1156,7 @@ $(window).on('load', function () {
                 opnotesTabulator.deleteRow(msg.arg);
                 break;
 
-                // files
+            // files
             case 'get_files':
                 addFiles(msg.arg);
                 break;
@@ -1179,7 +1179,7 @@ $(window).on('load', function () {
                 $('#files').jstree(true).delete_node(msg.arg);
                 break;
 
-                // notes
+            // notes
             case 'get_notes':
                 notesAdd(msg.arg);
                 break;
@@ -1196,7 +1196,7 @@ $(window).on('load', function () {
                 $('#notes').jstree(true).delete_node(msg.arg);
                 break;
 
-                // users
+            // users
             case 'get_mission_users':
                 missionUserSelect = [{ _id: '', user_id: '', username: '' }];
                 for (var i = 0; i < msg.arg.length; i++) {
