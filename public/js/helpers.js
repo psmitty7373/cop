@@ -104,7 +104,10 @@ function dateStringToEpoch(value) {
 function getObjCtr(o) {
     var x = (o.width * o.scaleX) / 2 + o.left;
     var y = (o.height * o.scaleY) / 2 + o.top;
-    return {x: x, y:y};
+    return {
+        x: x,
+        y: y
+    };
 }
 
 var entityMap = {
@@ -118,7 +121,7 @@ var entityMap = {
     '=': '&#x3D;'
 };
 
-function escapeHtml (string) {
+function escapeHtml(string) {
     return String(string).replace(/[&<>"'`=\/]/g, function (s) {
         return entityMap[s];
     });
@@ -127,8 +130,16 @@ function escapeHtml (string) {
 function deleteConfirm(f) {
     $('#modal-title').text('Are you sure?');
     $('#modal-body').html('<p>Are you sure you want to delete this?</p><p>Deleting things will also remove any attached notes or files.</p>');
-    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="' + f + ';">Yes</button> <button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">No</button>');
+    $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-danger" data-dismiss="modal" onClick="' + f + ';">Yes</button> <button type="button" class="button btn btn-primary" data-dismiss="modal">No</button>');
     $('#modal-content').removeAttr('style');
     $('#modal-content').removeClass('modal-details');
     $('#modal').modal('show')
+}
+
+function copyText(text) {
+    var t = $("<input>");
+    $("body").append(t);
+    t.val(text).select();
+    document.execCommand("copy");
+    t.remove();
 }

@@ -1,0 +1,303 @@
+#channelPanes {
+    height: 100%;
+}
+
+#channelsWrapper {
+    background: #375a7f;
+    width: 200px;
+    height: 100%;
+    float: left;
+    position: relative;
+    display: flex;
+    flex-flow: column;
+}
+
+#channelPanesWrapper {
+    width: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#channelFooter {
+    width: 100%;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-right: 10px;
+}
+
+#channels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.channel-pane {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-left: 5px;
+    padding-right: 10px;
+    padding-top: 10px;
+}
+
+.channelUnread {
+    pointer-events: none;
+    background: #dc5960;
+    font-size: 12px;
+    border-radius: 15px;
+    padding: 1px 10px;
+    color: #ffffff;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    line-height: 16px;
+}
+
+.userLabel, .channelLabel {
+    cursor: pointer;
+    display: flex;
+    flex-flow: row;
+    height: 26px;
+    width: 100%;
+    color: #fff;
+    padding: 0 12px 0 15px;
+    font-size: 16px;
+    text-decoration: none;
+    line-height: 26px;
+    vertical-align: middle;
+}
+
+.channelHeading {
+    padding: 0 12px 0 6px;
+    height: 26px;
+    width: 100%;
+    font-size: 16px;
+    text-decoration: none;
+    line-height: 26px;
+    vertical-align: middle;
+    margin-top: 5px;
+}
+
+.channelName {
+    pointer-events: none;
+    width: 100%;
+}
+
+.channelSelected {
+    background: #4C9689 !important;
+    color: #ffffff;
+}
+
+.channel:hover {
+    background: #4A5664;
+}
+
+.channel:hover .channelDeleteIcon {
+    display: block;
+}
+
+.channelDeleteIcon {
+    display: none;
+}
+
+#channelPanes {
+    height: 100%;
+}
+
+#chatChannelsWrapper {
+    background: #375a7f;
+    width: 200px;
+    height: 100%;
+    float: left;
+    position: relative;
+    display: flex;
+    flex-flow: column;
+}
+
+#chatChannelPanesWrapper {
+    width: auto;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+#channelFooter {
+    width: 100%;
+    padding-left: 5px;
+    padding-top: 5px;
+    padding-right: 10px;
+}
+
+#chatChannels {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.channel-pane {
+    height: 100%;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    padding-left: 5px;
+    padding-right: 10px;
+}
+
+#chatProgressbar {
+    width: 100%;
+    height: 25px;
+    text-align: center;
+}
+
+#chatProgressbarContainer {
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    width: 75%;
+    padding: 10px;
+}
+
+.chatStatusIndicator {
+    margin-right: 5px;
+    font-size: 14px;
+    color: red;
+}
+
+.chatStatusOnline {
+    color: #39e500;
+}
+
+#chat.dragging * {
+    pointer-events: none;
+}
+
+#chatDropZone {
+    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    left: 0;
+    top: 0;
+    background-color: #000c;
+    z-index: 15;
+    display: flex;
+    flex-flow: column;
+    justify-content: center;
+    align-items: center;
+    visibility: hidden;
+}
+
+#chat {
+    padding-top: 10px;
+    padding-bottom: 10px;
+    padding-left: 10px;
+    width: 100%;
+    height: 100%;
+}
+
+#chat2 {
+    width: auto;
+    height: 100%;
+    overflow-y: scroll;
+    background: #ffffff;
+    padding-left: 15px;
+}
+
+.chatImage {
+    max-height: 500px;
+    max-width: 500px;
+}
+
+.chatIcon {
+    width: 50;
+    height: 50px;
+}
+
+.chatFile {
+    display: flex;
+    flex-flow: row;
+    width: fit-content;
+    padding: 5px;
+}
+
+#chatNewChannel {
+    cursor: pointer;
+}
+
+#get-more-messages {
+    cursor: pointer;
+    text-align: center;
+    margin-bottom: 5px;
+    text-decoration: underline;
+}
+
+.messageInput {
+    border: 1px solid #ddd;
+    border-radius: 5px !important;
+    width: 100%;
+    background-color: #222;
+    color: #fff;
+    padding: 5px;
+}
+
+.messageSender {
+    font-weight: 900;
+    color: #E74C3C;
+    line-height: 18px;
+    margin-right: 4px;
+}
+
+.messageTime {
+    color: #9e9ea6;
+    font-size: 12px;
+    white-space: nowrap;
+}
+
+.messageWrapper {
+    position: relative;
+    display: block;
+    padding-top: 3px;
+    padding-left: 3px;
+}
+
+.messageWrapper:hover {
+    background-color: #444;
+}
+
+.messageWrapper:hover .messageOptions {
+    display: block;
+}
+
+.messageOptions {
+    display: none;
+    position: absolute;
+    right: 10px;
+    top: -15px;
+
+}
+
+.messageOptionBtn {
+    padding: 4px 7px 4px 7px;
+}
+
+.messageContent {
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+    overflow-wrap: break-word;
+}
+
+.newMessage {
+    border-top: 1px solid #fff;
+}
+
+.newMessageLabel {
+    position: absolute;
+    right: 50px;
+    top: -9px;
+    color: #d72b3f;
+    line-height: 8px;
+    padding: 4px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 0 2px rgba(0, 0, 0, .25);
+}

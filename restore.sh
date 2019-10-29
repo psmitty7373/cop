@@ -1,9 +1,9 @@
 #!/bin/sh
 
-echo "Restore which backup? YYYYMMDD:"
+echo "Restore which backup? YYYYMMDD-hhmmss:"
 read DATE
 
-MONGOFILE=ctfcop.mongo.${DATE}
+MONGOFILE=cop.mongo.${DATE}
 
 tar zxvf backups/${MONGOFILE}.tar.gz
 mongorestore dump

@@ -78,6 +78,13 @@ function toolbarUpdateSelection(cell) {
             $('#toolbarFillColor').data('paletteColorPickerPlugin').reload();
             $('#toolbarStrokeColor').val(style.strokeColor);
             $('#toolbarStrokeColor').data('paletteColorPickerPlugin').reload();
+            $('#toolbarValue').val(cell.value);
+            // disable textarea if cell is not editable
+            if (cell.style.indexOf('editable=0;') !== -1) {
+                $('#toolbarValue').prop('disabled', true);
+            } else {
+                $('#toolbarValue').prop('disabled', false);
+            }
             if (cell.edge) {
                 // set edge dash options dropdown
                 var options = $('#toolbarEdgeDashOptions').find('img');
@@ -98,8 +105,6 @@ function toolbarUpdateSelection(cell) {
                     }
                 }
                 $('#toolbarEdgeOptions').show();
-                
-
 
             } else {
                 $('#toolbarEdgeOptions').hide();
@@ -216,6 +221,10 @@ $(window).on('load', function () {
     $('#toolbarIcons').overlayScrollbars({
         className: "os-theme-light",
     });
+
+    $('#toolbarValue').blur(function() {
+        graphSetCurrentCellValue($('#toolbarValue').val());
+    })
 
     $('[name="propFillColor"]').paletteColorPicker({
         colors: [

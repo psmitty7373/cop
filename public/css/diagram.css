@@ -1,0 +1,65 @@
+#graphOutline {
+    position: absolute;
+    bottom: 30px;
+    left: 5px;
+    width: 180px;
+    height: 100px;
+    background-color: #101010;
+}
+
+#graphSearchBar {
+    display: flex;
+    flex-flow: row;
+    width: 360px;
+    left: 10px;
+    top: 10px;
+    position: absolute;
+    display: none;
+}
+
+#graphSearchInput {
+    border-radius: 0px;
+}
+
+#graphSearchFoundCount {
+    position: absolute;
+    left: 200px;
+    top: 10px;
+    background: #459fcc;
+    font-size: 10px;
+    border-radius: 15px;
+    padding: 1px 10px;
+    color: #ffffff;
+    line-height: 16px;
+    z-index: 5;
+    display: none;
+}
+
+#graphSearchPrevButton, #graphSearchNextButton, #graphSearchClose {
+    border-radius: 0px;
+}
+
+#zoomButtons {
+    position: absolute;
+    bottom: 5px;
+    left: 5px;
+    z-index: 9;
+}
+
+.zoomIn {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
+}
+
+.zoomOut {
+    width: 21px;
+    height: 21px;
+    position: relative;
+    left: 0px;
+    bottom: 0px;
+    margin-right: 3px;
+}

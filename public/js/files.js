@@ -1,75 +1,77 @@
-var filesDragAndDrop = function (e) {
-    
-    var srcElement = e.originalEvent.srcElement ? e.originalEvent.srcElement : e.originalEvent.target;
+function filesUpload(evt, id) {
+    var formData = new FormData();
+    formData.append('parent_id', id);
 
-    if (e.originalEvent.type === 'dragleave' && $(srcElement).hasClass('jstree-wholerow-hovered')) {
+    $.each(evt.originalEvent.dataTransfer.files, function (i, file) {
+        formData.append('file', file);
+    });
+
+    formData.append('mission_id', mission_id);
+
+    $.ajax({
+        url: 'upload',
+        type: 'POST',
+        xhr: function () {
+            var mxhr = $.ajaxSettings.xhr();
+            if (mxhr.upload) {
+                $("#progressbar")
+                    .progressbar({
+                        value: 0
+                    })
+                    .children('.ui-progressbar-value')
+                    .html('0%')
+                    .css("display", "block");
+                mxhr.upload.addEventListener('progress', progressHandler, false);
+            }
+            return mxhr;
+        },
+        data: formData,
+        dataType: 'json',
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function () {
+            $("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
+            setTimeout(function () {
+                $("#progressbar").fadeOut("slow");
+            }, 5000);
+        },
+        error: function () {
+            $("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
+            console.log('upload error');
+        }
+    });
+}
+
+var filesDragAndDrop = function (evt) {    
+    var srcElement = evt.originalEvent.srcElement ? evt.originalEvent.srcElement : evt.originalEvent.target;
+
+    if (evt.originalEvent.type === 'dragleave' && $(srcElement).hasClass('jstree-wholerow-hovered')) {
         $(srcElement).removeClass('jstree-wholerow-hovered');
     }
 
-    if ($.inArray('Files', e.originalEvent.dataTransfer.types) > -1) {
-        e.originalEvent.stopPropagation();
-        e.originalEvent.preventDefault();
-        e.originalEvent.dataTransfer.dropEffect = ($(srcElement).hasClass('droppable')) ? 'copy' : 'none';
-        if (e.originalEvent.dataTransfer.dropEffect === 'copy' && e.originalEvent.type !== 'dragleave') {
+    if ($.inArray('Files', evt.originalEvent.dataTransfer.types) > -1) {
+        evt.originalEvent.stopPropagation();
+        evt.originalEvent.preventDefault();
+        evt.originalEvent.dataTransfer.dropEffect = ($(srcElement).hasClass('droppable')) ? 'copy' : 'none';
+        if (evt.originalEvent.dataTransfer.dropEffect === 'copy' && evt.originalEvent.type !== 'dragleave') {
             $(srcElement).addClass('jstree-wholerow-hovered');
         }
 
-        e.originalEvent.dataTransfer.types
+        evt.originalEvent.dataTransfer.types
 
-        if (e.originalEvent.type == 'drop') {
+        if (evt.originalEvent.type == 'drop') {
             var node = $('#files').jstree().get_node(srcElement.id.split('_')[0]);
-            console.log(node);
             if (node) {
-                var formData = new FormData();
-                formData.append('parent_id', node.id);
-
-                $.each(e.originalEvent.dataTransfer.files, function (i, file) {
-                    formData.append('file', file);
-                });
-
-                formData.append('mission_id', mission_id);
-
-                $.ajax({
-                    url: 'upload',
-                    type: 'POST',
-                    xhr: function () {
-                        var mxhr = $.ajaxSettings.xhr();
-                        if (mxhr.upload) {
-                            $("#progressbar")
-                                .progressbar({
-                                    value: 0
-                                })
-                                .children('.ui-progressbar-value')
-                                .html('0%')
-                                .css("display", "block");
-                            mxhr.upload.addEventListener('progress', progressHandler, false);
-                        }
-                        return mxhr;
-                    },
-                    data: formData,
-                    dataType: 'json',
-                    cache: false,
-                    contentType: false,
-                    processData: false,
-                    success: function () {
-                        $("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
-                        setTimeout(function () {
-                            $("#progressbar").fadeOut("slow");
-                        }, 5000);
-                    },
-                    error: function () {
-                        $("#progressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
-                        console.log('upload error');
-                    }
-                });
-            }
+                filesUpload(evt, node.id);
+            }            
         }
     }
 };
 
-function progressHandler(e) {
-    if (e.lengthComputable) {
-        var p = Math.floor((e.loaded / e.total) * 100);
+function progressHandler(evt) {
+    if (evt.lengthComputable) {
+        var p = Math.floor((evt.loaded / evt.total) * 100);
         $("#progressbar").progressbar('value', p).children('.ui-progressbar-value').html(p.toPrecision(3) + '%');
 
     }
@@ -132,15 +134,26 @@ $(window).on('load', function () {
                 'select_node': false,
                 'items': function (node) {
                     var menu = {};
+ 
+                    if (node.li_attr.isLeaf) {
+                        menu.copyUrl = {
+                            'separator_before': false,
+                            'separator_after': false,
+                            'label': 'Copy URL',
+                            'action': function (obj) {
+                                var url = window.location.origin + '/download?file_id=' + node.id + '&mission_id=' + mission_id;
+                                copyText(url);
+                            }
+                        }
+                    }
+
                     if (permissions.write_access && node.data.protected === false) {
                         menu.rename = {
                             'separator_before': false,
                             'separator_after': false,
                             'label': 'Rename',
                             'action': function (obj) {
-                                var _node = node;
                                 bootbox.prompt('Rename to?', function (name) {
-                                    console.log(node);
                                     if (name !== null) {
                                         socket.send(JSON.stringify({
                                             act: 'update_file',

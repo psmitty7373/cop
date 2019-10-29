@@ -50,6 +50,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+
 //app.use(pino)
 const logger = pino.logger;
 
@@ -91,7 +92,10 @@ const mongoclient = mongodb.connect('mongodb://localhost', {
     autoReconnect: true,
     wtimeout: 5000
 }, (err, client) => {
-    if (err) throw err;
+    if (err) {
+        throw err;
+    }
+
     client.on('close', function () {
         logger.error('Connection to database closed. Error?');
         ws.clients.forEach(function each(socket) {
@@ -111,7 +115,10 @@ mongodb.connect('mongodb://localhost', {
     autoReconnect: true,
     wtimeout: 5000
 },(err, client) => {
-    if (err) throw err;
+    if (err) {
+        throw err;
+    }
+
     var db = client.db('cop');
     const sdb = new sharedbmongo({
         mongo: (cb) => { cb(null, db); }
@@ -318,46 +325,53 @@ function mxTerminalChange(change, graph) {
                     delete graph.mxGraphModel.root.mxCell[i].target;
                 }
             }
-            break;
+            return change;
         }
     }
-    return change;
+    return undefined;
 }
 
 function mxGeometryChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
             graph.mxGraphModel.root.mxCell[i].mxGeometry = change.mxGeometry;
-            break;
+            return change;
         }
     }
-    return change;
+    return undefined;
 }
 
 function mxValueChange(change, graph) {
     change.value = xssFilters.inHTMLData(change.value);
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
-            graph.mxGraphModel.root.mxCell[i].value = change.value;
+            // make sure cell is editable
+
+            if (graph.mxGraphModel.root.mxCell[i].style.indexOf('editable=0;') === -1) {
+                graph.mxGraphModel.root.mxCell[i].value = change.value;
+                return change;
+            } else {
+                return undefined;
+            }
             break;
         }
     }
-    return change;
+    return undefined;
 }
 
 function mxStyleChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
             graph.mxGraphModel.root.mxCell[i].style = change.style;
-            break;
+            return change;
         }
     }
-    return change;
+    return undefined;
 }
 
 function mxRootChange(change, graph) {
     graph.mxGraphModel.root.mxCell = change.mxCell;
-    return '';
+    return undefined;
 }
 
 function mxChildChange(change, graph) {
@@ -366,7 +380,7 @@ function mxChildChange(change, graph) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
-                break;
+                return change;
             }
         }
     // move
@@ -374,14 +388,14 @@ function mxChildChange(change, graph) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.move(i, change.index);
-                break;
+                return change;
             }
         }
     // insert
     } else if (change.mxCell) {
         graph.mxGraphModel.root.mxCell.push(change.mxCell);
+        return change;
     }
-    return change;
 }
 // ------------------------------------------------------------------------------------------------------------------- MXGRAPH
 
@@ -393,6 +407,7 @@ async function getUsers(socket, limited) {
             password: 0,
             deleted: 0
         };
+
         if (limited) {
             projection.api = 0;
             projection.avatar = 0;
@@ -600,6 +615,7 @@ async function insertMission(socket, mission) {
 
         var filesRoot = objectid(null);
         var chatFilesRoot = objectid(null);
+        var graphFilesRoot = objectid(null);
         var logChannel = objectid(null);
 
         var mission = {
@@ -610,8 +626,13 @@ async function insertMission(socket, mission) {
             mission_users: [],
             log_channel: logChannel,
             files_root: filesRoot,
+            graph_files_root: graphFilesRoot,
             chat_files_root: chatFilesRoot,
-            files: [{ _id: filesRoot, name: '/', parent_id: '#', type: 'dir', level: 0, protected: true }, { _id: chatFilesRoot, name: 'chat_files', parent_id: filesRoot, type: 'dir', level: 1, protected: true }],
+            files: [
+                { _id: filesRoot, name: '/', parent_id: '#', type: 'dir', level: 0, protected: true },
+                { _id: chatFilesRoot, name: 'chat_files', parent_id: filesRoot, type: 'dir', level: 1, protected: true },
+                { _id: graphFilesRoot, name: 'graph_files', parent_id: filesRoot, type: 'dir', level: 1, protected: true }
+            ],
             deleted: false
         };
 
@@ -631,7 +652,7 @@ async function insertMission(socket, mission) {
 
         // create default chat channels
         var channels = [{ _id: logChannel, mission_id: objectid(res.ops[0]._id), name: 'log', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }, { _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }];
-        await mdb.collection('channels').insert(channels);
+        await mdb.collection('channels').insertMany(channels);
 
         sendToRoom('main', JSON.stringify({
             act: 'insert_mission',
@@ -843,7 +864,7 @@ async function insertChatChannel(socket, channel) {
             }));
 
         } else {
-            throw('insertChatChannel already exists.')
+            throw('insertChatChannel channel already exists.')
         }
     } catch (err) {
         socket.send(JSON.stringify({
@@ -959,7 +980,7 @@ async function insertLogEvent(socket, chat, filter) {
             });
 
             if (!logChannel) {
-                throw('insertLogEvent error.  Could not find log channel.')
+                throw('insertLogEvent could not find log channel.')
             }
             chat.channel_id = logChannel.log_channel.toString();
             chat.type = 'channel';
@@ -991,7 +1012,7 @@ async function insertChat(socket, chat, filter) {
         });
 
         if (count !== 1) {
-            throw('insertChat error.  Invalid channel.');
+            throw('insertChat invalid channel.');
         }
 
         var chat_row = {
@@ -1053,11 +1074,11 @@ async function deleteChat(socket, chat) {
         });
 
         if (!tchat) {
-            throw ('deleteChat error. Chat does not exist.');
+            throw ('deleteChat chat does not exist.');
         }
 
         if (!socket.is_admin && socket.user_id != tchat.user_id) {
-            throw('deleteChat error. Permission denied.');
+            throw('deleteChat permission denied.');
         }
 
         var res = await mdb.collection('chats').updateOne({
@@ -1073,6 +1094,7 @@ async function deleteChat(socket, chat) {
                 act: 'delete_chat',
                 arg: chat._id
             }));
+
         } else {
             throw('delete_chat error.')
         }
@@ -2742,13 +2764,16 @@ app.use('/download', async function(req, res) {
                     type: '$files.type'
                 }
             }]).toArray();
+
             if (file.length === 1) {
                 var base = path.join(__dirname, '/mission_files');
                 res.download(base + '/' + file[0].realName, file[0].name);
             }
+
         } else {
             throw('app.use /download Not signed in.')
         }
+
     } catch (err) {
         res.status(500).send('Error: Permission denied or invalid data.');
         logger.error(err);
@@ -2758,11 +2783,13 @@ app.use('/download', async function(req, res) {
 app.use('/render', express.static('mission_files'));
 
 function findUserSocket(user_id, mission_id) {
-    for (var i = rooms.get(mission_id).values(), socket = null; socket = i.next().value; ) {
-        if (socket.readyState === socket.OPEN && socket.mission_id === mission_id && socket.user_id === user_id) {
-            return socket;
-        }
-    };
+    if (rooms.get(mission_id)) {
+        for (var i = rooms.get(mission_id).values(), socket = null; socket = i.next().value; ) {
+            if (socket.readyState === socket.OPEN && socket.mission_id === mission_id && socket.user_id === user_id) {
+                return socket;
+            }
+        };
+    }
     return null;
 }
 
@@ -2771,7 +2798,8 @@ app.post('/upload', upload.any(), function (req, res) {
         if (!req.session.loggedin || !req.session.mission_permissions[req.body.mission_id].write_access) {
             throw('app.post /upload Not signed in.');
         }
-        if ((req.body.channel_id ? !req.body.parent_id : req.body.parent_id) && req.body.mission_id) {
+
+        if ((req.body.channel_id !== undefined || req.body.parent_id !== undefined || req.body.position !== undefined) && req.body.mission_id) {
             //var wwwdir = path.join('/mission-' + req.body.mission_id + '/');
             var base = path.join(__dirname, '/mission_files');
 
@@ -2795,7 +2823,7 @@ app.post('/upload', upload.any(), function (req, res) {
             async.each(req.files, function (file, callback) {
                 var newFile = {};
 
-                // check if we already have this file saved, if not don't save another copy
+                // check if we already have this file saved, if so don't save another copy
                 fs.createReadStream(file.path).pipe(crypto.createHash('sha1').setEncoding('hex')).on('finish', async function() {
                     var hash = this.read();
                     try {
@@ -2814,47 +2842,74 @@ app.post('/upload', upload.any(), function (req, res) {
                     // file upload
                     if (req.body.parent_id) {
                         newFile.parent_id = req.body.parent_id;
-                        insertFile(s, newFile);                        
+                        insertFile(s, newFile); 
+                        callback();                       
                     }
                     // chat upload
-                    else if (req.body.channel_id) {
+                    else if (req.body.channel_id || req.body.position) {
                         var res = await mdb.collection('missions').findOne({
                             _id: objectid(req.body.mission_id),
                             deleted: {
                                 $ne: true
                             }
                         }, {
-                            projection: { chat_files_root: 1 }
+                            projection: {
+                                chat_files_root: 1,
+                                graph_files_root: 1
+                            }
                         });
                         newFile.name = file.originalname;
-                        newFile.parent_id = res.chat_files_root;
-
-                        new_id = await insertFile(s, newFile, true);
 
                         var buffer = readChunk.sync(base + '/' + hash, 0, fileType.minimumBytes);
                         var filetype = fileType(buffer);
+                        var mimetype = mime.lookup(file.originalname);
+                        var extension = 'unk';
+                        var mimestr = 'unknown file type';
+                        if (filetype) {
+                            extension = filetype.ext;
+                            mimestr = filetype.mime;
+                        } else if (mimetype) {
+                            extension = mime.extension(mimetype);
+                            mimestr = mimetype;
+                        }                            
 
-                        if (filetype === undefined) {
-                            var mimetype = mime.lookup(file.originalname);
-                            var extension = mime.extension(mimetype);
-                            if (!mimetype) {
-                                mimetype = 'unknown file type';
-                                extension = 'unk';
+                        if (req.body.channel_id) {
+                            newFile.parent_id = res.chat_files_root;
+                            new_id = await insertFile(s, newFile, true);
+                            
+                            if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
+                                insertLogEvent(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type }, false);
+                            } else {
+                                insertLogEvent(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type }, false);
                             }
-                            insertLogEvent(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimetype + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type }, false);
-                        }
-                        else if (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif') {
-                            insertLogEvent(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type }, false);
+
+                        // file upload to graph
                         } else {
-                            insertLogEvent(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + filetype.ext + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + filetype.mime + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type}, false);
+                            newFile.parent_id = res.graph_files_root;
+                            new_id = await insertFile(s, newFile, true);
+
+                            var position = JSON.parse(req.body.position);
+                            var url = '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '">' + file.originalname + '</a>';
+                            var change = [{ type: 'mxChildChange', mxChildChange: { parent: 1, mxCell: { id: objectid(null).toString(), mxGeometry: { x: position.x, y: position.y, width: 30, height: 30 }, parent: '1', style: 'editable=0;html=1;shape=image;image=/images/file_types/' + extension + '.svg', value: url, vertex: true }}}]
+                            var graph = graphs.get(s.mission_id);
+                            if (graph) {
+                                mxChildChange(change[0].mxChildChange, graph);
+                                sendToRoom(s.mission_id, JSON.stringify({ act: 'update_graph', arg: change }));
+                            }
                         }
+                        callback();
+                    }
+                    else {
+                        callback('Error uploading file.');
                     }
                     
                 });
-                callback(file);
-            }, function (file) {
+                
+            }, function (err) {
                 res.send('{}');
             });
+        } else {
+            throw('app.post /upload invalid parameters.')
         }
     } catch (err) {
         logger.error(err);
@@ -2867,6 +2922,7 @@ app.post('/avatar', upload.any(), function (req, res) {
         res.status(500).send('Error: Permission denied or invalid data.');
         return;
     }
+    
     if (req.body.id) {
         var dir = path.join(__dirname + '/public/images/avatars/');
         async.each(req.files, function (file, callback) {

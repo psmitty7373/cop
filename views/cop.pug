@@ -12,7 +12,10 @@ html
     link(rel='stylesheet', href='css/palette-color-picker.css')
     link(rel='stylesheet', href='css/toastr.min.css')
     link(rel='stylesheet', href='css/fa.css')
-    link(rel='stylesheet', href='css/style.css')    
+    link(rel='stylesheet', href='css/style.css')  
+    link(rel='stylesheet', href='css/diagram.css')
+    link(rel='stylesheet', href='css/toolbar.css')
+    link(rel='stylesheet', href='css/chat.css')
 
   body
     div.container-fluid
@@ -77,6 +80,8 @@ html
                         input#toolbarFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
                       span#toolbarStrokeColorSpan
                         input#toolbarStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+                  div.form-group
+                    textarea#toolbarValue
 
                   div#toolbarEdgeOptions
                     div.form-group#toolbarEdgeDashOptions
@@ -108,9 +113,6 @@ html
                         li
                           img.dropdownImage.spriteOrthagonalLine(src="/images/sprites.png", data-style='{ "edgeStyle": "orthogonalEdgeStyle", "elbow": "vertical" }')
                           | Orthagonal
-                        //li
-                          //img.dropdownImage.spriteIsometricLine(src="/images/sprites.png", data-style='{ "edgeStyle": "isometricEdgeStyle", "elbow": 0 }')
-                          //| Isometric
 
                   div.form-group
                       button.toolbarButton.btn.btn-secondary#toolbarMoveToFront(type='button') Front
