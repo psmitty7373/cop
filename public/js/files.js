@@ -90,6 +90,45 @@ function addFiles(files) {
     }
 }
 
+function filesNewDirectory(node) {
+    var msg = `
+<form>
+    <div class="form-group row">
+        <label for="ndName" class="col-sm-4 col-form-label">Directory Name:</label>
+        <div class="col-sm-8">
+            <input type="text" class="form-control" id="ndName">
+        </div>
+    </div>
+</form>`;
+
+    bootbox.dialog({
+        message: msg,
+        title: 'New Directory',
+        buttons: {
+            confirm: {
+                label: 'Create',
+                className: 'btn-primary',
+                callback: function () {
+                    var name = $('#ndName').val();
+                    socket.send(JSON.stringify({
+                        act: 'insert_file',
+                        arg: {
+                            parent_id: node.id,
+                            name: name,
+                            type: 'dir'
+                        },
+                        msgId: msgHandler()
+                    }));
+                }
+            },
+            cancel: {
+                label: 'Cancel',
+                className: 'btn-danger'
+            }
+        }
+    });
+}
+
 $(window).on('load', function () {
     $('#files').on('dragover', filesDragAndDrop);
     $('#files').on('dragleave', filesDragAndDrop);
@@ -187,20 +226,7 @@ $(window).on('load', function () {
                             'separator_after': false,
                             'label': 'New Folder',
                             'action': function (obj) {
-                                var _node = node;
-                                bootbox.prompt('Directory name?', function (name) {
-                                    if (name !== null) {
-                                        socket.send(JSON.stringify({
-                                            act: 'insert_file',
-                                            arg: {
-                                                parent_id: node.id,
-                                                name: name,
-                                                type: 'dir'
-                                            },
-                                            msgId: msgHandler()
-                                        }));
-                                    }
-                                });
+                                filesNewDirectory(node);
                             }
                         }
                     }

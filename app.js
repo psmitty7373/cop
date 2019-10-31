@@ -266,28 +266,33 @@ parser.parseStringPromise(emptyGraphXML).then(function(res) {
 })
 
 async function loadGraph(mission_id) {
-    // make sure graph is in memory
-    if (graphs.get(mission_id)) {
+    try {
+        // make sure graph is in memory
+        if (graphs.get(mission_id)) {
+            return true;
+        }
+
+        var mission = await mdb.collection('missions').findOne({
+            _id: objectid(mission_id),
+            deleted: {
+                $ne: true
+            }
+        }, {
+            projection: {
+                graph: 1
+            }
+        });
+
+        if (!mission.graph) {
+            return false;
+        }
+        
+        graphs.set(mission_id, mission.graph);
         return true;
-    }
-
-    var mission = await mdb.collection('missions').findOne({
-        _id: objectid(mission_id),
-        deleted: {
-            $ne: true
-        }
-    }, {
-        projection: {
-            graph: 1
-        }
-    });
-
-    if (!mission.graph) {
+    } catch (err) {
+        logger.error(err);
         return false;
     }
-    
-    graphs.set(mission_id, mission.graph);
-    return true;
 }
 
 async function saveGraph(mission_id, graph) {
