@@ -23,6 +23,8 @@ The install script will walk through getting any dependencies and creating an in
 ## Features
 
 ### Collaborative Diagramming
+Creating new icons on the graph:
+![creating icons](/guide/creating_icons.gif)
 
 ### Event Tracking and Assignment
 
@@ -31,7 +33,11 @@ The install script will walk through getting any dependencies and creating an in
 ### General Notes
 
 ### File Sharing
+Uploading files and creating directories:
+![upload](/guide/upload_file.gif)
 
 ### Chat
+Sharing files in chat:
+![chat file sharing](/guide/chat_files.gif)
 
 ### API access
