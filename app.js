@@ -40,10 +40,6 @@ const ws = new wss.Server({
     server: http
 });
 
-var xml2js = require('xml2js');
-var parser = new xml2js.Parser({ explicitArray : false, attrkey: 'cell$' });
-var builder = new xml2js.Builder({ renderOpts: { pretty: false }, headless: true, attrkey: 'cell$' });
-
 app.set('view engine', 'pug');
 app.use(express.static('public'));
 app.use(bodyParser.json());
@@ -51,7 +47,7 @@ app.use(bodyParser.urlencoded({
     extended: true
 }));
 
-//app.use(pino)
+app.use(pino);
 const logger = pino.logger;
 
 // session-mongodb connection
@@ -249,21 +245,6 @@ const pingInterval = setInterval(function ping() {
 }, 30000);
 
 // MXGRAPH -------------------------------------------------------------------------------------------------------------------
-
-// generate a blank mxGraph model in JS
-var emptyGraphXML = `<mxGraphModel>
-<root>
-  <mxCell id="0"/>
-  <mxCell id="1" parent="0"/>
-</root>
-</mxGraphModel>`;
-
-var emptyGraph;
-parser.parseStringPromise(emptyGraphXML).then(function(res) {
-    emptyGraph = res;
-}).catch (function (err) {
-    logger.error(err);
-})
 
 async function loadGraph(mission_id) {
     try {
@@ -2970,6 +2951,6 @@ app.get("/images/file_types/*", function (req, res, next) {
 
 // -------------------------------------------------------------------------
 
-http.listen(3001, function () {
+http.listen(3000, function () {
     logger.info('Server listening on port 3000!');
 });
