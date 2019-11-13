@@ -30,7 +30,7 @@ if [ $ans -eq 1 ]; then
     wget -qO - https://www.mongodb.org/static/pgp/server-4.2.asc | sudo apt-key add -
     echo "deb [ arch=amd64 ] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.2 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-4.2.list
     sudo apt-get update
-    sudo apt-get install -y mongodb-org mongodb-org-shell mongodb-org-server mongodb-org-mongos
+    sudo apt-get install -y mongodb-org mongodb-org-tools mongodb-org-shell mongodb-org-server mongodb-org-mongos
     curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
     sudo apt-get install nodejs
     curl https://www.npmjs.com/install.sh | sudo sh
