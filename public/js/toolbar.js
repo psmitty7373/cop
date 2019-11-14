@@ -78,6 +78,8 @@ function toolbarUpdateSelection(cell) {
             $('#toolbarFillColor').data('paletteColorPickerPlugin').reload();
             $('#toolbarStrokeColor').val(style.strokeColor);
             $('#toolbarStrokeColor').data('paletteColorPickerPlugin').reload();
+            $('#toolbarFontColor').val(style.fontColor);
+            $('#toolbarFontColor').data('paletteColorPickerPlugin').reload();
             $('#toolbarValue').val(cell.value);
             // disable textarea if cell is not editable
             if (cell.style.indexOf('editable=0;') !== -1) {
@@ -179,6 +181,7 @@ $(window).on('load', function () {
     if (permissions.write_access) {
         $('#toolbarFillColor').prop('disabled', false);
         $('#toolbarStrokeColor').prop('disabled', false);
+        $('#toolbarFontColor').prop('disabled', false);
         $('#toolbarMoveToFront').prop('disabled', false).click(graphMoveCellsFront);
         $('#toolbarMoveToBack').prop('disabled', false).click(graphMoveCellsBack);
     }
@@ -290,6 +293,41 @@ $(window).on('load', function () {
                 var style = graphGetCellStyle(cell);
                 if (cell && style.strokeColor !== color) {
                     graphSetCellStyle(cell, mxConstants.STYLE_STROKECOLOR, color);
+                }  
+            }
+        }
+    });
+
+    $('[name="propFontColor"]').paletteColorPicker({
+        colors: [
+            {'#000000': '#000000'},
+            {'#808080': '#808080'},
+            {'#c0c0c0': '#c0c0c0'},
+            {'#ffffff': '#ffffff'},
+            {'#800000': '#800000'},
+            {'#ff0000': '#ff0000'},
+            {'#808000': '#808000'},
+            {'#ffff00': '#ffff00'},
+            {'#008000': '#008000'},
+            {'#00ff00': '#00ff00'},
+            {'#008080': '#008080'},
+            {'#00ffff': '#00ffff'},
+            {'#000080': '#000080'},
+            {'#0000ff': '#0000ff'},
+            {'#800080': '#800080'},
+            {'#ff00ff': '#ff00ff'},
+            {'#3f6ba3': '#3f6ba3'}
+        ],
+        clear_btn: null,
+        position: 'upside',
+        timeout: 2000,
+        close_all_but_this: true,
+        onchange_callback: function (color) {
+            if (color !== $('#propFontColor').val()) {
+                var cell = graphGetCurrentSelection();
+                var style = graphGetCellStyle(cell);
+                if (cell && style.fontColor !== color) {
+                    graphSetCellStyle(cell, mxConstants.STYLE_FONTCOLOR, color);
                 }  
             }
         }

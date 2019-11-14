@@ -460,3 +460,7 @@ h1 {
 .windowPane .label+.label {
     margin-bottom: 0px;
 }
+
+.wrapper {
+    margin-top: 80px;
+}

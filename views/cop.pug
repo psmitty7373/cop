@@ -76,10 +76,18 @@ html
                   span.toolbarTitle Edit Object
                   div.form-group
                     div.colors
-                      span#toolbarFillColorSpan
-                        input#toolbarFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
-                      span#toolbarStrokeColorSpan
-                        input#toolbarStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+                      div.toolbarColorGroup
+                        span#toolbarFillColorSpan
+                          input#toolbarFillColor(name="propFillColor" type="text" style="width: 0px; border: 0px")
+                        span.toolbarColorLabel Fill
+                      div.toolbarColorGroup
+                        span#toolbarStrokeColorSpan
+                          input#toolbarStrokeColor(name="propStrokeColor" type="text" style="width: 0px; border: 0px")
+                        span.toolbarColorLabel Stroke
+                      div.toolbarColorGroup
+                        span#toolbarFontColorSpan
+                          input#toolbarFontColor(name="propFontColor" type="text" style="width: 0px; border: 0px")
+                        span.toolbarColorLabel Font
                   div.form-group
                     textarea#toolbarValue
 
