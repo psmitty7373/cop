@@ -50,7 +50,7 @@ class JsonCodec extends mxObjectCodec {
         };
         res[type] = {};
         for (let prop in value) {
-            if (value[prop] !== undefined && value[prop] !== null && value[prop] !== false) {
+            if (value[prop] !== undefined && value[prop] !== null) {
                 if (prop === 'child' && value.constructor === mxChildChange && value.previous !== null) {
                     res[type]['child'] = value.child.id;
                 }
@@ -59,7 +59,9 @@ class JsonCodec extends mxObjectCodec {
                 }
                 if (prop === 'terminal') {
                     res[type]['terminal'] = value.terminal.id;
-                    res[type]['source'] = value.source;
+                }
+                if (prop === 'source') {
+                    res[type]['source'] = value[prop];
                 }
                 if (prop === 'parent') {
                     res[type][prop] = value[prop].id;
@@ -99,8 +101,13 @@ class JsonCodec extends mxObjectCodec {
                 for (var i = 0; i < t.root.mxCell.length; i++) {
                     var cell = this.decode(t.root.mxCell[i], 'mxCell');
                     if (cell) {
-                        // add the cell to the model / graph
-                        model.add(graph.getDefaultParent(), cell, i);
+                        cells.push(cell);
+                        model.add(graph.getDefaultParent(), cells[i], i);
+                    }
+                }
+                for (var i = 0; i < t.root.mxCell.length; i++) {
+                    if (t.root.mxCell[i].edge) {
+                        model.setTerminals(model.cells[t.root.mxCell[i].id], model.cells[t.root.mxCell[i].source], model.cells[t.root.mxCell[i].target]);
                     }
                 }
                 model.endUpdate();
@@ -419,7 +426,7 @@ function graphStart(container) {
                 }
                 if (!evt.getProperty('self-inflicted')) {
                     var node = codec.encode(changes[i]);
-                    nodes.unshift(node);
+                    nodes.push(node);
                 }
             }
             if (!evt.getProperty('self-inflicted')) {
@@ -445,6 +452,13 @@ function graphStart(container) {
             }
             return false;
         }
+
+        mxGraphModel.prototype.createId = function(cell)
+        {
+            var id = ObjectId();
+            
+            return this.prefix + id + this.postfix;
+        };
     }
 };
 
@@ -585,7 +599,6 @@ function graphGetCellStyle(cell) {
 function handleDrop(graph, files, x, y) {
     // image file
     for (var i = 0; i < files.length; i++) {
-        console.log(files[i].type);
         if (files[i].type.substring(0, 5) == 'image') {
             var reader = new FileReader();
             var file = files[i];

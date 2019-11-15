@@ -297,7 +297,7 @@ async function saveGraph(mission_id, graph) {
 
 function mxTerminalChange(change, graph) {
     for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
-        if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
+        if (graph.mxGraphModel.root.mxCell[i].id == change.cell) {
             if (change.source == 1) {
                 if (change.terminal) {
                     graph.mxGraphModel.root.mxCell[i].source = change.terminal;
