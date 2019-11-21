@@ -73,10 +73,15 @@ function checkIfObjectsLoaded() {
 
 // ---------------------------- SETTINGS COOKIE ----------------------------------
 function loadSettings() {
-    if (decodeURIComponent(document.cookie) === '')
+    if (decodeURIComponent(document.cookie) === '') {
         document.cookie = "mcscop-settings=" + JSON.stringify(settings);
+    }
     var dc = decodeURIComponent(document.cookie);
-    settings = JSON.parse(dc.split('mcscop-settings=')[1]);
+    try {
+        settings = JSON.parse(dc.split('mcscop-settings=')[1]);
+    } catch (err) {
+        document.cookie = "mcscop-settings=" + JSON.stringify(settings);
+    }
     $('#diagramJumbo').height(settings.diagram);
     $('#bottomJumbo').height(settings.tables);
     /*
