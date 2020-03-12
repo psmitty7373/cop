@@ -81,11 +81,14 @@ function toolbarUpdateSelection(cell) {
             $('#toolbarFontColor').val(style.fontColor);
             $('#toolbarFontColor').data('paletteColorPickerPlugin').reload();
             $('#toolbarValue').val(cell.value);
+            $('#toolbarStyle').val(cell.style);
             // disable textarea if cell is not editable
             if (cell.style.indexOf('editable=0;') !== -1) {
                 $('#toolbarValue').prop('disabled', true);
+                $('#toolbarStyle').prop('disabled', true);
             } else {
                 $('#toolbarValue').prop('disabled', false);
+                $('#toolbarStyle').prop('disabled', false);
             }
             if (cell.edge) {
                 // set edge dash options dropdown
@@ -229,6 +232,10 @@ $(window).on('load', function () {
         graphSetCurrentCellValue($('#toolbarValue').val());
     })
 
+    $('#toolbarStyle').blur(function() {
+        graphSetCurrentCellValue($('#toolbarValue').val());
+    })
+
     $('[name="propFillColor"]').paletteColorPicker({
         colors: [
             {'#000000': '#000000'},
@@ -259,6 +266,7 @@ $(window).on('load', function () {
                 var style = graphGetCellStyle(cell);
                 if (cell && style.fillColor !== color) {
                     graphSetCellStyle(cell, mxConstants.STYLE_FILLCOLOR, color);
+                    toolbarUpdateSelection(cell);
                 }  
             }
         }
@@ -293,6 +301,7 @@ $(window).on('load', function () {
                 var style = graphGetCellStyle(cell);
                 if (cell && style.strokeColor !== color) {
                     graphSetCellStyle(cell, mxConstants.STYLE_STROKECOLOR, color);
+                    toolbarUpdateSelection(cell);
                 }  
             }
         }
@@ -328,6 +337,7 @@ $(window).on('load', function () {
                 var style = graphGetCellStyle(cell);
                 if (cell && style.fontColor !== color) {
                     graphSetCellStyle(cell, mxConstants.STYLE_FONTCOLOR, color);
+                    toolbarUpdateSelection(cell);
                 }  
             }
         }

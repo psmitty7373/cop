@@ -513,6 +513,14 @@ function graphSetCellStyle(cell, styleElem, value) {
     graph.setCellStyle(style, [cell]);
 }
 
+function graphSetCurrentCellStyle(value) {
+    var cell = graph.getSelectionCell();
+    if (!cell) {
+        return;
+    }
+    model.setStyle(cell, style);
+}
+
 function graphSetCurrentCellValue(value) {
     var cell = graph.getSelectionCell();
     if (!cell) {

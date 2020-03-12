@@ -616,18 +616,12 @@ $(window).on('load', function () {
     // ---------------------------- SOCKETS ----------------------------------
     if (location.protocol === 'https:') {
         socket = new WebSocket('wss://' + window.location.host + '/mcscop/');
-        wsdb = new WebSocket('wss://' + window.location.host + '/mcscop/');
+        wsdb = new WebSocket('wss://' + window.location.host + '/sharedb/');
     } else {
         socket = new WebSocket('ws://' + window.location.host + '/mcscop/');
-        wsdb = new WebSocket('ws://' + window.location.host + '/mcscop/');
+        wsdb = new WebSocket('ws://' + window.location.host + '/sharedb/');
     }
     shareDBConnection = new ShareDB.Connection(wsdb);
-    wsdb.onopen = function () {
-        wsdb.send(JSON.stringify({
-            act: 'stream',
-            arg: ''
-        }));
-    };
 
     // ---------------------------- TABLES ----------------------------------   
     // bottom table tabs

@@ -1,3 +1,5 @@
+var colors = {};
+
 function notesAdd(notes) {
     for (var i = 0; i < notes.length; i++) {
         var node = { id: notes[i]._id, text: notes[i].name, icon: 'jstree-file', type: notes[i].type, li_attr: { isLeaf: true } };
@@ -31,13 +33,16 @@ function notesEdit(id, name) {
         $('#modal-footer').html('<button type="button btn-primary" class="button btn btn-default" data-dismiss="modal">Close</button>');
         $('#modal-content').addClass('modal-details');
         if (!openDocs[id]) {
-            openDocs[id] = shareDBConnection.get('sharedb', id);
-            openDocs[id].subscribe(function (err) {
-                if (openDocs[id].type === null) {
-                    openDocs[id].create('', 'rich-text');
-                }
+            openDocs[id] = {};
+            openDocs[id].doc = shareDBConnection.get('sharedb', id);
+            openDocs[id].doc.subscribe(function (err) {
                 if (err) throw err;
-                if (openDocs[id].type.name === 'rich-text') {
+
+                if (openDocs[id].doc.type === null) {
+                    openDocs[id].doc.create('', 'rich-text');
+                }                
+
+                if (openDocs[id].doc.type.name === 'rich-text') {
                     // create window
                     var w = windowManager.createWindow({
                         sticky: false,
@@ -45,8 +50,14 @@ function notesEdit(id, name) {
                         effect: 'none',
                         bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
                         closeCallback: function () {
-                            openDocs[id].destroy();
+                            console.log('destroy!');
+                            openDocs[id].localPresence.destroy();
+                            //openDocs[id].presence.destroy();
+                            openDocs[id].doc.destroy();
+                            delete openDocs[id].cursors;
+                            delete openDocs[id].quill;
                             delete openDocs[id];
+                            console.log('destroyed!');
                         }
                     });
 
@@ -59,10 +70,11 @@ function notesEdit(id, name) {
                     });
 
                     // start quill
-                    var quill = new Quill('#object_details_' + id, {
+                    openDocs[id].quill = new Quill('#object_details_' + id, {
                         theme: 'snow',
                         readOnly: !rw,
                         modules: {
+                            cursors: true,
                             syntax: true,
                             toolbar: [
                                 [{
@@ -74,18 +86,50 @@ function notesEdit(id, name) {
                         }
                     });
 
-                    quill.root.setAttribute('spellcheck', false)
-                    quill.setContents(openDocs[id].data);
-                    quill.on('text-change', function (delta, oldDelta, source) {
+                    openDocs[id].cursors = openDocs[id].quill.getModule('cursors');
+
+                    openDocs[id].quill.root.setAttribute('spellcheck', false)
+
+                    openDocs[id].quill.setContents(openDocs[id].doc.data);
+
+                    openDocs[id].quill.on('text-change', function (delta, oldDelta, source) {
                         if (source !== 'user') return;
-                        openDocs[id].submitOp(delta, {
-                            source: quill
+                        openDocs[id].doc.submitOp(delta, {
+                            source: openDocs[id].quill
                         });
                     });
 
-                    openDocs[id].on('op', function (op, source) {
-                        if (source === quill) return;
-                        quill.updateContents(op);
+                    openDocs[id].presence = openDocs[id].doc.connection.getDocPresence('sharedb', id);
+                    openDocs[id].presence.subscribe(function(err) {
+                        if(err) throw err;
+                    });
+                    var cid  = ObjectId().toString();
+                    console.log(cid);
+                    openDocs[id].localPresence = openDocs[id].presence.create(cid);
+
+                    openDocs[id].doc.on('op', function (op, source) {
+                        if (source === openDocs[id].quill) return;
+                        openDocs[id].quill.updateContents(op);
+                    });
+                    
+                    openDocs[id].quill.on('selection-change', function(range) {
+                        // Ignore blurring, so that we can see lots of users in the
+                        // same window. In real use, you may want to clear the cursor.
+                        if (!range) return;
+                        // In this particular instance, we can send extra information
+                        // on the presence object. This ability will vary depending on
+                        // type.
+                        range.name = username;
+                        openDocs[id].localPresence.submit(range, function(err) {
+                            if (err) throw err;
+                        });
+                    });
+
+                    openDocs[id].presence.on('receive', function(rid, range) {
+                        colors[rid] = colors[rid] || '#'+Math.floor(Math.random()*16777215).toString(16);                        ;
+                        var name = (range && range.name) || 'Anonymous';
+                        openDocs[id].cursors.createCursor(id, name, colors[rid]);
+                        openDocs[id].cursors.moveCursor(id, range);
                     });
 
                     $('#object_details_' + id).overlayScrollbars({
@@ -105,7 +149,11 @@ function notesEdit(id, name) {
                         effect: 'none',
                         bodyContent: '<textarea id="object_details_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
                         closeCallback: function () {
-                            openDocs[id].destroy();
+                            openDocs[id].localPresence.destroy();
+                            //openDocs[id].presence.destroy();
+                            openDocs[id].doc.destroy();
+                            delete openDocs[id].cursors;
+                            delete openDocs[id].quill;
                             delete openDocs[id];
                         }
                     });
@@ -273,3 +321,7 @@ function notesDelete(id) {
         msgId: msgHandler()
     }));
 }
+
+$(window).on('load', function () {
+    Quill.register('modules/cursors', QuillCursors);
+});

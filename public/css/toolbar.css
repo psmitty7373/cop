@@ -225,7 +225,7 @@
     max-height: 50px;
 }
 
-#toolbarValue {
+#toolbarValue, #toolbarStyle {
     width: 100%;
 }
 

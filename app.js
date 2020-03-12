@@ -40,6 +40,24 @@ const ws = new wss.Server({
     server: http
 });
 
+// add presence support to rich-text
+richText.type.transformPresence = function(presence, op, isOwnOp) {
+    if (!presence) {
+      return null;
+    }
+  
+    var start = presence.index;
+    var end = presence.index + presence.length;
+    var delta = new richText.Delta(op);
+    start = delta.transformPosition(start, !isOwnOp);
+    end = delta.transformPosition(end, !isOwnOp);
+  
+    return Object.assign({}, presence, {
+      index: start,
+      length: end - start
+    });
+  };
+
 app.set('view engine', 'pug');
 app.use(express.static('public'));
 app.use(bodyParser.json());
@@ -61,13 +79,10 @@ app.use(session({
         mongoOptions: {
             useNewUrlParser: true,
             useUnifiedTopology: true,
-            reconnectTries: Number.MAX_VALUE,
-            autoReconnect: true,
             wtimeout: 5000
         },
         host: 'localhost',
         collection: 'sessions',
-        autoReconnect: true,
         clear_interval: 3600
     })
 }));
@@ -80,12 +95,11 @@ if (cspEnabled) {
 }
 
 // connect to mongo
+var backend = null;
 var mdb;
-const mongoclient = mongodb.connect('mongodb://localhost', {
+const mongoclient = mongodb.connect('mongodb://localhost/cop', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-    reconnectTries: Number.MAX_VALUE,
-    autoReconnect: true,
     wtimeout: 5000
 }, (err, client) => {
     if (err) {
@@ -98,26 +112,10 @@ const mongoclient = mongodb.connect('mongodb://localhost', {
             socket.close();
         });
     });
-    mdb = client.db('cop');
-});
+    mdb = client.db();
 
-var backend = null;
-
-// connect sharedb to mongo
-mongodb.connect('mongodb://localhost', {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    reconnectTries: Number.MAX_VALUE,
-    autoReconnect: true,
-    wtimeout: 5000
-},(err, client) => {
-    if (err) {
-        throw err;
-    }
-
-    var db = client.db('cop');
     const sdb = new sharedbmongo({
-        mongo: (cb) => { cb(null, db); }
+        mongo: (cb) => { cb(null, client); }
     });
 
     // start sharedb
@@ -125,7 +123,8 @@ mongodb.connect('mongodb://localhost', {
     backend = new ShareDB({
         db: sdb,
         disableDocAction: true,
-        disableSpaceDelimitedActions: true
+        disableSpaceDelimitedActions: true,
+        presence: true
     });
 
     backend.use('receive', function (r, c) {
@@ -219,7 +218,16 @@ ws.on('connection', function (socket, req) {
                         socket.username = data.username;
                         socket.is_admin = data.is_admin;
                         socket.mission_permissions = data.mission_permissions;
-                        setupSocket(socket);
+                        if (req.url === '/mcscop/') {
+                            setupSocket(socket);
+                        } else if (req.url === '/sharedb/') {
+                            socket.on('pong', function () {
+                                socket.isAlive = true;
+                            });
+                            var stream = new wsjsonstream(socket);
+                            socket.type = 'sharedb';
+                            backend.listen(stream);
+                        }
                     } catch (err) {
                         logger.error(err);
                     }
