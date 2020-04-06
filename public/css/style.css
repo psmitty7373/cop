@@ -175,7 +175,12 @@ h1 {
 
 .window-header {
     padding: 5px;
+    background-color: #555;
     border-radius: 0px;
+}
+
+.window-headerSelected {
+    background-color: #222;
 }
 
 .modal-footer {
@@ -370,17 +375,21 @@ h1 {
 .taskbarButton {
     min-width: 100px;
     width: fit-content;
-    background-color: #444;
+    background-color: #222;
     padding-left: 10px;
     padding-right: 10px;
     float: left;
     margin-right: 5px;
 }
 
+.taskbarButtonSelected {
+    background-color: #555;
+}
+
 .taskbarClose {
-    padding-left: 10px !important;
-    font-size: 18px;
-    line-height: 22px;
+    margin-top: 2px;
+    float: right;
+    cursor: pointer;
 }
 
 #bottomJumbo {

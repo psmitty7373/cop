@@ -50,14 +50,12 @@ function notesEdit(id, name) {
                         effect: 'none',
                         bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
                         closeCallback: function () {
-                            console.log('destroy!');
                             openDocs[id].localPresence.destroy();
                             //openDocs[id].presence.destroy();
                             openDocs[id].doc.destroy();
                             delete openDocs[id].cursors;
                             delete openDocs[id].quill;
                             delete openDocs[id];
-                            console.log('destroyed!');
                         }
                     });
 
@@ -104,7 +102,6 @@ function notesEdit(id, name) {
                         if(err) throw err;
                     });
                     var cid  = ObjectId().toString();
-                    console.log(cid);
                     openDocs[id].localPresence = openDocs[id].presence.create(cid);
 
                     openDocs[id].doc.on('op', function (op, source) {

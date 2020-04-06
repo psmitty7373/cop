@@ -73,7 +73,7 @@
         }
         if (_this.$el.find('[data-dismiss=window]').length <= 0) {
             //button.close(type='button' data-dismiss='modal')#modal-close &times;
-            options.elements.handle.append('<button type="button" class="close" data-dismiss="window" aria-hidden="false">&times;</button>');
+            options.elements.handle.append('<div class="close fa fa-cancel-circled taskbarClose" data-dismiss="window"></div>');
         }
         options.elements.body.html(options.bodyContent);
         //options.elements.footer.html(options.footerContent);
@@ -249,17 +249,23 @@
     };
 
     Window.prototype.setActive = function (active) {
+        var header = this.$el.find('.window-header');
         if (active) {
             this.$el.addClass('active');
+            if (header) {
+                header.addClass('window-headerSelected')
+            }
             if (this.$windowTab) {
-                this.$windowTab.addClass('label-primary');
+                this.$windowTab.addClass('taskbarButtonSelected');
             }
             this.$el.trigger('active');
         } else {
             this.$el.removeClass('active');
+            if (header) {
+                header.removeClass('window-headerSelected')
+            }
             if (this.$windowTab) {
-                this.$windowTab.removeClass('label-primary');
-                this.$windowTab.addClass('label-default');
+                this.$windowTab.removeClass('taskbarButtonSelected');
             }
             this.$el.trigger('inactive');
         }
@@ -511,6 +517,7 @@
     };
 
     Window.prototype.blink = function () {
+        console.log('blink');
         var _this = this,
             active = this.$el.hasClass('active'),
             windowTab = this.getWindowTab(),
@@ -636,6 +643,7 @@ var WindowManager = null;
 
     WindowManager.prototype.setFocused = function (focused_window) {
         var focusedWindowIndex;
+
         while (focused_window.getBlocker()) {
             focused_window = focused_window.getBlocker();
         }
@@ -645,6 +653,7 @@ var WindowManager = null;
                 focusedWindowIndex = index;
             }
         });
+
         this.windows.push(this.windows.splice(focusedWindowIndex, 1)[0]);
         focused_window.setActive(true);
         this.resortWindows();
@@ -696,9 +705,9 @@ var WindowManager = null;
         });
 
         if (this.options.container) {
-            window_object.setWindowTab($('<div class="taskbarButton"><span class="label label-default">' + window_object.getTitle() + '</span><button type="button" class="close taskbarClose" >x</button>'));
+            window_object.setWindowTab($('<div class="taskbarButton"><span class="label label-default">' + window_object.getTitle() + '</span><div class="fa fa-cancel-circled taskbarClose" ></div>'));
              //+ '<button class="pane-close">x</button></span></div>'));
-            window_object.getWindowTab().find('.close').on('click', function (event) {
+            window_object.getWindowTab().find('.taskbarClose').on('click', function (event) {
                 var blocker = window_object.getBlocker();
                 if (!blocker) {
                     window_object.close();
