@@ -34,7 +34,8 @@ if [ $ans -eq 1 ]; then
     curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
     sudo apt-get install nodejs
     curl https://www.npmjs.com/install.sh | sudo sh
-    npm install
+    cd /opt/cop
+    sudo -u cop npm install
     sudo systemctl enable mongod.service
     sudo systemctl start mongod.service
 fi
@@ -71,7 +72,5 @@ else
     echo "    Persistent install is possible using systemd."
 fi
 echo ""
-echo "[!] The initial username and password for cop are:"
-echo "    admin / password"
-echo "    Make sure to change passwords upon login."
-
+echo "[!] Install completed. Connect to http://<ip>:3000 to login."
+echo ""

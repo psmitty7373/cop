@@ -74,7 +74,5 @@ else
     echo "    Persistent install is possible using systemd."
 fi
 echo ""
-echo "[!] The initial username and password for cop are:"
-echo "    admin / password"
-echo "    Make sure to change passwords upon login."
-
+echo "[!] Install completed. Connect to http://<ip>:3000 to login."
+echo ""
