@@ -2152,7 +2152,7 @@ const messageHandlers = {
     update_user: { function: updateUser, checks: adminMessageCheck, permission: '' },
     delete_user: { function: deleteUser, checks: adminMessageCheck, permission: '' },
     get_chats: { function: getChats, checks: function() { return true; } },
-    get_old_chats: { function:  getOldChats, checks: missionMessageCheck },
+    get_old_chats: { function:  getOldChats, checks: missionMessageCheck, permission: '' },
     insert_chat: { function:  insertChat, checks: missionMessageCheck, permission: 'write_access' },
     delete_chat: { function:  deleteChat, checks: missionMessageCheck, permission: 'delete_access' },
     get_chat_channels: { function:  getChatChannels, checks: missionMessageCheck, permission: '' },
