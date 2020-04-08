@@ -26,11 +26,10 @@ toastr.options = {
 
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
-    if (!("Notification" in window) || Notification.permission === 'denied') {
-        notifSound.play();
+    notifSound.play();
+    /*if (!("Notification" in window) || Notification.permission === 'denied') {
         toastr.info(msg.text, msg.username)
     } else if (Notification.permission === 'granted') {
-        notifSound.play();
         var notification = new Notification(msg.username, {
             icon: 'images/avatars/' + msg.tuser_id + '.png',
             body: msg.text
@@ -41,11 +40,10 @@ function notification(msg) {
                 Notification.permission = permission;
             }
             if (permission === 'granted') {
-                notifSound.play();
                 var notification = new Notification(msg);
             }
         });
-    }
+    }*/
 }
 
 var chatDragAndDrop = function (e) {
@@ -188,7 +186,7 @@ function chatAddChannels(c) {
         }
 
         var deleteButton = '<div id="' + c[i]._id + 'Delete" class="fa fa-cancel-circled channelDeleteIcon"></div>';
-        if (!permissions.delete_access || c[i].name === 'log' || c[i].name === 'general' || c[i].type === 'user') {
+        if (!permissions.delete_access || c[i].name === 'general' || c[i].type === 'user') {
             deleteButton = '';
         }
 
@@ -301,8 +299,9 @@ function chatAddMessage(messages, bulk, scroll) {
 
             // if message is an alert, show a notification
             if (!bulk && user_id != tuser_id) {
+                notification(messages[i]);
                 if (messages[i].text.search('@' + username) >= 0 || messages[i].text.search('@alert') >= 0) {
-                    notification(messages[i]);
+                    
                 }
             }
 
@@ -449,7 +448,7 @@ $(window).on('load', function () {
 
     var dragCounter = 0;
     // chat notification sound
-    notifSound = new Audio('sounds/knock.mp3');
+    notifSound = new Audio('sounds/notif.mp3');
 
     // clear unread when clicking on channel
     $('#chatTab').click(function (e) {

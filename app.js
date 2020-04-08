@@ -610,7 +610,6 @@ async function insertMission(socket, mission) {
         var filesRoot = objectid(null);
         var chatFilesRoot = objectid(null);
         var graphFilesRoot = objectid(null);
-        var logChannel = objectid(null);
 
         var mission = {
             //graph: JSON.stringify(emptyGraph),
@@ -618,7 +617,6 @@ async function insertMission(socket, mission) {
             name: mission.name,
             user_id: objectid(socket.user_id),
             mission_users: [],
-            log_channel: logChannel,
             files_root: filesRoot,
             graph_files_root: graphFilesRoot,
             chat_files_root: chatFilesRoot,
@@ -645,7 +643,7 @@ async function insertMission(socket, mission) {
         res.ops[0].username = socket.username;
 
         // create default chat channels
-        var channels = [{ _id: logChannel, mission_id: objectid(res.ops[0]._id), name: 'log', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }, { _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }];
+        var channels = [{ _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(socket.user_id)] }];
         await mdb.collection('channels').insertMany(channels);
 
         sendToRoom('main', JSON.stringify({
@@ -960,33 +958,6 @@ async function getChats(socket, channels) {
     }
 }
 
-async function insertLogEvent(socket, chat, filter) {
-    if (filter === undefined) {
-        filter = true;
-    }
-    try {
-        if (!chat.channel_id || chat.channel_id === '') {
-            var logChannel = await mdb.collection('missions').findOne({
-                _id: objectid(socket.mission_id),
-                deleted: {
-                    $ne: true
-                }
-            });
-
-            if (!logChannel) {
-                throw('insertLogEvent could not find log channel.')
-            }
-            chat.channel_id = logChannel.log_channel.toString();
-            chat.type = 'channel';
-        }
-
-        insertChat(socket, chat, filter);
-
-    } catch (err) {
-        logger.error(err);
-    }
-}
-
 // insert chat
 async function insertChat(socket, chat, filter) {
     if (filter === undefined) {
@@ -1109,7 +1080,6 @@ async function getOldChats(socket, request) {
     try {
         var rows = await mdb.collection('chats').aggregate([{
             $match: {
-                mission_id: objectid(socket.mission_id),
                 channel_id: objectid(request.channel_id),
                 timestamp: {
                     $lt: parseInt(request.start_from)
@@ -1124,6 +1094,10 @@ async function getOldChats(socket, request) {
             }
         }, {
             $limit: 50
+        }, {
+            $sort: {
+                timestamp: 1
+            }
         }, {
             $lookup: {
                 from: 'users',
@@ -1314,8 +1288,6 @@ async function updateMissionUser(socket, user) {
                 act: 'update_mission_user',
                 arg: user
             }));
-
-            insertLogEvent(socket, { text: 'Modified user setting ID: ' + user._id + '.' });
 
         } else {
             throw('updateMissionUser error.')
@@ -1569,7 +1541,6 @@ async function insertFile(socket, file, allowDupName) {
                     act: 'update_file',
                     arg: file
                 }));
-                insertLogEvent(socket, { text: 'Modified file ID: ' + file._id + '.' });
             } else {
                 throw('insertFile error.')
             }
@@ -1639,7 +1610,6 @@ async function moveFile(socket, file) {
                 act: 'update_file',
                 arg: file
             }));
-            insertLogEvent(socket, { text: 'Modified file ID: ' + file._id + '.' });
 
         } else {
             throw('moveFile error.')
@@ -1745,7 +1715,6 @@ async function insertNote(socket, note) {
     };
     try {
         var res = await mdb.collection('notes').insertOne(note_row);
-        insertLogEvent(socket, { text: 'Created note: ' + note.name + '.' });
         sendToRoom(socket.mission_id, JSON.stringify({
             act: 'insert_note',
             arg: {
@@ -1777,7 +1746,6 @@ async function updateNote(socket, note) {
         var res = await mdb.collection('notes').updateOne({
             _id: objectid(note._id)
         }, new_values);
-        insertLogEvent(socket, { text: 'Renamed note: ' + note._id + ' to: ' + note.name + '.' });
         sendToRoom(socket.mission_id, JSON.stringify({
             act: 'update_note',
             arg: {
@@ -1806,7 +1774,6 @@ async function deleteNote(socket, note) {
                 deleted: true
             }
         });
-        insertLogEvent(socket, { text: 'Deleted note: ' + note._id + '.' });
         sendToRoom(socket.mission_id, JSON.stringify({
             act: 'delete_note',
             arg: note._id
@@ -1886,7 +1853,6 @@ async function insertOpnote(socket, opnote) {
 
         opnote._id = new_values._id;
         opnote.username = socket.username;
-        insertLogEvent(socket, { text: 'Created opnote: ' + opnote.action + ' ID: ' + opnote._id + '.' });
         sendToRoom(socket.mission_id, JSON.stringify({act: 'insert_opnote', arg: opnote}));
 
     } catch (err) {
@@ -1914,7 +1880,6 @@ async function updateOpnote(socket, opnote) {
         var res = await mdb.collection('opnotes').updateOne({ _id: objectid(opnote._id) }, new_values);
         if (res.result.ok === 1) {
             opnote.username = socket.username;
-            insertLogEvent(socket, { text: 'Modified event: ' + opnote.action + ' ID: ' + opnote._id + '.' });
             sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_opnote',
                 arg: opnote
@@ -1945,7 +1910,6 @@ async function deleteOpnote(socket, opnote) {
             }
         });
         if (res.result.ok === 1) {
-            insertLogEvent(socket, { text: 'Deleted opnote ID: ' + opnote._id + '.' });
             sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_opnote',
                 arg: opnote._id
@@ -2058,7 +2022,6 @@ async function insertEvent(socket, event) {
 
         var res = await mdb.collection('events').insertOne(evt);
         event._id = evt._id;
-        insertLogEvent(socket, { text: 'Created event: ' + event.event_type + ' ID: ' + event._id + '.' });
         sendToRoom(socket.mission_id, JSON.stringify({
             act: 'insert_event',
             arg: event
@@ -2108,7 +2071,6 @@ async function updateEvent(socket, event) {
             _id: objectid(event._id)
         }, new_values);
         if (res.result.ok === 1) {
-            insertLogEvent(socket, { text: 'Modified event: ' + event.event_type + ' ID: ' + event._id + '.' });
             sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'update_event',
                 arg: event
@@ -2139,7 +2101,6 @@ async function deleteEvent(socket, event) {
             }
         });
         if (res.result.ok === 1) {
-            insertLogEvent(socket, { text: 'Deleted event ID: ' + event._id + '.' });
             sendToRoom(socket.mission_id, JSON.stringify({
                 act: 'delete_event',
                 arg: event._id
@@ -2872,9 +2833,9 @@ app.post('/upload', upload.any(), function (req, res) {
                             new_id = await insertFile(s, newFile, true);
                             
                             if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
-                                insertLogEvent(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type }, false);
+                                insertChat(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type }, false);
                             } else {
-                                insertLogEvent(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type }, false);
+                                insertChat(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type }, false);
                             }
 
                         // file upload to graph

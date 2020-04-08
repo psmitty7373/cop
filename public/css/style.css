@@ -164,13 +164,13 @@ h1 {
     display: flex;
     flex-flow: column;
     height: 0 !important;
+    border: 1px solid #666;
 }
 
 .window-content {
     height: 600px;
     width: 600px;
     border-radius: 0px;
-    border: 1px solid #666;
 }
 
 .window-header {
@@ -186,6 +186,7 @@ h1 {
 .modal-footer {
     background-color: #222;
     border: 0px;
+    border-radius: 0px;
 }
 
 .ql-editor {
