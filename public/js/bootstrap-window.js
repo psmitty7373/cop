@@ -705,7 +705,7 @@ var WindowManager = null;
         });
 
         if (this.options.container) {
-            window_object.setWindowTab($('<div class="taskbarButton"><span class="label label-default">' + window_object.getTitle() + '</span><div class="fa fa-cancel-circled taskbarClose" ></div>'));
+            window_object.setWindowTab($('<div class="taskbarButton"><div class="label label-default">' + window_object.getTitle() + '</div><div class="fa fa-cancel-circled taskbarClose" ></div>'));
              //+ '<button class="pane-close">x</button></span></div>'));
             window_object.getWindowTab().find('.taskbarClose').on('click', function (event) {
                 var blocker = window_object.getBlocker();

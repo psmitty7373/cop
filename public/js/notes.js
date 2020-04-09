@@ -9,6 +9,7 @@ function notesAdd(notes) {
         }
         $('#notes').jstree().create_node(parent, node);
     }
+    $('#notes').jstree()
 }
 
 function notesEdit(id, name) {
@@ -230,7 +231,7 @@ $(window).on('load', function () {
                     }]
                 }]
             },
-            'plugins': ['wholerow', 'contextmenu'],
+            'plugins': ['wholerow', 'contextmenu', 'sort'],
             'contextmenu': {
                 'select_node': false,
                 'items': function (node) {

@@ -374,7 +374,7 @@ h1 {
 }
 
 .taskbarButton {
-    min-width: 100px;
+    width: 150px;
     width: fit-content;
     background-color: #222;
     padding-left: 10px;
@@ -470,6 +470,11 @@ h1 {
     line-height: 2;
     margin-left: 5px;
     font-size: 14px;
+    width: 100px;
+    float: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
 }
 
 .windowPane .label+.label {

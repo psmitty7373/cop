@@ -48,6 +48,7 @@ var windowManager = null;
 var settingsTabulator;
 var timeline = null;
 var timelinePosition = null;
+var hasFocus = true;
 
 var wsdb;
 var openDocs = {};
@@ -136,19 +137,6 @@ function msgHandler() {
         });
     }, 30000);
     return msgId++;
-}
-
-// send chat message to db
-function sendChatMessage(msg, channel, type) {
-    socket.send(JSON.stringify({
-        act: 'insert_chat',
-        arg: {
-            channel_id: channel,
-            text: msg,
-            type: type
-        },
-        msgId: msgHandler()
-    }));
 }
 
 // show message above canvas for link creation, etc
@@ -1112,6 +1100,10 @@ $(window).on('load', function () {
                 chatAddMessage(msg.arg);
                 break;
 
+            case 'update_chat':
+                chatUpdateMessage(msg.arg);
+                break;
+
             case 'update_user_status':
                 chatUpdateUserStatus(msg.arg);
                 break;
@@ -1239,5 +1231,17 @@ $(window).on('load', function () {
             keyboard: false
         });
     };
+
+    // window focus tracking
+    $(window).focus(function() {
+        hasFocus = true;
+        $('#favicon').attr('href', 'images/favicon.ico');
+    });
+
+    $(window).blur(function() {
+        hasFocus = false;
+    });
+
+    wsdb.onclose = socket.onclose;
    
 });

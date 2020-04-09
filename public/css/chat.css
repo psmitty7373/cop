@@ -235,6 +235,8 @@
     background-color: #222;
     color: #fff;
     padding: 5px;
+    overflow: hidden;
+    resize: none;
 }
 
 .messageSender {
@@ -253,7 +255,8 @@
 .messageWrapper {
     position: relative;
     display: block;
-    padding-top: 3px;
+    padding-top: 2px;
+    padding-bottom: 2px;
     padding-left: 3px;
 }
 

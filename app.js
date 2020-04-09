@@ -925,6 +925,7 @@ async function getChats(socket, channels) {
                     channel_id: objectid(channels[i]._id),
                     text: 1,
                     timestamp: 1,
+                    editable: 1,
                     username: '$username.username'
                 }
             }]).sort({ timestamp: 1 }).toArray();
@@ -969,6 +970,9 @@ async function insertChat(socket, chat, filter) {
         chat.user_id = socket.user_id;
         if (filter) {
             chat.text = xssFilters.inHTMLData(chat.text);
+            chat.editable = true;
+        } else {
+            chat.editable = false;
         }
         chat.timestamp = (new Date).getTime();
 
@@ -986,6 +990,7 @@ async function insertChat(socket, chat, filter) {
             channel_id: objectid(chat.channel_id),
             text: chat.text,
             timestamp: chat.timestamp,
+            editable: chat.editable,
             deleted: false
         };
 
@@ -1016,6 +1021,56 @@ async function insertChat(socket, chat, filter) {
                 arg: [chat]
             }));
         }
+    } catch (err) {
+        socket.send(JSON.stringify({
+            act: 'error',
+            arg: {
+                text: 'Error inserting chat.'
+            }
+        }));
+        logger.error(err);
+    }
+}
+
+async function updateChat(socket, chat, filter) {
+    if (filter === undefined) {
+        filter = true;
+    }
+
+    chat.username = socket.username;
+    chat.user_id = socket.user_id;
+
+    if (filter) {
+        chat.text = xssFilters.inHTMLData(chat.text);
+    }
+
+    try {
+        var tchat = await mdb.collection('chats').findOne({
+            _id: objectid(chat._id),
+            user_id: objectid(socket.user_id),
+            editable: true
+        });
+
+
+        if (!tchat) {
+            throw ('updateChat chat does not exist or does not belong to user.');
+        }
+
+        var res = await mdb.collection('chats').updateOne({
+            _id: objectid(chat._id)
+        }, {
+            $set: {
+                text: chat.text
+            }
+        });
+
+        chat.channel_id = tchat.channel_id.toString();;
+
+        sendToRoom(chat.channel_id, JSON.stringify({
+            act: 'update_chat',
+            arg: chat
+        }));
+
     } catch (err) {
         socket.send(JSON.stringify({
             act: 'error',
@@ -2154,6 +2209,7 @@ const messageHandlers = {
     get_chats: { function: getChats, checks: function() { return true; } },
     get_old_chats: { function:  getOldChats, checks: missionMessageCheck, permission: '' },
     insert_chat: { function:  insertChat, checks: missionMessageCheck, permission: 'write_access' },
+    update_chat: { function:  updateChat, checks: missionMessageCheck, permission: 'write_access' },
     delete_chat: { function:  deleteChat, checks: missionMessageCheck, permission: 'delete_access' },
     get_chat_channels: { function:  getChatChannels, checks: missionMessageCheck, permission: '' },
     insert_chat_channel: { function:  insertChatChannel, checks: missionMessageCheck, permission: 'write_access' },
@@ -2833,9 +2889,9 @@ app.post('/upload', upload.any(), function (req, res) {
                             new_id = await insertFile(s, newFile, true);
                             
                             if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
-                                insertChat(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type }, false);
+                                insertChat(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
                             } else {
-                                insertChat(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type }, false);
+                                insertChat(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
                             }
 
                         // file upload to graph

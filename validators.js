@@ -18,6 +18,22 @@ const insert_chat = {
     additionalProperties: false
 }
 
+const update_chat = {
+    type: 'object',
+    properties: {
+        _id: {
+            type: 'string',
+            pattern: '^[a-fA-F0-9]{24}$'
+        },
+        text: {
+            type: 'string',
+            maxLength: 1024 * 512
+        }
+    },
+    required: ['_id', 'text'],
+    additionalProperties: false
+}
+
 const get_old_chats = {
     type: 'object',
     properties: {
@@ -600,6 +616,7 @@ const empty = {
 module.exports = {
     get_users: empty,
     insert_chat: insert_chat,
+    update_chat: update_chat,
     delete_chat: delete_row,
     get_old_chats: get_old_chats,
     insert_chat_channel: insert_chat_channel,

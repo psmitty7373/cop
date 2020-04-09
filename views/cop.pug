@@ -1,7 +1,7 @@
 html
   head
     title= title
-    link(rel='icon', href='favicon.ico', type='image/x-icon')
+    link(id='favicon', rel='icon', href='images/favicon.ico', type='image/x-icon')
     link(rel='stylesheet', href='css/jquery-ui.min.css')
     link(rel='stylesheet', href='css/OverlayScrollbars.min.css')
     link(rel='stylesheet', href='css/tabulator_custom.css')
@@ -151,7 +151,7 @@ html
             div#chatChannelPanesWrapper
               div#channelPanes
               div#channelFooter
-                input(type="text", name="messageInput" disabled)#messageInput.messageInput
+                textarea(rows="1" data-min-rows="1" name="messageInput" disabled)#messageInput.messageInput
 
           div#settings.tableContainer(style="display: none;")
             div.tableHeader

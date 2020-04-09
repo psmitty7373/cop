@@ -27,6 +27,9 @@ toastr.options = {
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
     notifSound.play();
+    if (!hasFocus) {
+        $('#favicon').attr('href', 'images/favicon_not.ico');
+    }
     /*if (!("Notification" in window) || Notification.permission === 'denied') {
         toastr.info(msg.text, msg.username)
     } else if (Notification.permission === 'granted') {
@@ -104,14 +107,14 @@ var chatDragAndDrop = function (e) {
                 success: function () {
                     $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
                     setTimeout(function () {
-                        $("#chatProgressbar").fadeOut("slow");
-                        $('#chatDropZone').css('visibility', 'hidden');
-                    }, 2000);
+                        $('#chatDropZone').fadeOut("slow");
+                    }, 500);
                 },
                 error: function () {
                     $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
-                    $('#chatDropZone').css('visibility', 'hidden');
-                    console.log('upload error');
+                    setTimeout(function () {
+                        $('#chatDropZone').fadeOut("slow");
+                    }, 1500);
                 }
             });
             
@@ -151,6 +154,74 @@ function chatDeleteMessage(msg) {
     var elem = $('#message' + msg);
     if (elem) {
         elem.fadeOut('fast', function() { $(this).remove() });
+    }
+}
+
+function chatFinishMessage(_id, cancel) {
+    var elem = $('#message' + _id);
+    if (elem) {
+        var content = elem.find('.messageContent');
+        var options = elem.find('.messageOptions');
+        options.show();
+
+        var header = content.find('.messageContent-header');
+        if (header) {
+            header.show();
+        }
+
+        var text = content.find('.messageInput').val();
+        var oldMessageSpan = content.find('.oldMessage');
+        var oldMessage = oldMessageSpan.text();
+        oldMessageSpan.remove();
+
+        if (cancel) {
+            text = oldMessage;
+        }
+
+        var editor = content.find('.messageEdit');
+        editor.remove();
+
+        var preText = '';
+        if (text.length > 6 && text.substr(0,3) === '```' && text.slice(-3) === '```') {
+            preText = '<pre>' + text.slice(3,-3) + '</pre>';
+        }
+
+        content.append('<span class="messageBody">' + preText + '</span>');
+        if (!cancel) {
+            if (text == "") {
+                chatSendDeleteMessage(_id)
+            } else {
+                sendUpdateChatMessage(text, _id);
+            }
+        }
+    }
+}
+
+function chatEditMessage(_id) {
+    var elem = $('#message' + _id);
+    if (elem) {
+        var content = elem.find('.messageContent');
+        var options = elem.find('.messageOptions');
+        options.hide();
+
+        var body = content.find('.messageBody');
+        var oldMessage = body.html().replace('<pre>','```').replace('</pre>','```');
+        body.remove();
+
+        var header = content.find('.messageContent-header');
+        if (header) {
+            header.hide();
+        }
+
+        content.append('<span class="oldMessage" style="display: none">' + oldMessage + '</span><div class="messageEdit"><textarea data-min-rows="1" data-max-rows="8" class="messageInput" rows="1" style="margin-bottom: 5px;">' + oldMessage + '</textarea><div class="form-group" style="margin-bottom: 0px;"><button class="btn btn-danger toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', true);">Cancel</button><button class="btn btn-primary toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', false);">Save Changes</button></div></div></div>');
+        var textarea = content.find('.messageInput');
+        textarea[0].baseScrollHeight = textarea[0].scrollHeight;
+        textarea.on('change keyup paste', function() { growTextArea(this); });
+
+        // stupid hack to put the cursor at the end
+        var oldText = textarea.val();
+        textarea.val('');
+        textarea.blur().focus().val(oldText);
     }
 }
 
@@ -226,6 +297,19 @@ function chatAddChannels(c) {
      }));
 }
 
+function chatUpdateMessage(message) {
+    var elem = $('#message' + message._id);
+    if (elem) {
+        var content = elem.find('.messageContent');
+        var body = content.find('.messageBody');
+        // pre-formatting
+        if (message.text.length > 6 && message.text.substr(0,3) === '```' && message.text.slice(-3) === '```') {
+            message.text = '<pre>' + message.text.slice(3,-3) + '</pre>';
+        }
+        body.delay(100).fadeOut().queue(function(n) { $(this).html(message.text); n(); }).fadeIn('slow');
+    }
+}
+
 // adds chat messages to chat panels
 function chatAddMessage(messages, bulk, scroll) {
     if (!bulk) {
@@ -257,6 +341,7 @@ function chatAddMessage(messages, bulk, scroll) {
             if (!bulkMsg[channel_id]) {
                 bulkMsg[channel_id] = {};
                 bulkMsg[channel_id].lastSender = '';
+                bulkMsg[channel_id].lastEpoch = 0;
                 bulkMsg[channel_id].messages = '';
             }
         }
@@ -268,14 +353,20 @@ function chatAddMessage(messages, bulk, scroll) {
 
         var avatar = '';
         var header = '';
-        if ((bulk && bulkMsg[channel_id].lastSender !== tuser_id) || (!bulk && channels[channel_id].lastSender !== tuser_id)) {
+
+        if ((bulk && (bulkMsg[channel_id].lastSender !== tuser_id || (ts - bulkMsg[channel_id].lastEpoch) > (1000 * 60 * 5))) || (!bulk && channels[channel_id].lastSender !== tuser_id)) {
             avatar = '<img class="messageAvatar" src="images/avatars/' + tuser_id + '.png"/>';
             header = '<div class="messageContent-header"><span class="messageSender">' + username + '</span><span class="messageTime">' + epochToDateString(ts) + '</span></div>';
         }
 
+        var buttonDisabled = 'disabled';
+        if (messages[i].editable) {
+            buttonDisabled = '';
+        }
+
         var messageOptions = '';
         if (tuser_id === user_id) {
-            messageOptions = '<div class="messageOptions"><div class="btn-group" role="group"><button type="button" class="btn btn-primary messageOptionBtn"><i class="fa fa-pencil"></i></button><button type="button" class="btn btn-primary messageOptionBtn" onclick="chatSendDeleteMessage(\'' + messages[i]._id + '\')"><i class="fa fa-cancel-circled"></i></button></div></div>';
+            messageOptions = '<div class="messageOptions"><div class="btn-group" role="group"><button ' + buttonDisabled + ' type="button" class="btn btn-primary messageOptionBtn" onclick="chatEditMessage(\'' + messages[i]._id + '\')"><i class="fa fa-pencil"></i></button><button type="button" class="btn btn-primary messageOptionBtn" onclick="chatSendDeleteMessage(\'' + messages[i]._id + '\')"><i class="fa fa-cancel-circled"></i></button></div></div>';
         }
 
         var newMsg = '<div class="messageWrapper" id="message' + messages[i]._id + '"><div class="message"><div class="messageGutter">' + avatar + '</div><div class="messageContent">' + header + '<span class="messageBody">' + messages[i].text + '</span></div>' + messageOptions + '</div></div>';
@@ -284,6 +375,7 @@ function chatAddMessage(messages, bulk, scroll) {
         if (bulk) {
             bulkMsg[channel_id].messages += newMsg;
             bulkMsg[channel_id].lastSender = tuser_id;
+            bulkMsg[channel_id].lastEpoch = ts;
         }
         else {
             newMsg = $(newMsg);
@@ -326,6 +418,7 @@ function chatAddMessage(messages, bulk, scroll) {
 
             // set last sender
             channels[channel_id].lastSender = tuser_id;
+            channels[channel_id].lastEpoch = ts;
 
             // if at bottom, wait for 
             if (atBottom) {
@@ -441,6 +534,43 @@ function chatChangeChannel(e) {
     activeChannelType = type;
 }
 
+function growTextArea(elem) {
+    var minRows = elem.getAttribute('data-min-rows') | 0, rows;
+    var maxRows = elem.getAttribute('data-max-rows') | 8;
+    elem.rows = minRows;
+    rows = Math.ceil((elem.scrollHeight - elem.baseScrollHeight) / 22);
+
+    if (minRows + rows > maxRows) {
+        elem.rows = maxRows;
+    } else {
+        elem.rows = minRows + rows;
+    }
+}
+
+// send chat message to db
+function sendChatMessage(msg, channel, type) {
+    socket.send(JSON.stringify({
+        act: 'insert_chat',
+        arg: {
+            channel_id: channel,
+            text: msg,
+            type: type
+        },
+        msgId: msgHandler()
+    }));
+}
+
+function sendUpdateChatMessage(msg, _id) {
+    socket.send(JSON.stringify({
+        act: 'update_chat',
+        arg: {
+            _id: _id,
+            text: msg,
+        },
+        msgId: msgHandler()
+    }));
+}
+
 $(window).on('load', function () {
     if (permissions.write_access) {
         $('#messageInput').prop('disabled', false);
@@ -485,14 +615,33 @@ $(window).on('load', function () {
     $("#messageInput").keypress(function (e) {
         var key = e.charCode || e.keyCode || 0;
         if (key === $.ui.keyCode.ENTER) {
-            if ($("#messageInput").val() != '') {
+            if (e.shiftKey) {
+                console.log('shift');
+            }
+            else if ($("#messageInput").val() != '') {
+                e.preventDefault();
                 sendChatMessage($("#messageInput").val(), activeChannel, activeChannelType);
                 $("#messageInput").val('');
             }
         }
     });
 
+    $("#messageInput")[0].baseScrollHeight = $("#messageInput")[0].scrollHeight;
+    
+    $("#messageInput").on('change keyup paste', function() {
+        var atBottom = ($('#pane' + activeChannel).overlayScrollbars().scroll().max.y == $('#pane' + activeChannel).overlayScrollbars().scroll().position.y);
+
+        growTextArea(this);
+
+        if (atBottom) {
+            setTimeout(function () {
+                $('#pane' + activeChannel).overlayScrollbars().scroll($('#pane' + activeChannel).overlayScrollbars().scroll().max.y);
+            }, 25);
+        }
+    })
+
     $('#chatChannels').overlayScrollbars({
         className: "os-theme-light",
     });
+
 });
