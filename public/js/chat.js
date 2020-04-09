@@ -4,26 +4,6 @@ var firstChat = true;
 var channels = {};
 var userStatuses = {};
 
-// toastr
-var notifSound = null;
-toastr.options = {
-    "closeButton": true,
-    "debug": false,
-    "newestOnTop": false,
-    "progressBar": false,
-    "positionClass": "toast-top-center",
-    "preventDuplicates": true,
-    "onclick": null,
-    "showDuration": "300",
-    "hideDuration": "1000",
-    "timeOut": "5000",
-    "extendedTimeOut": "1000",
-    "showEasing": "swing",
-    "hideEasing": "linear",
-    "showMethod": "fadeIn",
-    "hideMethod": "fadeOut"
-}
-
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
     notifSound.play();
@@ -49,75 +29,97 @@ function notification(msg) {
     }*/
 }
 
+function chatDoUpload(files) {
+    var formData = new FormData();
+    formData.append('channel_id', activeChannel);
+    formData.append('type', activeChannelType);
+    formData.append('mission_id', mission_id);
+
+    $.each(files, function (i, file) {
+        formData.append('file', file);
+    });
+
+    $.ajax({
+        url: 'upload',
+        type: 'POST',
+        xhr: function () {
+            var mxhr = $.ajaxSettings.xhr();
+            if (mxhr.upload) {
+                
+                $("#chatProgressbar")
+                    .progressbar({
+                        value: 0
+                    })
+                    .css("display", "block")
+                    .children('.ui-progressbar-value')
+                    .html('0%')
+                    .css("display", "block");
+                mxhr.upload.addEventListener('progress', chatProgressHandler, false);
+                
+            }
+            return mxhr;
+        },
+        data: formData,
+        dataType: 'json',
+        cache: false,
+        contentType: false,
+        processData: false,
+        success: function () {
+            $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
+            setTimeout(function () {
+                $('#chatDropZone').fadeOut(500, function() {
+                    $('#chatDropZone').css('visibility', 'hidden');
+                    $('#chatDropZone').css('display', 'flex');
+                    $('#chatProgressbar').css('display', 'none');
+                });
+            }, 500);
+        },
+        error: function () {
+            $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
+            setTimeout(function () {
+                $('#chatDropZone').fadeOut(500, function() {
+                    $('#chatDropZone').css('visibility', 'hidden');
+                    $('#chatDropZone').css('display', 'flex');
+                    $('#chatProgressbar').css('display', 'none');
+                });
+            }, 1500);
+        }
+    });
+}
+
+var chatPasteFiles = function (e) {
+    if (e.originalEvent.type === 'paste') {
+        var items = (event.clipboardData || event.originalEvent.clipboardData).items;
+        var files = [];
+        for (index in items) {
+            var item = items[index];
+            if (item.kind === 'file') {
+                files.push(item.getAsFile())                
+            }
+        }
+
+        if (files.length > 0) {
+            $('#chatDropZone').css('visibility', 'visible');
+            e.originalEvent.stopPropagation();
+            e.originalEvent.preventDefault();
+            chatDoUpload(files);
+        }
+    }
+}
+
 var chatDragAndDrop = function (e) {
     e.originalEvent.stopPropagation();
     e.originalEvent.preventDefault();
-
     var srcElement = e.originalEvent.srcElement ? e.originalEvent.srcElement : e.originalEvent.target;
 
     if (e.originalEvent.type === 'dragleave') {
     }
 
     if ($.inArray('Files', e.originalEvent.dataTransfer.types) > -1) {
-        e.originalEvent.stopPropagation();
-        e.originalEvent.preventDefault();
-        e.originalEvent.dataTransfer.dropEffect = ($(srcElement).hasClass('droppable')) ? 'copy' : 'none';
-
-        if (e.originalEvent.dataTransfer.dropEffect === 'copy' && e.originalEvent.type !== 'dragleave') {
-            
-        }
-
-        e.originalEvent.dataTransfer.types
-
         if (e.originalEvent.type == 'drop') {
-            var formData = new FormData();
-            formData.append('channel_id', activeChannel);
-            formData.append('type', activeChannelType);
-
-            $.each(e.originalEvent.dataTransfer.files, function (i, file) {
-                formData.append('file', file);
-            });
-
-            formData.append('mission_id', mission_id);
-
-            $.ajax({
-                url: 'upload',
-                type: 'POST',
-                xhr: function () {
-                    var mxhr = $.ajaxSettings.xhr();
-                    if (mxhr.upload) {
-                        
-                        $("#chatProgressbar")
-                            .progressbar({
-                                value: 0
-                            })
-                            .children('.ui-progressbar-value')
-                            .html('0%')
-                            .css("display", "block");
-                        mxhr.upload.addEventListener('progress', chatProgressHandler, false);
-                        
-                    }
-                    return mxhr;
-                },
-                data: formData,
-                dataType: 'json',
-                cache: false,
-                contentType: false,
-                processData: false,
-                success: function () {
-                    $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload successful!');
-                    setTimeout(function () {
-                        $('#chatDropZone').fadeOut("slow");
-                    }, 500);
-                },
-                error: function () {
-                    $("#chatProgressbar").progressbar('value', 100).children('.ui-progressbar-value').html('Upload error!');
-                    setTimeout(function () {
-                        $('#chatDropZone').fadeOut("slow");
-                    }, 1500);
-                }
-            });
-            
+            e.originalEvent.stopPropagation();
+            e.originalEvent.preventDefault();
+            chatDoUpload(e.originalEvent.dataTransfer.files)
             $('#chat').removeClass('dragging');
         }
     }
@@ -215,8 +217,7 @@ function chatEditMessage(_id) {
 
         content.append('<span class="oldMessage" style="display: none">' + oldMessage + '</span><div class="messageEdit"><textarea data-min-rows="1" data-max-rows="8" class="messageInput" rows="1" style="margin-bottom: 5px;">' + oldMessage + '</textarea><div class="form-group" style="margin-bottom: 0px;"><button class="btn btn-danger toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', true);">Cancel</button><button class="btn btn-primary toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', false);">Save Changes</button></div></div></div>');
         var textarea = content.find('.messageInput');
-        textarea[0].baseScrollHeight = textarea[0].scrollHeight;
-        textarea.on('change keyup paste', function() { growTextArea(this); });
+        autosize(textarea);
 
         // stupid hack to put the cursor at the end
         var oldText = textarea.val();
@@ -234,6 +235,19 @@ function chatSendDeleteMessage(_id) {
         msgId: msgHandler()
     }));
 }
+
+function setDoScroll() {
+    if(!this.animationRunning)
+        this.doScroll = this.scroll().ratio.y === 1;
+    else
+        this.doScroll = true;
+};
+
+function performScroll(e) { 
+	e.animationRunning = true;
+	e.scrollStop();
+	e.scroll({ y : '100%' }, 50, 'swing', function() { e.animationRunning = false; });
+};
 
 function chatAddChannels(c) {
     var style = '';
@@ -279,7 +293,28 @@ function chatAddChannels(c) {
             $('#' + c[i]._id + 'Delete').click(chatDeleteChannel);
         }
         $('#pane' + c[i]._id).overlayScrollbars({
-            className: "os-theme-light"
+            className: "os-theme-light",
+            sizeAutoCapable: false,
+            overflowBehavior: {
+                x: "scroll",
+                y: "scroll"
+            },
+            callbacks: {
+                onHostSizeChanged : function() { 
+                    if(this.doScroll)
+                        performScroll(this);
+                },
+                onContentSizeChanged : function() { 
+                    if(this.doScroll)
+                        performScroll(this);
+                },
+                onScroll : setDoScroll,
+                onInitialized : setDoScroll,
+                onOverflowChanged : function(e) {	
+                    if(e.y) 
+                        performScroll(this);
+                }
+            }
         });
     }
 
@@ -380,9 +415,6 @@ function chatAddMessage(messages, bulk, scroll) {
         else {
             newMsg = $(newMsg);
 
-            // check if at bottom
-            var atBottom = ($('#pane' + channel_id).overlayScrollbars().scroll().max.y == $('#pane' + channel_id).overlayScrollbars().scroll().position.y);
-            
             if (!bulk && activeChannel === channel_id) {
                 newMsg.hide();
             }
@@ -420,12 +452,6 @@ function chatAddMessage(messages, bulk, scroll) {
             channels[channel_id].lastSender = tuser_id;
             channels[channel_id].lastEpoch = ts;
 
-            // if at bottom, wait for 
-            if (atBottom) {
-                setTimeout(function () {
-                    $('#pane' + channel_id).overlayScrollbars().scroll($('#pane' + channel_id).overlayScrollbars().scroll().max.y);
-                }, 100);
-            }
         }
         if (messages[i].more && bulk) {
             bulkMsg[messages[i].channel_id].messages = '<div id="get-more-messages"><span onClick="getMoreMessages(\'' + channel_id + '\')">Get older messages.</span></div>' + bulkMsg[messages[i].channel_id].messages;
@@ -534,19 +560,6 @@ function chatChangeChannel(e) {
     activeChannelType = type;
 }
 
-function growTextArea(elem) {
-    var minRows = elem.getAttribute('data-min-rows') | 0, rows;
-    var maxRows = elem.getAttribute('data-max-rows') | 8;
-    elem.rows = minRows;
-    rows = Math.ceil((elem.scrollHeight - elem.baseScrollHeight) / 22);
-
-    if (minRows + rows > maxRows) {
-        elem.rows = maxRows;
-    } else {
-        elem.rows = minRows + rows;
-    }
-}
-
 // send chat message to db
 function sendChatMessage(msg, channel, type) {
     socket.send(JSON.stringify({
@@ -602,12 +615,17 @@ $(window).on('load', function () {
                 $('#chat').removeClass('dragging');
                 $('#chatDropZone').css('visibility', 'hidden');
             }
+        },
+
+        drop: function() {
+            dragCounter = 0;
         }
     });
 
     $('#chat').on('dragover', chatDragAndDrop);
     $('#chat').on('dragleave', chatDragAndDrop);
     $('#chat').on('drop', chatDragAndDrop);
+    $('#chat').on('paste', chatPasteFiles);
 
     $('#chatNewChannel').click(chatNewChannel);
 
@@ -616,29 +634,20 @@ $(window).on('load', function () {
         var key = e.charCode || e.keyCode || 0;
         if (key === $.ui.keyCode.ENTER) {
             if (e.shiftKey) {
-                console.log('shift');
             }
-            else if ($("#messageInput").val() != '') {
+            else {
                 e.preventDefault();
-                sendChatMessage($("#messageInput").val(), activeChannel, activeChannelType);
-                $("#messageInput").val('');
+                if ($("#messageInput").val() != '') {
+                    sendChatMessage($("#messageInput").val(), activeChannel, activeChannelType);
+                    $("#messageInput").val('');
+                }
             }
         }
     });
 
-    $("#messageInput")[0].baseScrollHeight = $("#messageInput")[0].scrollHeight;
-    
-    $("#messageInput").on('change keyup paste', function() {
-        var atBottom = ($('#pane' + activeChannel).overlayScrollbars().scroll().max.y == $('#pane' + activeChannel).overlayScrollbars().scroll().position.y);
-
-        growTextArea(this);
-
-        if (atBottom) {
-            setTimeout(function () {
-                $('#pane' + activeChannel).overlayScrollbars().scroll($('#pane' + activeChannel).overlayScrollbars().scroll().max.y);
-            }, 25);
-        }
-    })
+    autosize($("#messageInput")).on('autosize:resized', function(){
+        
+    });
 
     $('#chatChannels').overlayScrollbars({
         className: "os-theme-light",
