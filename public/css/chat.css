@@ -234,8 +234,8 @@
     overflow: hidden;
     resize: none;
     box-sizing: border-box;
-    height: 38px;
-    max-height: 160px;
+    min-height: 38px;
+    max-height: 172px;
 }
 
 .messageSender {

@@ -161,6 +161,7 @@ sharedbmongo.prototype._writeSnapshot = function(collectionName, id, snapshot, o
 }
 
 app.set('view engine', 'pug');
+app.set('view options', { doctype: 'html' })
 app.use(express.static('public'));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({

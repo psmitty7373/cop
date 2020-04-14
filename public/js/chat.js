@@ -1,9 +1,8 @@
 var activeChannel = '';
 var activeChannelType = '';
-var firstChat = true;
 var channels = {};
+var editingMessage = false;
 var userStatuses = {};
-var earliest_messages = {}; //= 2147483647000;
 
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
@@ -160,11 +159,14 @@ function chatDeleteChannel(e) {
 function chatDeleteMessage(msg) {
     var elem = $('#message' + msg);
     if (elem) {
-        elem.fadeOut('fast', function() { $(this).remove() });
+        elem.fadeOut(25, function() { $(this).remove() });
     }
 }
 
-function chatFinishMessage(_id, cancel) {
+function chatFinishMessage(_id) {
+    if (!editingMessage)
+        return;
+
     var elem = $('#message' + _id);
     if (elem) {
         var content = elem.find('.messageContent');
@@ -176,37 +178,40 @@ function chatFinishMessage(_id, cancel) {
             header.show();
         }
 
-        var text = content.find('.messageInput').val();
+        var text = content.find('.messageInput').html();
         var oldMessageSpan = content.find('.oldMessage');
         var oldMessage = oldMessageSpan.text();
         oldMessageSpan.remove();
 
-        if (cancel) {
-            text = oldMessage;
-        }
-
         var editor = content.find('.messageEdit');
         editor.remove();
 
-        var preText = '';
+        var preText = text;
         if (text.length > 6 && text.substr(0,3) === '```' && text.slice(-3) === '```') {
             preText = '<pre>' + text.slice(3,-3) + '</pre>';
         }
 
         content.append('<span class="messageBody">' + preText + '</span>');
-        if (!cancel) {
+        if (text != oldMessage) {
             if (text == "") {
                 chatSendDeleteMessage(_id)
             } else {
                 sendUpdateChatMessage(text, _id);
             }
         }
+
+        editingMessage = false;
     }
 }
 
 function chatEditMessage(_id) {
+    if (editingMessage)
+        return;
+
     var elem = $('#message' + _id);
     if (elem) {
+        editingMessage = true;
+
         var content = elem.find('.messageContent');
         var options = elem.find('.messageOptions');
         options.hide();
@@ -220,15 +225,31 @@ function chatEditMessage(_id) {
             header.hide();
         }
 
-        content.append('<span class="oldMessage" style="display: none">' + oldMessage + '</span><div class="messageEdit"><textarea data-min-rows="1" data-max-rows="8" class="messageInput" rows="1" style="margin-bottom: 5px;">' + oldMessage + '</textarea><div class="form-group" style="margin-bottom: 0px;"><button class="btn btn-danger toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', true);">Cancel</button><button class="btn btn-primary toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\', false);">Save Changes</button></div></div></div>');
-        var textarea = content.find('.messageInput');
-        autosize(textarea);
-
-        // stupid hack to put the cursor at the end
-        var oldText = textarea.val();
-        textarea.val('');
-        textarea.blur().focus().val(oldText);
+        content.append('<span class="oldMessage" style="display: none">' + oldMessage + '</span><div class="messageEdit"><div class="messageInput" style="margin-bottom: 5px;" contenteditable>' + oldMessage + '</div><div class="form-group" style="margin-bottom: 0px;"><button class="btn btn-danger toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\');">Cancel</button><button class="btn btn-primary toolbarButton" type="button" onclick="chatFinishMessage(\'' + _id + '\');">Save Changes</button></div></div></div>');
+        content.find('.messageEdit').focus().keydown(function(e) {
+            var key = e.charCode || e.keyCode || 0;
+            switch (key) {
+                case $.ui.keyCode.ENTER:
+                    if (!e.shiftKey) {
+                        e.preventDefault();
+                        chatFinishMessage(_id, false);
+                    }
+                    break;
+            }
+        });
+        placeCaretAtEnd(content.find('.messageInput')[0]);
     }
+}
+
+//https://stackoverflow.com/questions/6249095/how-to-set-caretcursor-position-in-contenteditable-element-div
+function placeCaretAtEnd(ele) {
+    var range = document.createRange();
+    var sel = window.getSelection();
+    range.setStart(ele, 1);
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    ele.focus();
 }
 
 function chatSendDeleteMessage(_id) {
@@ -251,7 +272,7 @@ function setDoScroll() {
 function performScroll(e) { 
 	e.animationRunning = true;
 	e.scrollStop();
-	e.scroll({ y : '100%' }, 50, 'swing', function() { e.animationRunning = false; });
+	e.scroll({ y : '100%' }, 25, 'swing', function() { e.animationRunning = false; });
 };
 
 function chatAddChannels(c) {
@@ -264,6 +285,7 @@ function chatAddChannels(c) {
 
         channels[c[i]._id] = {};
         channels[c[i]._id].earliestMessage = 2147483647000
+        channels[c[i]._id].myLastMessage = null;
 
         if (c[i].name === 'general') {
             activeChannel = c[i]._id;
@@ -348,7 +370,7 @@ function chatUpdateMessage(message) {
         if (message.text.length > 6 && message.text.substr(0,3) === '```' && message.text.slice(-3) === '```') {
             message.text = '<pre>' + message.text.slice(3,-3) + '</pre>';
         }
-        body.delay(100).fadeOut().queue(function(n) { $(this).html(message.text); n(); }).fadeIn('slow');
+        body.delay(25).fadeOut().queue(function(n) { $(this).html(message.text); n(); }).fadeIn(25);
     }
 }
 
@@ -451,16 +473,29 @@ function chatAddMessage(messages, bulk, scroll) {
 
             // channel is currently active, so fade in the message
             if (!bulk && activeChannel === channel_id) {
-                newMsg.fadeIn('fast');
+                newMsg.fadeIn(25);
             }
 
             // set last sender
             channels[channel_id].lastSender = tuser_id;
             channels[channel_id].lastEpoch = ts;
-
         }
+
+        // add get-more-messages link if necessary
         if (messages[i].more && bulk) {
             bulkMsg[messages[i].channel_id].messages = '<div id="get-more-messages"><span onClick="getMoreMessages(\'' + channel_id + '\')">Get older messages.</span></div>' + bulkMsg[messages[i].channel_id].messages;
+        }
+
+        // store my last message for up-arrow editing
+        if (tuser_id === user_id) {
+            if (!channels[channel_id].myLastMessage) {
+                channels[channel_id].myLastMessage = {};
+                channels[channel_id].myLastMessage.ts = ts;
+                channels[channel_id].myLastMessage._id = messages[i]._id;
+            } else if (ts > channels[channel_id].myLastMessage.ts) {
+                channels[channel_id].myLastMessage.ts = ts;
+                channels[channel_id].myLastMessage._id = messages[i]._id;
+            }
         }
     }
 
@@ -471,13 +506,6 @@ function chatAddMessage(messages, bulk, scroll) {
                 $(bulkMsg[key].messages).prependTo(pane);
             }
         }
-    }
-
-    // scroll to bottom
-    if (scroll) {
-        setTimeout(function() {
-            $('#pane' + activeChannel).overlayScrollbars().scroll($('#pane' + activeChannel).overlayScrollbars().scroll().max.y);
-        }, 200);
     }
 }
 
@@ -493,7 +521,6 @@ function getMoreMessages(channel_id) {
         msgId: msgHandler()
     }));
 }
-
 
 function chatNewChannel() {
     var msg = `
@@ -558,7 +585,7 @@ function chatChangeChannel(e) {
     if (channels[channel].position === undefined || channels[channel].position === 'bottom') {
         setTimeout(function() {
             $('#pane' + channel).overlayScrollbars().scroll($('#pane' + channel).overlayScrollbars().scroll().max.y);
-        }, 50);
+        }, 20);
     }
 
     $('#label' + channel).addClass('channelSelected');
@@ -636,23 +663,25 @@ $(window).on('load', function () {
     $('#chatNewChannel').click(chatNewChannel);
 
     // capture enter key in chat input bar
-    $("#messageInput").keypress(function (e) {
+    $("#messageInput").keydown(function(e) {
         var key = e.charCode || e.keyCode || 0;
-        if (key === $.ui.keyCode.ENTER) {
-            if (e.shiftKey) {
-            }
-            else {
-                e.preventDefault();
-                if ($("#messageInput").val() != '') {
-                    sendChatMessage($("#messageInput").val(), activeChannel, activeChannelType);
-                    $("#messageInput").val('');
+        switch (key) {
+            case $.ui.keyCode.ENTER:
+                if (!e.shiftKey) {
+                    e.preventDefault();
+                    if ($("#messageInput").html() != '') {
+                        sendChatMessage($("#messageInput").html().replace(/<br>/gi,'\n'), activeChannel, activeChannelType);
+                        $("#messageInput").html('');
+                    }
                 }
-            }
+                break;
+            case $.ui.keyCode.UP:
+                if (channels[activeChannel].myLastMessage) {
+                    e.preventDefault();
+                    chatEditMessage(channels[activeChannel].myLastMessage._id);
+                }
+                break;
         }
-    });
-
-    autosize($("#messageInput")).on('autosize:resized', function(){
-        
     });
 
     $('#chatChannels').overlayScrollbars({

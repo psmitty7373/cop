@@ -1,3 +1,4 @@
+doctype html
 html
   head
     title= title
@@ -157,7 +158,8 @@ html
             div#chatChannelPanesWrapper
               div#channelPanes
               div#channelFooter
-                textarea(rows="1" data-min-rows="1" name="messageInput" disabled)#messageInput.messageInput
+                div#messageInput.messageInput(contenteditable)
+                
 
           div#settings.tableContainer(style="display: none;")
             div.tableHeader

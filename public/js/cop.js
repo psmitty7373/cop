@@ -527,7 +527,6 @@ function deleteEvent(id) {
 }
 
 function idleIncrement() {
-    console.log(idleTime);
     if (idleTime === 5 && idleState === 'online') { 
         socket.send(JSON.stringify({
             act: 'update_user_status',
@@ -1102,6 +1101,7 @@ $(window).on('load', function () {
                     break;
 
                 // chat
+                case 'get_old_chats':
                 case 'get_chats':
                     chatAddMessage(msg.arg, true, true);
                     break;
