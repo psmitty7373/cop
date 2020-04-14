@@ -163,6 +163,13 @@ function chatDeleteMessage(msg) {
     }
 }
 
+function replacePreTicks(msg) {
+    while((msg.match(/```/g) || []).length >= 2) {
+        msg = msg.replace('```', '<pre>').replace('```', '</pre>');
+    }
+    return msg;
+}
+
 function chatFinishMessage(_id) {
     if (!editingMessage)
         return;
@@ -187,9 +194,7 @@ function chatFinishMessage(_id) {
         editor.remove();
 
         var preText = text;
-        if (text.length > 6 && text.substr(0,3) === '```' && text.slice(-3) === '```') {
-            preText = '<pre>' + text.slice(3,-3) + '</pre>';
-        }
+        preText = replacePreTicks(text);
 
         content.append('<span class="messageBody">' + preText + '</span>');
         if (text != oldMessage) {
@@ -219,7 +224,7 @@ function chatEditMessage(_id) {
         options.hide();
 
         var body = content.find('.messageBody');
-        var oldMessage = body.html().replace('<pre>','```').replace('</pre>','```');
+        var oldMessage = body.html().replace(/<pre>/g,'```').replace(/<\/pre>/g,'```');
         body.remove();
 
         var header = content.find('.messageContent-header');
@@ -372,9 +377,7 @@ function chatUpdateMessage(message) {
         var content = elem.find('.messageContent');
         var body = content.find('.messageBody');
         // pre-formatting
-        if (message.text.length > 6 && message.text.substr(0,3) === '```' && message.text.slice(-3) === '```') {
-            message.text = '<pre>' + message.text.slice(3,-3) + '</pre>';
-        }
+        message.text = replacePreTicks(message.text);
         body.delay(25).fadeOut().queue(function(n) { $(this).html(message.text); n(); }).fadeIn(25);
     }
 }
@@ -416,9 +419,7 @@ function chatAddMessage(messages, bulk, scroll) {
         }
 
         // pre-formatting
-        if (messages[i].text.length > 6 && messages[i].text.substr(0,3) === '```' && messages[i].text.slice(-3) === '```') {
-            messages[i].text = '<pre>' + messages[i].text.slice(3,-3) + '</pre>';
-        }
+        messages[i].text = replacePreTicks(messages[i].text);
 
         var avatar = '';
         var header = '';
