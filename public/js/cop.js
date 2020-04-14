@@ -983,7 +983,7 @@ $(window).on('load', function () {
         resizeTimer = setTimeout(function () {
             settings.diagram = Math.round($('#diagramJumbo').height());
             updateSettings();
-//            resizeCanvas();
+            //resizeCanvas();
         }, 100);
     });
 

@@ -171,7 +171,7 @@ function chatFinishMessage(_id) {
     if (elem) {
         var content = elem.find('.messageContent');
         var options = elem.find('.messageOptions');
-        options.show();
+        options.css('display', '');
 
         var header = content.find('.messageContent-header');
         if (header) {
@@ -201,6 +201,8 @@ function chatFinishMessage(_id) {
         }
 
         editingMessage = false;
+        $('#messageInput').focus();
+        placeCaretAtEnd($('#messageInput')[0]);
     }
 }
 
@@ -243,12 +245,15 @@ function chatEditMessage(_id) {
 
 //https://stackoverflow.com/questions/6249095/how-to-set-caretcursor-position-in-contenteditable-element-div
 function placeCaretAtEnd(ele) {
-    var range = document.createRange();
-    var sel = window.getSelection();
-    range.setStart(ele, 1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
+    try {
+        var range = document.createRange();
+        var sel = window.getSelection();
+        console.log(range, sel);
+        range.setStart(ele, 1);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } catch (err) {}
     ele.focus();
 }
 

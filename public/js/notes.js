@@ -3,20 +3,23 @@ var notesTabulator;
 var openDocs = {};
 var shareDBConnection;
 
-function notesInsertPresence(id, user_id, username) {
+function notesInsertPresence(id, uid, username) {
+    if (user_id == uid) 
+        return;
     var window = windowManager.findWindowByID(id);
+
     if (window) {
-        if (window.getElement().find('[data-user_id="' + user_id + '"]').length == 0) {
-            var elem = window.getElement().find('.modal-footer').append('<a href="#" data-user_id="' + user_id + '" data-sort="' + username + '" data-toggle="tooltip" data-placement="top" title="' + username + '"><img class="presenceAvatar" src="images/avatars/' + user_id + '.png" data-toggle="tooltip" data-placement="bottom"></a>');
+        if (window.getElement().find('[data-user_id="' + uid + '"]').length == 0) {
+            var elem = window.getElement().find('.modal-footer').append('<a href="#" data-user_id="' + uid + '" data-sort="' + username + '" data-toggle="tooltip" data-placement="top" title="' + username + '"><img class="presenceAvatar" src="images/avatars/' + uid + '.png" data-toggle="tooltip" data-placement="bottom"></a>');
             elem.fadeIn('fast');
         }
     }
 }
 
-function notesDeletePresence(id, user_id) {
+function notesDeletePresence(id, uid) {
     var window = windowManager.findWindowByID(id);
     if (window) {
-        var elem = window.getElement().find('[data-user_id="' + user_id + '"]');
+        var elem = window.getElement().find('[data-user_id="' + uid + '"]');
         console.log(elem);
         if (elem.length > 0) {
             elem.fadeOut('fast', function() { $(this).remove() });

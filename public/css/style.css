@@ -92,6 +92,10 @@ h1 {
     margin-bottom: 5px;
 }
 
+#canvas {
+    height: 100%;
+}
+
 #globalSearchText {
     height: 23px;
 }
