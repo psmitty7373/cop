@@ -1215,14 +1215,17 @@ $(window).on('load', function () {
                 // notes
                 case 'get_notes':
                     notesTabulator.setData(msg.arg);
+                    notesTabulator.setSort('name', 'asc');
                     break;
 
                 case 'insert_note':
                     notesTabulator.addRow(msg.arg);
+                    notesTabulator.setSort('name', 'asc');
                     break;
 
                 case 'update_note':
                     notesTabulator.updateRow(msg.arg._id, msg.arg);
+                    notesTabulator.setSort('name', 'asc');
                     break;
 
                 case 'delete_note':

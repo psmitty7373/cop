@@ -215,19 +215,6 @@ $(window).on('load', function () {
         layout: "fitColumns",
         index: '_id',
         selectable: 'highlight',
-        cellEdited: function (cell) {
-            /*
-            var row = cell.getRow().getData();
-            row = cleanupRow(row);
-            delete row.username;
-            delete row.user_id;
-            socket.send(JSON.stringify({
-                act: 'update_event',
-                arg: row,
-                msgId: msgHandler()
-            }));
-            */
-        },
         columns: [{
                 title: '_id',
                 field: '_id',
@@ -236,7 +223,7 @@ $(window).on('load', function () {
             {
                 title: 'Name',
                 field: 'name',
-                editable: function() { return permissions.write_access }
+                sorter: 'alphanum'
             },
             {
                 title: 'Modified',
