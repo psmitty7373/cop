@@ -178,7 +178,7 @@ function chatFinishMessage(_id) {
             header.show();
         }
 
-        var text = content.find('.messageInput').html();
+        var text = content.find('.messageInput').html().replace(/<br>/gi,'\n');
         var oldMessageSpan = content.find('.oldMessage');
         var oldMessage = oldMessageSpan.text();
         oldMessageSpan.remove();
