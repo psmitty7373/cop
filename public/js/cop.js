@@ -7,7 +7,7 @@ function getParameterByName(name, url) {
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
-mission_id = getParameterByName('mission');
+var mission_id = getParameterByName('mission');
 
 // ---------------------------- PERMISSIONS & BUTTONS ----------------------------------
 if (!permissions) {
@@ -28,49 +28,29 @@ var settings = {
     'toolbar': 400,
     'tables': 350
 };
-var earliest_messages = {}; //= 2147483647000;
 var userSelect = [];
 var missionUserSelect = [{ _id: '', user_id: '', username: '' }];
 var objectsLoaded = null;
-var updatingObject = false;
 var socket;
-var firstNode = null;
-var SVGCache = {};
 var resizeTimer = null;
 var updateSettingsTimer = null;
 
 var lastClick = null;
 var msgId = 0;
 var pendingMsg = [];
-var lastFillColor = '#000000';
-var lastStrokeColor = '#ffffff';
 var windowManager = null;
 var settingsTabulator;
 var timeline = null;
 var timelinePosition = null;
 var hasFocus = true;
+var presence = {};
+var eventsTabulator;
+var opnotesTabulator;
+
+var idleState = 'online';
+var idleTime = 0;
 
 var wsdb;
-var openDocs = {};
-var shareDBConnection;
-
-// ---------------------------- LOADING / CACHING OF STUFF ----------------------------------
-
-// check if objects are all added to the canvas before first draw
-// we're basically ready after this
-function checkIfObjectsLoaded() {
-    if (objectsLoaded.length == 0) {
-        console.log('objects loaded');
-        $('#modal').modal('hide');
-        //FIXME
-        // objects loaded, update the events tracker
-        //updateMinimapBg();
-        //canvas.requestRenderAll();
-        //canvas.renderOnAddRemove = true;
-    } else {
-        setTimeout(checkIfObjectsLoaded, 50);
-    }
-}
 
 // ---------------------------- SETTINGS COOKIE ----------------------------------
 function loadSettings() {
@@ -546,20 +526,35 @@ function deleteEvent(id) {
     }));
 }
 
+function idleIncrement() {
+    console.log(idleTime);
+    if (idleTime === 5 && idleState === 'online') { 
+        socket.send(JSON.stringify({
+            act: 'update_user_status',
+            arg: {
+                status: 'idle'
+            },
+            msgId: msgHandler()
+        }));
+        idleState = 'idle';
+    } else if (idleTime === 0 && idleState === 'idle') {
+        socket.send(JSON.stringify({
+            act: 'update_user_status',
+            arg: {
+                status: 'online'
+            },
+            msgId: msgHandler()
+        }));
+        idleState = 'online';
+    }
+    idleTime = idleTime + 1;
+}
+
 // READY!
 $(window).on('load', function () {
-    $('#modal-title').text('Please wait...');
-    $('#modal-body').html('<p>Loading COP, please wait...</p><img src="images/loading.gif"/>');
-    $('#modal-footer').html('');
-    //$('#modal').modal('show');
-
     // scrollbars
     $('#toolsForm').overlayScrollbars({
         className: "os-theme-light"
-    });
-    $('#notesForm').overlayScrollbars({
-        className: "os-theme-light",
-        overflowBehavior: { x: 'hidden' }
     });
     $('#filesForm').overlayScrollbars({
         className: "os-theme-light",
@@ -609,8 +604,7 @@ $(window).on('load', function () {
         socket = new WebSocket('ws://' + window.location.host + '/mcscop/');
         wsdb = new WebSocket('ws://' + window.location.host + '/sharedb/');
     }
-    shareDBConnection = new ShareDB.Connection(wsdb);
-
+    
     // ---------------------------- TABLES ----------------------------------   
     // bottom table tabs
     $('#chatTab').click(function () {
@@ -1016,7 +1010,29 @@ $(window).on('load', function () {
 
     // load settings from cookie
     loadSettings();
-    //resizeCanvas();
+
+    // ---------------------------- SHAREDB SOCKET STUFF ----------------------------------
+    wsdb.onopen = function () {
+        setTimeout(function () {
+            console.log('joining sharedb: ' + mission_id);
+            wsdb.send(JSON.stringify({
+                act: 'join',
+                arg: {
+                    mission_id: mission_id
+                }
+            }));
+        }, 100);
+        
+    };
+
+    wsdb.onmessage = function (msg) {
+        msg = JSON.parse(msg.data);
+        switch (msg.act) {
+            case 'ack':
+                shareDBConnection = new ShareDB.Connection(wsdb);
+                break;
+        }
+    };
 
     // ---------------------------- DIAGRAM SOCKET STUFF ----------------------------------
     socket.onopen = function () {
@@ -1043,178 +1059,205 @@ $(window).on('load', function () {
     };
 
     // message handler
-    socket.onmessage = function (msg) {
-        msg = JSON.parse(msg.data);
-        switch (msg.act) {
-            // general
-            case 'ack':
-                clearTimeout(pendingMsg[msg.arg]);
-                delete pendingMsg[msg.arg];
-                break;
+    socket.onmessage = function (rawMsg) {
+        var msgs = JSON.parse(rawMsg.data);
+        if (!Array.isArray(msgs)) {
+            msgs = [msgs];
+        }
+        for (var m = 0; m < msgs.length; m++) {
+            var msg = msgs[m];
+            switch (msg.act) {
+                // general
+                case 'ack':
+                    clearTimeout(pendingMsg[msg.arg]);
+                    delete pendingMsg[msg.arg];
+                    break;
 
-            case 'error':
-                $('#modal-close').hide();
-                $('#modal-header').html('Error!');
-                $('#modal-body').html('<p>' + msg.arg.text + '</p>');
-                $('#modal-footer').html('');
-                $('#modal-content').removeAttr('style');
-                $('#modal-content').removeClass('modal-details');
-                $('#modal').removeData('bs.modal').modal({});
-                break;
+                case 'msg':
+                    $('#modal-close').hide();
+                    $('#modal-header').html(msg.arg.title);
+                    $('#modal-body').html('<p>' + msg.arg.text + '</p>');
+                    $('#modal-footer').html('');
+                    $('#modal-content').removeAttr('style');
+                    $('#modal-content').removeClass('modal-details');
+                    $('#modal').removeData('bs.modal').modal({});
+                    break;
 
-            // getters
-            case 'join':
-            // objects
-                break;
+                // getters
+                case 'join':
+                    break;
 
-            case 'update_graph':
-                graphExecuteChanges(model, msg.arg);
-                break;
+                // graph
+                case 'update_graph':
+                    graphExecuteChanges(model, msg.arg);
+                    break;
 
-            case 'get_graph':
-                graphLoad(msg.arg);
-                break;
+                case 'get_graph':
+                    graphLoad(msg.arg);
+                    break;
 
-            case 'get_opnotes':
-                opnotesTabulator.setData(msg.arg);
-                break;
+                // users
+                case 'get_users':
+                    userSelect = msg.arg;
+                    break;
 
-            case 'get_users':
-                userSelect = msg.arg;
-                break;
+                // chat
+                case 'get_chats':
+                    chatAddMessage(msg.arg, true, true);
+                    break;
 
-            // chat
-            case 'get_chats':
-                chatAddMessage(msg.arg, true, true);
-                break;
+                case 'delete_chat':
+                    chatDeleteMessage(msg.arg);
+                    break;
 
-            case 'delete_chat':
-                chatDeleteMessage(msg.arg);
-                break;
+                case 'bulk_chat':
+                    chatAddMessage(msg.arg, true);
+                    break;
 
-            case 'bulk_chat':
-                chatAddMessage(msg.arg, true);
-                break;
+                case 'chat':
+                    chatAddMessage(msg.arg);
+                    break;
 
-            case 'chat':
-                chatAddMessage(msg.arg);
-                break;
+                case 'update_chat':
+                    chatUpdateMessage(msg.arg);
+                    break;
 
-            case 'update_chat':
-                chatUpdateMessage(msg.arg);
-                break;
+                case 'update_user_status':
+                    chatUpdateUserStatus(msg.arg);
+                    break;
+                
+                case 'get_chat_channels':
+                case 'insert_chat_channel':
+                    chatAddChannels(msg.arg)
+                    break;
 
-            case 'update_user_status':
-                chatUpdateUserStatus(msg.arg);
-                break;
-            
-            case 'get_channels':
-            case 'insert_chat_channel':
-                chatAddChannels(msg.arg)
-                break;
+                // events
+                case 'get_events':
+                    eventsTabulator.setData(msg.arg);
+                    break;
 
-            // events
-            case 'get_events':
-                eventsTabulator.setData(msg.arg);
-                break;
+                case 'insert_event':
+                    eventsTabulator.addRow(msg.arg);
+                    break;
 
-            case 'insert_event':
-                eventsTabulator.addRow(msg.arg);
-                break;
+                case 'update_event':
+                    eventsTabulator.updateRow(msg.arg._id, msg.arg);
+                    break;
 
-            case 'update_event':
-                eventsTabulator.updateRow(msg.arg._id, msg.arg);
-                break;
+                case 'delete_event':
+                    eventsTabulator.deleteRow(msg.arg);
+                    break;
 
-            case 'delete_event':
-                eventsTabulator.deleteRow(msg.arg);
-                break;
+                // opnotes
+                case 'get_opnotes':
+                    opnotesTabulator.setData(msg.arg);
+                    break;
 
-            // opnotes
-            case 'get_events':
-                eventsTabulator.setData(msg.arg);
-                break;
+                case 'insert_opnote':
+                    opnotesTabulator.addRow(msg.arg);
+                    break;
 
-            case 'insert_opnote':
-                opnotesTabulator.addRow(msg.arg);
-                break;
+                case 'update_opnote':
+                    opnotesTabulator.updateRow(msg.arg._id, msg.arg);
+                    break;
 
-            case 'update_opnote':
-                opnotesTabulator.updateRow(msg.arg._id, msg.arg);
-                break;
+                case 'delete_opnote':
+                    opnotesTabulator.deleteRow(msg.arg);
+                    break;
 
-            case 'delete_opnote':
-                opnotesTabulator.deleteRow(msg.arg);
-                break;
+                // files
+                case 'get_files':
+                    addFiles(msg.arg);
+                    break;
 
-            // files
-            case 'get_files':
-                addFiles(msg.arg);
-                break;
+                case 'insert_file':
+                    addFiles([msg.arg]);
+                    break;
 
-            case 'insert_file':
-                addFiles([msg.arg]);
-                break;
-
-            case 'update_file':
-                var node = $('#files').jstree(true).get_node(msg.arg._id);
-                if (node && node.text !== msg.arg.name) {
-                    $('#files').jstree(true).rename_node(msg.arg._id, msg.arg.name);
-                }
-                if (node && node.parent !== msg.arg.parent) {
-                    $('#files').jstree(true).move_node(msg.arg._id, msg.arg.parent);
-                }
-                break;
-
-            case 'delete_file':
-                $('#files').jstree(true).delete_node(msg.arg);
-                break;
-
-            // notes
-            case 'get_notes':
-                notesAdd(msg.arg);
-                break;
-
-            case 'insert_note':
-                notesAdd([msg.arg]);
-                break;
-
-            case 'update_note':
-                $('#notes').jstree(true).rename_node(msg.arg._id, msg.arg.name);
-                break;
-
-            case 'delete_note':
-                $('#notes').jstree(true).delete_node(msg.arg);
-                break;
-
-            // users
-            case 'get_mission_users':
-                missionUserSelect = [{ _id: '', user_id: '', username: '' }];
-                for (var i = 0; i < msg.arg.length; i++) {
-                    missionUserSelect.push({ _id: msg.arg[i]._id, user_id: msg.arg[i].user_id, username: msg.arg[i].username})
-                }
-                settingsTabulator.setData(msg.arg);
-                break;
-
-            case 'insert_mission_user':
-                missionUserSelect.push({ _id: msg.arg.user_id, user_id: msg.arg.user_id, username: msg.arg.username})
-                settingsTabulator.addRow(msg.arg);
-                break;
-
-            case 'update_mission_user':
-                settingsTabulator.updateRow(msg.arg._id, msg.arg);
-                break;
-
-            case 'delete_mission_user':
-                for (var i = 0; i < missionUserSelect.length; i++) {
-                    if (missionUserSelect[i]._id === msg.arg) {
-                        console.log('delete');
-                        missionUserSelect.splice(i, 1);
-                        break;
+                case 'update_file':
+                    var node = $('#files').jstree(true).get_node(msg.arg._id);
+                    if (node && node.text !== msg.arg.name) {
+                        $('#files').jstree(true).rename_node(msg.arg._id, msg.arg.name);
                     }
-                }
-                settingsTabulator.deleteRow(msg.arg);
-                break; 
+
+                    if (node && node.parent !== msg.arg.parent) {
+                        $('#files').jstree(true).move_node(msg.arg._id, msg.arg.parent);
+                    }
+                    break;
+
+                case 'delete_file':
+                    $('#files').jstree(true).delete_node(msg.arg);
+                    break;
+                
+                // presence
+                case 'get_presence':
+                    presence = msg.arg;
+                    break;
+
+                case 'insert_presence':
+                    if (!presence[msg.arg.doc]) {
+                        presence[msg.arg.doc] = {};
+                    }
+
+                    if (!presence[msg.arg.doc][msg.arg.user_id]) {
+                        presence[msg.arg.doc][msg.arg.user_id] = msg.arg.presence;
+                        notesInsertPresence(msg.arg.doc, msg.arg.user_id, msg.arg.presence.username);
+                    }
+                    break;
+
+                case 'delete_presence':
+                    if (presence[msg.arg.doc] && presence[msg.arg.doc][msg.arg.user_id]) {
+                        delete presence[msg.arg.doc][msg.arg.user_id];
+                        notesDeletePresence(msg.arg.doc, msg.arg.user_id);
+                    }
+                    break;
+
+                // notes
+                case 'get_notes':
+                    notesTabulator.setData(msg.arg);
+                    break;
+
+                case 'insert_note':
+                    notesTabulator.addRow(msg.arg);
+                    break;
+
+                case 'update_note':
+                    notesTabulator.updateRow(msg.arg._id, msg.arg);
+                    break;
+
+                case 'delete_note':
+                    notesTabulator.deleteRow(msg.arg);
+                    break;
+
+                // users
+                case 'get_mission_users':
+                    missionUserSelect = [{ _id: '', user_id: '', username: '' }];
+                    for (var i = 0; i < msg.arg.length; i++) {
+                        missionUserSelect.push({ _id: msg.arg[i]._id, user_id: msg.arg[i].user_id, username: msg.arg[i].username})
+                    }
+                    settingsTabulator.setData(msg.arg);
+                    break;
+
+                case 'insert_mission_user':
+                    missionUserSelect.push({ _id: msg.arg.user_id, user_id: msg.arg.user_id, username: msg.arg.username})
+                    settingsTabulator.addRow(msg.arg);
+                    break;
+
+                case 'update_mission_user':
+                    settingsTabulator.updateRow(msg.arg._id, msg.arg);
+                    break;
+
+                case 'delete_mission_user':
+                    for (i = 0; i < missionUserSelect.length; i++) {
+                        if (missionUserSelect[i]._id === msg.arg) {
+                            console.log('delete');
+                            missionUserSelect.splice(i, 1);
+                            break;
+                        }
+                    }
+                    settingsTabulator.deleteRow(msg.arg);
+                    break; 
+            }
         }
     };
 
@@ -1240,6 +1283,22 @@ $(window).on('load', function () {
 
     $(window).blur(function() {
         hasFocus = false;
+    });
+
+    // idle tracking
+    $(window).mousemove(function () {
+        idleTime = 0;
+    });
+
+    $(window).keypress(function () {
+        idleTime = 0;
+    });
+
+    // start idle counter (5-min)
+    setInterval(idleIncrement, 1000  * 60 * 5);
+
+    $('body').tooltip({
+        selector: '[data-toggle=tooltip]'
     });
 
     wsdb.onclose = socket.onclose;

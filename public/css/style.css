@@ -74,26 +74,15 @@ h1 {
     padding: 5px;
 }
 
+.presenceAvatar {
+    width: 20px;
+    height: 20px;
+    border-radius: 2px;
+}
+
 .myavatar {
     float: left;
     margin-right: 10px;
-}
-
-.message {
-    display: flex;
-}
-
-.messageAvatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 4px;
-}
-
-.messageGutter {
-    width: 36px;
-    left: 0px;
-    margin-right: 5px;
-    float: left;
 }
 
 #diagramJumbo {
@@ -187,6 +176,9 @@ h1 {
     background-color: #222;
     border: 0px;
     border-radius: 0px;
+    padding: 4px;
+    display: block;
+    min-height: 28px;
 }
 
 .ql-editor {
@@ -345,9 +337,7 @@ h1 {
 }
 
 .tableHeader {
-    padding-top: 5px;
-    padding-left: 5px;
-    padding-right: 5px;
+    padding: 5px 10px 0px 10px;
 }
 
 .tableTitle {
@@ -364,7 +354,7 @@ h1 {
     flex: 1;
     height: 100%;
     overflow-y: auto;
-    padding: 10px;
+    padding: 0px 10px 10px 10px;
 }
 
 .tabFloat {

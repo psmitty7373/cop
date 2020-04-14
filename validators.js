@@ -203,14 +203,30 @@ const update_mission_user = {
     additionalProperties: false
 }
 
+const update_user_status = {
+    type: 'object',
+    properties: {
+        status: {
+            type: 'string',
+            'enum': ['online', 'idle', 'offline'],
+        },
+    },
+    required: ['status'],
+    additionalProperties: false
+}
+
 const insert_note = {
     type: 'object',
     properties: {
+        _id: {
+            type: 'string',
+        },
         name: {
             type: 'string',
             maxLength: 64
         }
     },
+    optional: ['_id'],
     required: ['name'],
     additionalProperties: false
 }
@@ -614,6 +630,7 @@ const empty = {
 };
 
 module.exports = {
+    get_missions: empty,
     get_users: empty,
     insert_chat: insert_chat,
     update_chat: update_chat,
@@ -623,6 +640,7 @@ module.exports = {
     insert_user: insert_user,
     update_user: update_user,
     delete_user: delete_row,
+    update_user_status: update_user_status,
     insert_mission: insert_mission,
     update_mission: update_mission,
     delete_mission: delete_row,

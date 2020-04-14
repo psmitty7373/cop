@@ -4,6 +4,7 @@ html
     link(id='favicon', rel='icon', href='images/favicon.ico', type='image/x-icon')
     link(rel='stylesheet', href='css/jquery-ui.min.css')
     link(rel='stylesheet', href='css/OverlayScrollbars.min.css')
+    link(rel='stylesheet', href='css/tabulator_bootstrap.min.css')
     link(rel='stylesheet', href='css/tabulator_custom.css')
     link(rel='stylesheet', href='css/bootstrap.darkly.min.css')
     link(rel='stylesheet', href='css/tempusdominus-bootstrap-4.min.css')
@@ -59,7 +60,12 @@ html
 
           div#toolbarBody
             div#notesForm.toolbarForm
-              div#notes
+              div#notes.tableContainer
+                div.tableHeader
+                  h5.tableTitle Notes
+                div.tableBody
+                  table#notesTable
+
             div#filesForm.toolbarForm
               div#files
               div#progressbarContainer
@@ -68,7 +74,7 @@ html
             div#toolsForm.toolbarForm
               div#tools
                 div#toolbarNewGroup
-                  span.toolbarTitle New Object
+                  h5 Tools
                   div#toolbarIcons
                     div#toolbarIconsHeader
 

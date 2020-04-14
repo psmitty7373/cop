@@ -3,6 +3,7 @@ var activeChannelType = '';
 var firstChat = true;
 var channels = {};
 var userStatuses = {};
+var earliest_messages = {}; //= 2147483647000;
 
 // ---------------------------- CHAT / LOG WINDOW  ----------------------------------
 function notification(msg) {
@@ -137,12 +138,16 @@ function chatUpdateUserStatus(statuses) {
     for (var i = 0; i < statuses.length; i++) {
         var elem = $('#label' + statuses[i]._id).find('.chatStatusIndicator');
         if (elem) {
-            if (statuses[i].status === 'online') {
-                
-                elem.addClass('chatStatusOnline');
-            }
-            else {
-                elem.removeClass('chatStatusOnline');
+            switch (statuses[i].status) {
+                case 'online':
+                    elem.css('color', '#39e500');
+                    break;
+                case 'idle':
+                    elem.css('color', 'yellow');
+                    break;
+                default:
+                    elem.css('color', 'red');
+                    break;
             }
         }
     }
@@ -279,11 +284,13 @@ function chatAddChannels(c) {
         if (c[i].type === 'channel') {
             $('#chatChannelsHeading').after('<div class="channel channelLabel' + selected + '" id="label' + c[i]._id + '" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"># ' + c[i].name + '</div><div id="unread' + c[i]._id + '" class="channelUnread" style="display: none;"></div>' + deleteButton + '</div>');        
         } else if (c[i].type === 'user') {
-            var status = '';
+            var color = 'red';
             if (c[i].status === 'online') {
-                status = 'chatStatusOnline';
+                color = '#39e500';
+            } else if (c[i].status === 'idle') {
+                color = 'yellow';
             }
-            $('#chatUsersHeading').after('<div class="channel userLabel' + selected + '" id="label' + c[i]._id + '" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"><span class="chatStatusIndicator ' + status + ' fa fa-circle"></span>' + c[i].name + '</div><div id="unread' + c[i]._id + '" class="channelUnread" style="display: none;"></div></div>');
+            $('#chatUsersHeading').after('<div class="channel userLabel' + selected + '" id="label' + c[i]._id + '" data-type="' + c[i].type + '" data-name="' + c[i].name + '"><div class="channelName"><span class="chatStatusIndicator fa fa-circle" style="color: ' + color + '"></span>' + c[i].name + '</div><div id="unread' + c[i]._id + '" class="channelUnread" style="display: none;"></div></div>');
         }
 
         // append the pane
@@ -424,9 +431,8 @@ function chatAddMessage(messages, bulk, scroll) {
             // if message is an alert, show a notification
             if (!bulk && user_id != tuser_id) {
                 notification(messages[i]);
-                if (messages[i].text.search('@' + username) >= 0 || messages[i].text.search('@alert') >= 0) {
-                    
-                }
+                /*if (messages[i].text.search('@' + username) >= 0 || messages[i].text.search('@alert') >= 0) {
+                }*/
             }
 
             // not the active channel

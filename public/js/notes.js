@@ -1,15 +1,27 @@
 var colors = {};
+var notesTabulator;
+var openDocs = {};
+var shareDBConnection;
 
-function notesAdd(notes) {
-    for (var i = 0; i < notes.length; i++) {
-        var node = { id: notes[i]._id, text: notes[i].name, icon: 'jstree-file', type: notes[i].type, li_attr: { isLeaf: true } };
-        var parent = 'notes';
-        if (notes[i].type === 'object') {
-            parent = 'objects';
+function notesInsertPresence(id, user_id, username) {
+    var window = windowManager.findWindowByID(id);
+    if (window) {
+        if (window.getElement().find('[data-user_id="' + user_id + '"]').length == 0) {
+            var elem = window.getElement().find('.modal-footer').append('<a href="#" data-user_id="' + user_id + '" data-sort="' + username + '" data-toggle="tooltip" data-placement="top" title="' + username + '"><img class="presenceAvatar" src="images/avatars/' + user_id + '.png" data-toggle="tooltip" data-placement="bottom"></a>');
+            elem.fadeIn('fast');
         }
-        $('#notes').jstree().create_node(parent, node);
     }
-    $('#notes').jstree()
+}
+
+function notesDeletePresence(id, user_id) {
+    var window = windowManager.findWindowByID(id);
+    if (window) {
+        var elem = window.getElement().find('[data-user_id="' + user_id + '"]');
+        console.log(elem);
+        if (elem.length > 0) {
+            elem.fadeOut('fast', function() { $(this).remove() });
+        }
+    }
 }
 
 function notesEdit(id, name) {
@@ -45,14 +57,24 @@ function notesEdit(id, name) {
 
                 if (openDocs[id].doc.type.name === 'rich-text') {
                     // create window
+                    var presenceImgs = '';
+                    if (presence[id]) {
+                        var presenceUsers = Object.keys(presence[id]);
+                        for (var i = 0; i < presenceUsers.length; i++) {
+                            if (presenceUsers[i] != user_id && presence[id][presenceUsers[i]]) {
+                                presenceImgs += '<a href="#" data-user_id="' + presenceUsers[i] + '" data-sort="' + presence[id][presenceUsers[i]].username + '" data-toggle="tooltip" data-placement="top" title="' + presence[id][presenceUsers[i]].username + '"><img class="presenceAvatar" src="images/avatars/' + presenceUsers[i] + '.png" data-toggle="tooltip" data-placement="bottom"></a>';
+                            }
+                        }
+                    }
                     var w = windowManager.createWindow({
                         sticky: false,
                         title: name,
                         effect: 'none',
-                        bodyContent: '<div id="object_details_' + id + '" class="object-details" style="resize: none;"></div>',
+                        id: id,
+                        bodyContent: '<div id="notes_' + id + '" class="object-details" style="resize: none;"></div>',
+                        footerContent: presenceImgs,
                         closeCallback: function () {
-                            openDocs[id].localPresence.destroy();
-                            //openDocs[id].presence.destroy();
+                            openDocs[id].presence.destroy();                   
                             openDocs[id].doc.destroy();
                             delete openDocs[id].cursors;
                             delete openDocs[id].quill;
@@ -69,7 +91,7 @@ function notesEdit(id, name) {
                     });
 
                     // start quill
-                    openDocs[id].quill = new Quill('#object_details_' + id, {
+                    openDocs[id].quill = new Quill('#notes_' + id, {
                         theme: 'snow',
                         readOnly: !rw,
                         modules: {
@@ -98,6 +120,15 @@ function notesEdit(id, name) {
                         });
                     });
 
+                    openDocs[id].doc.on('op', function (op, source) {
+                        if (source === openDocs[id].quill) return;
+                        openDocs[id].quill.updateContents(op);
+                    });
+
+                    openDocs[id].doc.on('error', function(err) {
+                        console.log(err);
+                    });
+
                     openDocs[id].presence = openDocs[id].doc.connection.getDocPresence('sharedb', id);
                     openDocs[id].presence.subscribe(function(err) {
                         if(err) throw err;
@@ -105,11 +136,6 @@ function notesEdit(id, name) {
                     var cid  = ObjectId().toString();
                     openDocs[id].localPresence = openDocs[id].presence.create(cid);
 
-                    openDocs[id].doc.on('op', function (op, source) {
-                        if (source === openDocs[id].quill) return;
-                        openDocs[id].quill.updateContents(op);
-                    });
-                    
                     openDocs[id].quill.on('selection-change', function(range) {
                         // Ignore blurring, so that we can see lots of users in the
                         // same window. In real use, you may want to clear the cursor.
@@ -124,13 +150,17 @@ function notesEdit(id, name) {
                     });
 
                     openDocs[id].presence.on('receive', function(rid, range) {
+                        if (!openDocs[id]) {
+                            console.log('here');
+                            return;
+                        }
                         colors[rid] = colors[rid] || '#'+Math.floor(Math.random()*16777215).toString(16);                        ;
                         var name = (range && range.name) || 'Anonymous';
                         openDocs[id].cursors.createCursor(id, name, colors[rid]);
                         openDocs[id].cursors.moveCursor(id, range);
                     });
 
-                    $('#object_details_' + id).overlayScrollbars({
+                    $('#notes_' + id).overlayScrollbars({
                         className: "os-theme-dark"
                     });
 
@@ -145,7 +175,7 @@ function notesEdit(id, name) {
                         sticky: false,
                         title: name,
                         effect: 'none',
-                        bodyContent: '<textarea id="object_details_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
+                        bodyContent: '<textarea id="notes_' + id + '" class="object-details" style="resize: none; height: 100%"' + disabled + '></textarea>',
                         closeCallback: function () {
                             openDocs[id].localPresence.destroy();
                             //openDocs[id].presence.destroy();
@@ -175,139 +205,49 @@ function notesEdit(id, name) {
     }
 }
 
-$(window).on('load', function () {
-    $('#notes')
-        .on('select_node.jstree', function (e, data) {
-            var name = '';
-            if (data.node && data.node.text)
-                name = data.node.text;
-            if (data.node.li_attr.isLeaf) {
-                notesEdit(data.selected[0], name);
-            }
-        }).jstree({
-            'core': {
-                'check_callback': true,
-                'data': [{
-                    id: "/",
-                    text: "/",
-                    icon: "jstree-folder",
-                    state: {
-                        opened: true,
-                        disabled: false,
-                        selected: false
-                    },
-                    li_attr: {
-                        base: "#",
-                        isLeaf: false
-                    },
-                    children : [{
-                        id: "notes",
-                        text: "notes",
-                        icon: "jstree-folder",
-                        state: {
-                            opened: true,
-                            disabled: false,
-                            selected: false
-                        },
-                        li_attr: {
-                            base: "/",
-                            isLeaf: false
-                        },
-                        children : []
-                    },{
-                        id: "objects",
-                        text: "objects",
-                        icon: "jstree-folder",
-                        state: {
-                            opened: true,
-                            disabled: false,
-                            selected: false
-                        },
-                        li_attr: {
-                            base: "/",
-                            isLeaf: false
-                        },
-                        children : []
-                    }]
-                }]
-            },
-            'plugins': ['wholerow', 'contextmenu', 'sort'],
-            'contextmenu': {
-                'select_node': false,
-                'items': function (node) {
-                    if (!node.li_attr.isLeaf) {
-                        if (permissions.write_access && node.id === 'notes' ) {
-                            return { newnote: {
-                                'separator_before': false,
-                                'separator_after': false,
-                                'label': 'New Note',
-                                'action': function (obj) {
-                                    var _node = node;
-                                    bootbox.prompt('Note name?', function (name) {
-                                        if (name !== null) {
-                                            socket.send(JSON.stringify({
-                                                act: 'insert_note',
-                                                arg: {
-                                                    name: name
-                                                },
-                                                msgId: msgHandler()
-                                            }));
-                                        }
-                                    });
-                                }
-                            }};
-                        }
-                        return {};
-                    }
-                    else {
-                        var menu = { 'open': {
-                            'separator_before': false,
-                            'separator_after': false,
-                            'label': 'Open',
-                            'action': function (obj) {
-                                var _node = node;
-                                notesEdit(node.id, node.text);
-                            }
-                        }};
+function dateMutator(value, data, type, params, component) {
+    return epochToDateString(value);
+}
 
-                        if (permissions.write_access && node.parent === 'notes') {
-                            menu.renamenote = {
-                                'separator_before': false,
-                                'separator_after': false,
-                                'label': 'Rename',
-                                'action': function (obj) {
-                                    var _node = node;
-                                    bootbox.prompt('Rename note to?', function (name) {
-                                        if (name !== null) {
-                                            socket.send(JSON.stringify({
-                                                act: 'update_note',
-                                                arg: {
-                                                    _id: node.id,
-                                                    name: name
-                                                },
-                                                msgId: msgHandler()
-                                            }));
-                                        }
-                                    });
-                                }
-                            };
-                        }
-                        
-                        if (permissions.delete_access && node.parent === 'notes') {
-                            menu.del = {
-                                'separator_before': false,
-                                'separator_after': false,
-                                'label': 'Delete Note',
-                                'action': function (obj) {
-                                    deleteConfirm('notesDelete(\'' + node.id + '\')');
-                                }
-                            };
-                        }
-                        return menu;
-                    }
-                }
+
+$(window).on('load', function () {
+    notesTabulator = new Tabulator("#notesTable", {
+        layout: "fitColumns",
+        index: '_id',
+        selectable: 'highlight',
+        cellEdited: function (cell) {
+            /*
+            var row = cell.getRow().getData();
+            row = cleanupRow(row);
+            delete row.username;
+            delete row.user_id;
+            socket.send(JSON.stringify({
+                act: 'update_event',
+                arg: row,
+                msgId: msgHandler()
+            }));
+            */
+        },
+        columns: [{
+                title: '_id',
+                field: '_id',
+                visible: false
+            },
+            {
+                title: 'Name',
+                field: 'name',
+                editable: function() { return permissions.write_access }
+            },
+            {
+                title: 'Modified',
+                field: 'mtime',
+                mutator: dateMutator
             }
-        });
+        ],
+        rowClick: function(e, row) {
+            notesEdit(row.getData()._id, row.getData().name);
+        }
+    });
 });
 
 function notesDelete(id) {

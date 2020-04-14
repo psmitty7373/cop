@@ -219,9 +219,9 @@ $(window).on('load', function () {
                 delete pendingMsg[msg.arg];
                 break;
 
-            case 'error':
+            case 'msg':
                 $('#modal-close').hide();
-                $('#modal-header').html('Error!');
+                $('#modal-header').html(msg.arg.title);
                 $('#modal-body').html('<p>' + msg.arg.text + '</p>');
                 $('#modal-footer').html('');
                 $('#modal-content').removeAttr('style');

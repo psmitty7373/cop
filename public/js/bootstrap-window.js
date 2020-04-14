@@ -76,7 +76,7 @@
             options.elements.handle.append('<div class="close fa fa-cancel-circled taskbarClose" data-dismiss="window"></div>');
         }
         options.elements.body.html(options.bodyContent);
-        //options.elements.footer.html(options.footerContent);
+        options.elements.footer.html(options.footerContent);
 
         this.undock();
 
@@ -517,7 +517,6 @@
     };
 
     Window.prototype.blink = function () {
-        console.log('blink');
         var _this = this,
             active = this.$el.hasClass('active'),
             windowTab = this.getWindowTab(),
@@ -623,7 +622,7 @@ var WindowManager = null;
         var returnVal = false;
         $.each(this.windows, function (index, window) {
             if (window === window_handle) {
-                window_handle.close();
+                //window_handle.close();
                 _this.windows.splice(index, 1);
                 _this.resortWindows();
                 returnVal = true;
@@ -691,9 +690,10 @@ var WindowManager = null;
     WindowManager.prototype.addWindow = function (window_object) {
         var _this = this;
         window_object.getElement().on('focused', function (event) {
+
             _this.setFocused(window_object);
         });
-        window_object.getElement().on('close', function () {
+        window_object.getElement().on('bsw.close', function () {
             _this.destroyWindow(window_object);
             if (window_object.getWindowTab()) {
                 window_object.getWindowTab().remove();
@@ -744,7 +744,6 @@ var WindowManager = null;
         }
 
         var newWindow = new Window(final_options);
-
         return this.addWindow(newWindow);
     };
 })(jQuery);
