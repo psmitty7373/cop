@@ -504,14 +504,14 @@ function mxRootChange(change, graph) {
     return undefined;
 }
 
-function mxChildChange(change, graph, socket) {
+function mxChildChange(change, graph, mission_id) {
     // delete
     if (change.parent === undefined) {
         for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
 
-                deleteNote(socket, { _id: change.child });
+                deleteNote({ mission_id: mission_id }, { _id: change.child });
                 return change;
             }
         }
@@ -526,7 +526,13 @@ function mxChildChange(change, graph, socket) {
     // insert
     } else if (change.mxCell) {
         graph.mxGraphModel.root.mxCell.push(change.mxCell);
-        insertNote(socket, { _id: change.mxCell.id, name: change.mxCell.id });
+        var name = change.mxCell.id;
+        if (change.mxCell.filename) {
+            name = change.mxCell.filename;
+        } else if (change.mxCell.value) {
+            name = change.mxCell.value;
+        }
+        insertNote({ mission_id: mission_id }, { _id: change.mxCell.id, name: name });
         return change;
     }
 }
@@ -2486,7 +2492,7 @@ async function setupGraphSocket(socket) {
                         
                         switch(type) {
                             case 'mxChildChange':
-                                res[type] = mxChildChange(msg.arg[i].mxChildChange, graph, socket);
+                                res[type] = mxChildChange(msg.arg[i].mxChildChange, graph, socket.mission_id);
                                 break;
                             case 'mxGeometryChange':
                                 res[type] = mxGeometryChange(msg.arg[i].mxGeometryChange, graph);
@@ -2969,25 +2975,25 @@ app.post('/upload', upload.any(), function (req, res) {
 
                         if (req.body.channel_id) {
                             newFile.parent_id = res.chat_files_root;
-                            var new_id = await insertFile(s, newFile, true);
+                            var fileRow = await insertFile(s, newFile, true);
                             
                             if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
                                 insertChat(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
                             } else {
-                                insertChat(s, { text: '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
+                                insertChat(s, { text: '<a href="/download?file_id=' + fileRow._id + '&mission_id=' + req.body.mission_id + '"><div class="chatFile"><img class="chatIcon" src="/images/file_types/' + extension + '.svg"><div class="chatFileDescription"><div class="chatFileName">' + file.originalname + '</div><div class="chatFileSize">' + mimestr + ' (' + readableBytes(file.size) + ')</div></div></div></a>', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
                             }
 
                         // file upload to graph
                         } else {
                             newFile.parent_id = res.graph_files_root;
-                            new_id = await insertFile(s, newFile, true);
+                            fileRow = await insertFile(s, newFile, true);
 
                             var position = JSON.parse(req.body.position);
-                            var url = '<a href="/download?file_id=' + new_id + '&mission_id=' + req.body.mission_id + '">' + file.originalname + '</a>';
-                            var change = [{ type: 'mxChildChange', mxChildChange: { parent: 1, mxCell: { id: objectid(null).toString(), mxGeometry: { x: position.x, y: position.y, width: 30, height: 30 }, parent: '1', style: 'editable=0;html=1;shape=image;image=/images/file_types/' + extension + '.svg', value: url, vertex: true }}}]
+                            var url = '<a href="/download?file_id=' + fileRow._id + '&mission_id=' + req.body.mission_id + '">' + file.originalname + '</a>';
+                            var change = [{ type: 'mxChildChange', mxChildChange: { parent: 1, mxCell: { id: objectid(null).toString(), mxGeometry: { x: position.x, y: position.y, width: 30, height: 30 }, parent: '1', style: 'editable=0;html=1;shape=image;image=/images/file_types/' + extension + '.svg', filename: fileRow.name, value: url, vertex: true }}}]
                             var graph = graphs.get(s.mission_id);
                             if (graph) {
-                                mxChildChange(change[0].mxChildChange, graph);
+                                mxChildChange(change[0].mxChildChange, graph, s.mission_id);
                                 sendToRoom(s.mission_id, JSON.stringify({ act: 'update_graph', arg: change }));
                             }
                         }

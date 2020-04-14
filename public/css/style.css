@@ -18,6 +18,14 @@ body {
     top: 0px;
 }
 
+a {
+    color: #3586db;
+}
+
+a:hover {
+    color: #375a7f;
+}
+
 h1,
 h2,
 h3,
