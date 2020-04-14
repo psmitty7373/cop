@@ -242,7 +242,7 @@ function graphStart(container) {
         mxEvent.disableContextMenu(container);
         mxPanningHandler.prototype.isForcePanningEvent = function(me)
         {
-            if (me.state) {
+            if (me.state && me.evt.button == 2) {
                 return true;
             }
         };
