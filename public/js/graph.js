@@ -238,13 +238,19 @@ function graphStart(container) {
         mxConstants.GUIDE_COLOR = '#FF0000';
         mxConstants.GUIDE_STROKEWIDTH = 1;
         mxEdgeHandler.prototype.snapToTerminals = true;
-
+        mxPanningHandler.prototype.ignoreCell = true;
         mxEvent.disableContextMenu(container);
+        mxPanningHandler.prototype.isForcePanningEvent = function(me)
+        {
+            if (me.state) {
+                return true;
+            }
+        };
+
         graph = new mxGraph(container, model);
         graph.setPanning(true);
-        new mxRubberband(graph);
-
         graph.setEnabled(permissions.write_access);
+        var rubberband = new mxRubberband(graph);
 
         // outline (minimap)
         var outline = new mxOutline(graph, document.getElementById('graphOutline'));
