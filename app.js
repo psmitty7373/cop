@@ -9,6 +9,12 @@ const cspEnabled = false;
 // ldap -> ldap authentication
 const authType = 'local';
 
+// mongodb hostname
+const mongoHost = process.env.MONGOHOST || 'localhost';
+
+// port
+const copPort = process.env.COPPORT || 3000;
+
 // LDAP settings
 const ldapAuth = require('ldap-authentication');
 const ldapServer = 'ldap://ldapserver';
@@ -192,13 +198,13 @@ app.use(session({
     saveUninitialized: true,
     resave: true,
     store: new mongostore({
-        url: 'mongodb://localhost/cop',
+        url: 'mongodb://' + mongoHost + '/cop',
         mongoOptions: {
             useNewUrlParser: true,
             useUnifiedTopology: true,
             wtimeout: 5000
         },
-        host: 'localhost',
+        host: mongoHost,
         collection: 'sessions',
         clear_interval: 3600
     })
@@ -214,7 +220,7 @@ if (cspEnabled) {
 // connect to mongo
 let backend = null;
 let mdb;
-const mongoclient = mongodb.connect('mongodb://localhost/cop', {
+const mongoclient = mongodb.connect('mongodb://' + mongoHost + '/cop', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
     wtimeout: 5000
@@ -1540,7 +1546,7 @@ async function insertFile(p, file, allowDupName) {
             }
         }
 
-        let res = await mdb.collection('missions').aggregate([{
+        res = await mdb.collection('missions').aggregate([{
             $match: {
                 _id: objectid(p.mission_id),
                 deleted: {
@@ -1627,7 +1633,7 @@ async function insertFile(p, file, allowDupName) {
                 hash: file.hash
             };
 
-            let res = await mdb.collection('missions').updateOne({
+            res = await mdb.collection('missions').updateOne({
                 _id: objectid(p.mission_id),
                 'files._id': objectid(file._id)
             }, {
@@ -2555,6 +2561,7 @@ async function setupGraphSocket(socket) {
                                     }));
                                 }
                             } catch (err) {
+                                console.log(err);
                                 socket.send(JSON.stringify({
                                     act: 'msg',
                                     arg: { title: 'Error!', text: err }
@@ -3057,13 +3064,13 @@ app.post('/upload', upload.any(), function (req, res) {
                     // file upload
                     if (req.body.parent_id) {
                         newFile.parent_id = req.body.parent_id;
-                        let res = await insertFile(s, newFile); 
+                        res = await insertFile(s, newFile); 
                         sendToRoom(s.mission_id, JSON.stringify({ act: 'insert_file', arg: res }));
                         callback();                       
                     }
                     // chat upload
                     else if (req.body.channel_id || req.body.position) {
-                        let res = await mdb.collection('missions').findOne({
+                        res = await mdb.collection('missions').findOne({
                             _id: objectid(req.body.mission_id),
                             deleted: {
                                 $ne: true
@@ -3181,6 +3188,6 @@ app.get("/images/file_types/*", function (req, res, next) {
 
 // -------------------------------------------------------------------------
 
-http.listen(3000, function () {
+http.listen(copPort, function () {
     logger.info('Server listening on port 3000!');
 });
