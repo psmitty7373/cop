@@ -4,6 +4,20 @@ const url = 'www.ironrain.org'
 // enable content security policy (this requires url to be set!)
 const cspEnabled = false;
 
+// authentication type
+// local -> mongodb instance (default)
+// ldap -> ldap authentication
+const authType = 'local';
+
+// LDAP settings
+const ldapAuth = require('ldap-authentication');
+const ldapServer = 'ldap://ldapserver';
+const ldapAdminDn = 'cn=admin,dc=example,dc=org'; // should be a read-only-user that can query ad
+const ldapAdminPassword = 'admin';
+const ldapSearchBase = 'dc=example,dc=org';
+const ldapUsernameAttribute = 'uid';
+
+// requires
 const Ajv = require('ajv');
 const validators = require('./validators.js');
 const express = require('express');
@@ -48,9 +62,9 @@ richText.type.transformPresence = function(presence, op, isOwnOp) {
       return null;
     }
   
-    var start = presence.index;
-    var end = presence.index + presence.length;
-    var delta = new richText.Delta(op);
+    let start = presence.index;
+    let end = presence.index + presence.length;
+    let delta = new richText.Delta(op);
     start = delta.transformPosition(start, !isOwnOp);
     end = delta.transformPosition(end, !isOwnOp);
   
@@ -98,7 +112,7 @@ ShareDB.Agent.prototype._ounsubscribe = ShareDB.Agent.prototype._unsubscribe;
 ShareDB.Agent.prototype._unsubscribe = function(collection, id, callback) {
     try {
         if (this.mission_id && this.user_id) {
-            var docs = presence[this.mission_id];
+            let docs = presence[this.mission_id];
 
             // decrement disconnected user from open docs
             if (--docs[id][this.user_id].count == 0) {
@@ -128,10 +142,10 @@ ShareDB.Agent.prototype._cleanup = function() {
     if (this.closed) return;
     try {
         if (this.mission_id && this.user_id && this.subscribedDocs && this.subscribedDocs.sharedb) {
-            var keys = Object.keys(this.subscribedDocs.sharedb);
-            var docs = presence[this.mission_id];
+            let keys = Object.keys(this.subscribedDocs.sharedb);
+            let docs = presence[this.mission_id];
 
-            for (var i = 0; i < keys.length; i++) {
+            for (let i = 0; i < keys.length; i++) {
                 // decrement disconnected user from open docs
                 if (--docs[keys[i]][this.user_id].count == 0) {
                     delete docs[keys[i]][this.user_id];
@@ -198,8 +212,8 @@ if (cspEnabled) {
 }
 
 // connect to mongo
-var backend = null;
-var mdb;
+let backend = null;
+let mdb;
 const mongoclient = mongodb.connect('mongodb://localhost/cop', {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -247,9 +261,9 @@ const mongoclient = mongodb.connect('mongodb://localhost/cop', {
                 if (timers[r.id]) {
                     clearTimeout(timers[r.id]);
                 }
-                var mission_id = r.agent.mission_id;
-                var id = r.id;
-                var ts = r.op.m.ts;            
+                let mission_id = r.agent.mission_id;
+                let id = r.id;
+                let ts = r.op.m.ts;            
                 timers[r.id] = setTimeout(function() { updateNoteMtime(mission_id, id, ts) }, 5000);
             }
         }
@@ -266,7 +280,7 @@ const ajv = new Ajv();
 
 Array.prototype.move = function (old_index, new_index) {
     if (new_index >= this.length) {
-        var k = new_index - this.length;
+        let k = new_index - this.length;
         while ((k--) + 1) {
             this.push(undefined);
         }
@@ -277,20 +291,20 @@ Array.prototype.move = function (old_index, new_index) {
 
 // https://ourcodeworld.com/articles/read/713/converting-bytes-to-human-readable-values-kb-mb-gb-tb-pb-eb-zb-yb-with-javascript
 function readableBytes(bytes) {
-    var i = Math.floor(Math.log(bytes) / Math.log(1024)),
+    let i = Math.floor(Math.log(bytes) / Math.log(1024)),
     sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
     return (bytes / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + sizes[i];
 }
 
 function dynamicSort(property) {
-    var sortOrder = 1;
+    let sortOrder = 1;
     if (property[0] === "-") {
         sortOrder = -1;
         property = property.substr(1);
     }
     return function (a, b) {
-        var result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
+        let result = (a[property] < b[property]) ? -1 : (a[property] > b[property]) ? 1 : 0;
         return result * sortOrder;
     }
 }
@@ -339,7 +353,7 @@ ws.on('connection', function (socket, req) {
         socket.session = '';
         socket.mission_id = 0;
 
-        var s = req.headers.cookie.split('session=s%3A')[1].split('.')[0];
+        let s = req.headers.cookie.split('session=s%3A')[1].split('.')[0];
         if (s) {
             socket.session = s;
             mdb.collection('sessions').findOne({
@@ -347,7 +361,7 @@ ws.on('connection', function (socket, req) {
             }, function (err, row) {
                 if (row) {
                     try {
-                        var data = JSON.parse(row.session);
+                        let data = JSON.parse(row.session);
                         socket.loggedin = data.loggedin;
                         socket.user_id = data.user_id;
                         socket.username = data.username;
@@ -395,7 +409,7 @@ async function loadGraph(mission_id) {
             return true;
         }
 
-        var mission = await mdb.collection('missions').findOne({
+        let mission = await mdb.collection('missions').findOne({
             _id: objectid(mission_id),
             deleted: {
                 $ne: true
@@ -421,11 +435,11 @@ async function loadGraph(mission_id) {
 
 async function saveGraph(mission_id, graph) {
     try {
-        var new_values = {};
+        let new_values = {};
 
         new_values.graph = graph;
 
-        var res = await mdb.collection('missions').updateOne({
+        let res = await mdb.collection('missions').updateOne({
             _id: objectid(mission_id)
         }, {
             $set: new_values
@@ -439,7 +453,7 @@ async function saveGraph(mission_id, graph) {
 }
 
 function mxTerminalChange(change, graph) {
-    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+    for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id == change.cell) {
             if (change.source == 1) {
                 if (change.terminal) {
@@ -461,7 +475,7 @@ function mxTerminalChange(change, graph) {
 }
 
 function mxGeometryChange(change, graph) {
-    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+    for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
             graph.mxGraphModel.root.mxCell[i].mxGeometry = change.mxGeometry;
             return change;
@@ -472,7 +486,7 @@ function mxGeometryChange(change, graph) {
 
 function mxValueChange(change, graph, socket) {
     change.value = xssFilters.inHTMLData(change.value);
-    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+    for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
             // make sure cell is editable
             if (graph.mxGraphModel.root.mxCell[i].style.indexOf('editable=0;') === -1) {
@@ -490,7 +504,7 @@ function mxValueChange(change, graph, socket) {
 }
 
 function mxStyleChange(change, graph) {
-    for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+    for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
         if (graph.mxGraphModel.root.mxCell[i].id === change.cell) {
             graph.mxGraphModel.root.mxCell[i].style = change.style;
             return change;
@@ -507,7 +521,7 @@ function mxRootChange(change, graph) {
 function mxChildChange(change, graph, mission_id) {
     // delete
     if (change.parent === undefined) {
-        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.splice(i, 1);
 
@@ -517,7 +531,7 @@ function mxChildChange(change, graph, mission_id) {
         }
     // move
     } else if (change.index !== undefined && change.child !== undefined) {
-        for (var i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
+        for (let i = 0; i < graph.mxGraphModel.root.mxCell.length; i++) {
             if (graph.mxGraphModel.root.mxCell[i].id === change.child) {
                 graph.mxGraphModel.root.mxCell.move(i, change.index);
                 return change;
@@ -526,7 +540,7 @@ function mxChildChange(change, graph, mission_id) {
     // insert
     } else if (change.mxCell) {
         graph.mxGraphModel.root.mxCell.push(change.mxCell);
-        var name = change.mxCell.id;
+        let name = change.mxCell.id;
         if (change.mxCell.filename) {
             name = change.mxCell.filename;
         } else if (change.mxCell.value) {
@@ -546,14 +560,13 @@ async function getPresence(p) {
         return {};
     }
 }
-
 // -------------------------------------------------------------------------------------------------------------------- PRESENCE
 
 // USERS -------------------------------------------------------------------------------------------------------------------
 // get user listing
 async function getUsers(p, limited) {
     try {
-        var projection = {
+        let projection = {
             password: 0,
             deleted: 0
         };
@@ -581,10 +594,10 @@ async function getUsers(p, limited) {
 }
 
 // insert new user
-async function insertUser(p, user) {
+async function insertUser(p, user, returnUser) {
     try {
-        var hash = await bcrypt.hash(user.password, 10);
-        var new_values = {};
+        let hash = await bcrypt.hash(user.password, 10);
+        let new_values = {};
         new_values.username = xssFilters.inHTMLData(user.username);
         new_values.name = xssFilters.inHTMLData(user.name);
         new_values.password = hash;
@@ -593,9 +606,10 @@ async function insertUser(p, user) {
         new_values.deleted = false;
         new_values.is_admin = user.is_admin;
     
-        var res = await mdb.collection('users').insertOne(new_values);
+        let res = await mdb.collection('users').insertOne(new_values);
+        new_values._id = res.ops[0]._id;
 
-        var channel = { _id: objectid(res.ops[0]._id), name: '', deleted: false, type: 'user', members: [objectid(res.ops[0]._id)] };
+        let channel = { _id: objectid(res.ops[0]._id), name: '', deleted: false, type: 'user', members: [objectid(res.ops[0]._id)] };
         await mdb.collection('channels').insertOne(channel);
 
         res.ops[0].password = '';
@@ -603,6 +617,11 @@ async function insertUser(p, user) {
             act: 'insert_user',
             arg: res.ops[0]
         }));
+
+        if (returnUser) {
+            return new_values;
+        }
+
         return false;
 
     } catch (err) {
@@ -618,7 +637,7 @@ async function updateUser(p, user) {
             user.is_admin = true; // make sure admin is always... admin            
         }
 
-        var new_values = {};
+        let new_values = {};
         if (user.password && user.password !== '') {
             new_values.password = await bcrypt.hash(user.password, 10);
         }
@@ -626,7 +645,7 @@ async function updateUser(p, user) {
         new_values.name = user.name;
         new_values.is_admin = user.is_admin;
 
-        var res = await mdb.collection('users').updateOne({
+        let res = await mdb.collection('users').updateOne({
             _id: objectid(user._id)
         }, {
             $set: new_values
@@ -664,7 +683,7 @@ async function updateUser(p, user) {
 // delete user
 async function deleteUser(p, user) {
     try {
-        var res = await mdb.collection('users').updateOne({
+        let res = await mdb.collection('users').updateOne({
             _id: objectid(user._id)
         }, {
             $set: {
@@ -725,7 +744,7 @@ async function updateUserStatus(p, status) {
 // get all missions (based on perms)
 async function getMissions(p) {
     try {
-        var missions = await mdb.collection('missions').aggregate([{
+        let missions = await mdb.collection('missions').aggregate([{
             $match: {
                 deleted: {
                     $ne: true
@@ -759,11 +778,11 @@ async function insertMission(p, mission) {
     try {
         mission.name = xssFilters.inHTMLData(mission.name);
 
-        var filesRoot = objectid(null);
-        var chatFilesRoot = objectid(null);
-        var graphFilesRoot = objectid(null);
+        let filesRoot = objectid(null);
+        let chatFilesRoot = objectid(null);
+        let graphFilesRoot = objectid(null);
 
-        var newMission = {
+        let newMission = {
             //graph: JSON.stringify(emptyGraph),
             graph: { mxGraphModel: { root: { mxCell: [] } } },
             name: mission.name,
@@ -791,11 +810,11 @@ async function insertMission(p, mission) {
             }
         };
         
-        var res = await mdb.collection('missions').insertOne(newMission);
+        let res = await mdb.collection('missions').insertOne(newMission);
         res.ops[0].username = p.username;
 
         // create default chat channels
-        var channels = [{ _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(p.user_id)] }];
+        let channels = [{ _id: objectid(null), mission_id: objectid(res.ops[0]._id), name: 'general', deleted: false, type: 'channel', members: [objectid(p.user_id)] }];
         await mdb.collection('channels').insertMany(channels);
 
         sendToRoom('main', JSON.stringify({
@@ -813,13 +832,13 @@ async function insertMission(p, mission) {
 async function updateMission(p, mission) {
     try {
         mission.name = xssFilters.inHTMLData(mission.name);
-        var new_values = {
+        let new_values = {
             $set: {
                 name: mission.name
             }
         };
     
-        var res = await mdb.collection('missions').updateOne({
+        let res = await mdb.collection('missions').updateOne({
             _id: objectid(mission._id)
         }, new_values);
         if (res.result.ok === 1) {
@@ -840,7 +859,7 @@ async function updateMission(p, mission) {
 // delete mission
 async function deleteMission(p, mission) {
     try {
-        var res = await mdb.collection('missions').updateOne({
+        let res = await mdb.collection('missions').updateOne({
             _id: objectid(mission._id)
         }, {
             $set: {
@@ -868,7 +887,7 @@ async function deleteMission(p, mission) {
 // get chats
 async function getChatChannels(mission_id, user_id) {
     try {
-        var channels = await mdb.collection('channels').find({
+        let channels = await mdb.collection('channels').find({
             mission_id: objectid(mission_id),
             members: { $in: [ objectid(user_id) ]},
             deleted: {
@@ -876,7 +895,7 @@ async function getChatChannels(mission_id, user_id) {
             }
         }).toArray();
 
-        var projection = {
+        let projection = {
             password: 0,
             deleted: 0,
             api: 0,
@@ -886,7 +905,7 @@ async function getChatChannels(mission_id, user_id) {
             is_admin: 0
         }
 
-        var tusers = await mdb.collection('users').find({
+        let tusers = await mdb.collection('users').find({
             deleted: {
                 $ne: true
             }
@@ -894,7 +913,7 @@ async function getChatChannels(mission_id, user_id) {
             projection: projection
         }).toArray();
         // user status
-        for (var i = 0; i < tusers.length; i++) {
+        for (let i = 0; i < tusers.length; i++) {
             if (users.get(tusers[i]._id.toString())) {
                 tusers[i].status = users.get(tusers[i]._id.toString()).status;
             } else {
@@ -915,14 +934,14 @@ async function getChatChannels(mission_id, user_id) {
 async function insertChatChannel(p, channel) {
     try {
         // check if channel already exists
-        var count = await mdb.collection('channels').count({
+        let count = await mdb.collection('channels').count({
             mission_id: objectid(p.mission_id),
             'name': channel.name
         });
 
         // don't add existing channel
         if (count === 0) {
-            var new_values = {
+            let new_values = {
                 _id: objectid(null),
                 mission_id: objectid(p.mission_id),
                 name: channel.name,
@@ -931,7 +950,7 @@ async function insertChatChannel(p, channel) {
                 type: 'channel'
             };
 
-            var tusers = await mdb.collection('missions').aggregate([{
+            let tusers = await mdb.collection('missions').aggregate([{
                 $match: {
                     _id: objectid(p.mission_id),
                     deleted: {
@@ -946,11 +965,11 @@ async function insertChatChannel(p, channel) {
                 }
             }]).toArray();
 
-            for (var i = 0; i < tusers.length; i ++) {
+            for (let i = 0; i < tusers.length; i ++) {
                 new_values.members.push(tusers[i]._id);
             }
 
-            var res = await mdb.collection('channels').insertOne(new_values);
+            let res = await mdb.collection('channels').insertOne(new_values);
 
             delete new_values.deleted;
             delete new_values.members;
@@ -959,11 +978,11 @@ async function insertChatChannel(p, channel) {
             if (!rooms.get(new_values._id.toString())) {
                 rooms.set(new_values._id.toString(), { type: 'channel', sockets: new Set() });
             }
-            var room = rooms.get(new_values._id.toString()).sockets;
+            let room = rooms.get(new_values._id.toString()).sockets;
 
             // join everyone in the mission to it
             if (rooms.get(p.mission_id)) {
-                var missionRoom = rooms.get(p.mission_id).sockets;
+                let missionRoom = rooms.get(p.mission_id).sockets;
                 missionRoom.forEach((p) => {
                     room.add(p);
                 });
@@ -983,10 +1002,10 @@ async function insertChatChannel(p, channel) {
 // get 50 most recent messages for chat
 async function getChats(p, channels) {
     try {
-        var chats = [];
+        let chats = [];
 
-        for (var i = 0; i < channels.length; i++) {
-            var match = {};
+        for (let i = 0; i < channels.length; i++) {
+            let match = {};
             if (channels[i].type === 'user') {
                 match = {
                     $or: [
@@ -1010,7 +1029,7 @@ async function getChats(p, channels) {
                 }
             }
         
-            var rows = await mdb.collection('chats').aggregate([{
+            let rows = await mdb.collection('chats').aggregate([{
                 $match: match
             }, {
                 $sort: {
@@ -1073,7 +1092,7 @@ async function insertChat(p, chat, filter) {
         }
         chat.timestamp = (new Date).getTime();
 
-        var count = await mdb.collection('channels').count({
+        let count = await mdb.collection('channels').count({
             _id: objectid(chat.channel_id)
         });
 
@@ -1081,7 +1100,7 @@ async function insertChat(p, chat, filter) {
             throw('insertChat invalid channel.');
         }
 
-        var chat_row = {
+        let chat_row = {
             _id: objectid(null),
             user_id: objectid(p.user_id),
             channel_id: objectid(chat.channel_id),
@@ -1091,7 +1110,7 @@ async function insertChat(p, chat, filter) {
             deleted: false
         };
 
-        var res = await mdb.collection('chats').insertOne(chat_row);
+        let res = await mdb.collection('chats').insertOne(chat_row);
 
         chat._id = res.ops[0]._id;
 
@@ -1105,7 +1124,7 @@ async function insertChat(p, chat, filter) {
 
             
             // send message to receiver
-            var tchannel_id = chat.channel_id;
+            let tchannel_id = chat.channel_id;
             chat.channel_id = p.user_id;
             sendToRoom(tchannel_id, JSON.stringify({
                 act: 'chat',
@@ -1138,7 +1157,7 @@ async function updateChat(p, chat, filter) {
     }
 
     try {
-        var tchat = await mdb.collection('chats').findOne({
+        let tchat = await mdb.collection('chats').findOne({
             _id: objectid(chat._id),
             user_id: objectid(p.user_id),
             editable: true
@@ -1149,7 +1168,7 @@ async function updateChat(p, chat, filter) {
             throw ('updateChat chat does not exist or does not belong to user.');
         }
 
-        var res = await mdb.collection('chats').updateOne({
+        let res = await mdb.collection('chats').updateOne({
             _id: objectid(chat._id)
         }, {
             $set: {
@@ -1173,7 +1192,7 @@ async function updateChat(p, chat, filter) {
 // delete chat
 async function deleteChat(p, chat) {
     try {
-        var tchat = await mdb.collection('chats').findOne({
+        let tchat = await mdb.collection('chats').findOne({
             _id: objectid(chat._id),
             user_id: objectid(p.user_id),
             deleted: {
@@ -1189,7 +1208,7 @@ async function deleteChat(p, chat) {
             throw('deleteChat permission denied.');
         }
 
-        var res = await mdb.collection('chats').updateOne({
+        let res = await mdb.collection('chats').updateOne({
             _id: objectid(chat._id)
         }, {
             $set: {
@@ -1216,7 +1235,7 @@ async function deleteChat(p, chat) {
 // get old chats
 async function getOldChats(p, request) {
     try {
-        var rows = await mdb.collection('chats').aggregate([{
+        let rows = await mdb.collection('chats').aggregate([{
             $match: {
                 channel_id: objectid(request.channel_id),
                 timestamp: {
@@ -1312,20 +1331,20 @@ async function getMissionUsers(p) {
 // add user to a mission
 async function insertMissionUser(p, user) {
     try {
-        var count = await mdb.collection('missions').count({
+        let count = await mdb.collection('missions').count({
             _id: objectid(p.mission_id),
             'mission_users.user_id': objectid(user.user_id)
         });
 
         // don't let the user make the same user setting over again
         if (count === 0) {
-            var new_values = {
+            let new_values = {
                 _id: objectid(null),
                 user_id: objectid(user.user_id),
                 permissions: user.permissions
             };
 
-            var res = await mdb.collection('missions').updateOne({
+            let res = await mdb.collection('missions').updateOne({
                 _id: objectid(p.mission_id)
             }, {
                 $push: {
@@ -1333,7 +1352,7 @@ async function insertMissionUser(p, user) {
                 }
             });
 
-            var res2 = await mdb.collection('channels').updateMany({
+            let res2 = await mdb.collection('channels').updateMany({
                 mission_id: objectid(p.mission_id),
                 deleted: {
                     $ne: true
@@ -1346,7 +1365,7 @@ async function insertMissionUser(p, user) {
 
             if (res.result.ok === 1) {
                 // get username
-                var u = await mdb.collection('users').findOne({
+                let u = await mdb.collection('users').findOne({
                     _id: objectid(user.user_id),
                     deleted: {
                         $ne: true
@@ -1374,18 +1393,18 @@ async function insertMissionUser(p, user) {
 // update user in mission
 async function updateMissionUser(p, user) {
     try {
-        var new_values = {
+        let new_values = {
             'mission_users.$.user_id': objectid(user.user_id),
             'mission_users.$.permissions': user.permissions
         };
-        var res = await mdb.collection('missions').updateOne({
+        let res = await mdb.collection('missions').updateOne({
             _id: objectid(p.mission_id),
             'mission_users._id': objectid(user._id)
         }, {
             $set: new_values
         });
         if (res.result.ok === 1) {
-            var ouser = await mdb.collection('users').findOne({
+            let ouser = await mdb.collection('users').findOne({
                 _id: objectid(user.user_id),
                 deleted: {
                     $ne: true
@@ -1410,7 +1429,7 @@ async function updateMissionUser(p, user) {
 // delete user from mission
 async function deleteMissionUser(p, user) {
     try {
-        var res = await mdb.collection('missions').findOneAndUpdate({
+        let res = await mdb.collection('missions').findOneAndUpdate({
             _id: objectid(p.mission_id)
         }, {
             $pull: {
@@ -1439,7 +1458,7 @@ async function deleteMissionUser(p, user) {
 
 // get files
 async function getFiles(p) {
-    var dir = path.join(__dirname + '/mission_files/');
+    let dir = path.join(__dirname + '/mission_files/');
     try {
         // make sure directory exists for mission files
         fs.statSync(dir, function (err, s) {
@@ -1497,8 +1516,8 @@ async function insertFile(p, file, allowDupName) {
             file.name = xssFilters.inHTMLData(file.name).replace(/\//g,'').replace(/\\/g,'');
         }
 
-        var res = [];
-        var match = {};
+        let res = [];
+        let match = {};
         // check if the same file already exists with the same hash and same name
         if (allowDupName) {
             match = {
@@ -1521,7 +1540,7 @@ async function insertFile(p, file, allowDupName) {
             }
         }
 
-        var res = await mdb.collection('missions').aggregate([{
+        let res = await mdb.collection('missions').aggregate([{
             $match: {
                 _id: objectid(p.mission_id),
                 deleted: {
@@ -1541,7 +1560,7 @@ async function insertFile(p, file, allowDupName) {
         }]).toArray();
 
         // get parent level
-        var parent = await mdb.collection('missions').aggregate([{
+        let parent = await mdb.collection('missions').aggregate([{
             $match: {
                 _id: objectid(p.mission_id),
                 deleted: {
@@ -1567,8 +1586,8 @@ async function insertFile(p, file, allowDupName) {
 
         // file doesn't exist
         if (res.length === 0) {
-            var new_id = objectid(null);
-            var new_value = {
+            let new_id = objectid(null);
+            let new_value = {
                 _id: new_id,
                 name: file.name,
                 parent_id: objectid(file.parent_id),
@@ -1603,12 +1622,12 @@ async function insertFile(p, file, allowDupName) {
 
             file._id = res[0]._id;
 
-            var new_values = {
+            let new_values = {
                 'files.$.realName': file.realName,
                 hash: file.hash
             };
 
-            var res = await mdb.collection('missions').updateOne({
+            let res = await mdb.collection('missions').updateOne({
                 _id: objectid(p.mission_id),
                 'files._id': objectid(file._id)
             }, {
@@ -1635,7 +1654,7 @@ async function moveFile(p, file) {
     file.name = xssFilters.inHTMLData(file.name).replace(/\//g,'').replace(/\\/g,'');
     try {
         // get parent level
-        var parent = await mdb.collection('missions').aggregate([{
+        let parent = await mdb.collection('missions').aggregate([{
             $match: {
                 _id: objectid(p.mission_id),
                 deleted: {
@@ -1659,13 +1678,13 @@ async function moveFile(p, file) {
             }
         }]).toArray();
 
-        var new_values = {
+        let new_values = {
             'files.$.parent_id': objectid(file.parent_id),
             'files.$.name': file.name,
             'files.$.level': parent[0].level + 1
         };
 
-        var res = await mdb.collection('missions').updateOne({
+        let res = await mdb.collection('missions').updateOne({
             _id: objectid(p.mission_id),
             files: { $elemMatch: { _id: objectid(file._id), protected: false } }
         }, {
@@ -1690,7 +1709,7 @@ async function moveFile(p, file) {
 
 async function deleteFile(p, file) {
     try {
-        var res = await mdb.collection('missions').updateMany({
+        let res = await mdb.collection('missions').updateMany({
             _id: objectid(p.mission_id)
         }, {
             $pull: {
@@ -1723,12 +1742,12 @@ async function deleteFile(p, file) {
 async function getNotes(p) {
     try {
         /*
-        var projection = {
+        let projection = {
             _id: 1,
             name: 1
         };
 
-        var notes = await mdb.collection('notes').find({
+        let notes = await mdb.collection('notes').find({
             $and: [{
                 mission_id: objectid(socket.mission_id)
             }, {
@@ -1741,7 +1760,7 @@ async function getNotes(p) {
         }).toArray();
 */
 
-        var notes = await mdb.collection('notes').aggregate([
+        let notes = await mdb.collection('notes').aggregate([
             {
                 $match: { mission_id: objectid(p.mission_id), deleted: { $ne: true }}
             }, {
@@ -1789,7 +1808,7 @@ async function getNotes(p) {
             }
         ]).toArray();
 
-        for (var i = 0; i < notes.length; i++) {
+        for (let i = 0; i < notes.length; i++) {
             notes[i].type = 'note';
         }
 
@@ -1804,7 +1823,7 @@ async function getNotes(p) {
 async function insertNote(p, note) {
     note.name = xssFilters.inHTMLData(note.name);
 
-    var note_row = {
+    let note_row = {
         _id: objectid(),
         mission_id: objectid(p.mission_id),
         name: note.name,
@@ -1816,7 +1835,7 @@ async function insertNote(p, note) {
     } 
 
     try {
-        var res = await mdb.collection('notes').insertOne(note_row);
+        let res = await mdb.collection('notes').insertOne(note_row);
 
         sendToRoom(p.mission_id, JSON.stringify({
             act: 'insert_note',
@@ -1834,7 +1853,7 @@ async function insertNote(p, note) {
 }
 
 async function updateNote(p, note) {
-    var new_values = { $set: { } };
+    let new_values = { $set: { } };
     if (note.name !== undefined) {
         note.name = xssFilters.inHTMLData(note.name);
         new_values.$set.name = note.name;
@@ -1845,7 +1864,7 @@ async function updateNote(p, note) {
     }
 
     try {
-        var res = await mdb.collection('notes').updateOne({
+        let res = await mdb.collection('notes').updateOne({
             _id: objectid(note._id)
         }, new_values);
 
@@ -1865,7 +1884,7 @@ async function updateNote(p, note) {
 
 async function deleteNote(p, note) {
     try {
-        var res = mdb.collection('notes').updateOne({
+        let res = mdb.collection('notes').updateOne({
             _id: objectid(note._id)
         }, {
             $set: {
@@ -1927,13 +1946,13 @@ async function insertOpnote(p, opnote) {
         opnote.tool = xssFilters.inHTMLData(opnote.tool);
         opnote.action = xssFilters.inHTMLData(opnote.action);
 
-        var new_values = { mission_id: objectid(p.mission_id), event_id: null, opnote_time: opnote.opnote_time, target: opnote.target, tool: opnote.tool, action: opnote.action, user_id: objectid(opnote.user_id), deleted: false };
+        let new_values = { mission_id: objectid(p.mission_id), event_id: null, opnote_time: opnote.opnote_time, target: opnote.target, tool: opnote.tool, action: opnote.action, user_id: objectid(opnote.user_id), deleted: false };
 
         if (objectid.isValid(opnote.event_id)) {
             new_values.event_id = objectid(opnote.event_id);
         }
 
-        var res = await mdb.collection('opnotes').insertOne(new_values);
+        let res = await mdb.collection('opnotes').insertOne(new_values);
 
         opnote._id = new_values._id;
         opnote.username = p.username;
@@ -1951,12 +1970,12 @@ async function updateOpnote(p, opnote) {
         opnote.tool = xssFilters.inHTMLData(opnote.tool);
         opnote.action = xssFilters.inHTMLData(opnote.action);
 
-        var new_values = { $set: { opnote_time: opnote.opnote_time, event_id: null, target: opnote.target, tool: opnote.tool, action: opnote.action } };
+        let new_values = { $set: { opnote_time: opnote.opnote_time, event_id: null, target: opnote.target, tool: opnote.tool, action: opnote.action } };
 
         if (objectid.isValid(opnote.event_id))
             new_values.$set.event_id = objectid(opnote.event_id);
 
-        var res = await mdb.collection('opnotes').updateOne({ _id: objectid(opnote._id) }, new_values);
+        let res = await mdb.collection('opnotes').updateOne({ _id: objectid(opnote._id) }, new_values);
         if (res.result.ok === 1) {
             opnote.username = p.username;
             sendToRoom(p.mission_id, JSON.stringify({
@@ -1976,7 +1995,7 @@ async function updateOpnote(p, opnote) {
 // delete opnote
 async function deleteOpnote(p, opnote) {
     try {
-        var res = await mdb.collection('opnotes').updateOne({
+        let res = await mdb.collection('opnotes').updateOne({
             _id: objectid(opnote._id)
         }, {
             $set: {
@@ -2003,7 +2022,7 @@ async function deleteOpnote(p, opnote) {
 // get events
 async function getEvents(p) {
     try {
-        var events = await mdb.collection('events').aggregate([{
+        let events = await mdb.collection('events').aggregate([{
             $match: {
                 mission_id: objectid(p.mission_id),
                 deleted: {
@@ -2055,7 +2074,7 @@ async function insertEvent(p, event) {
         event.user_id = p.user_id;
         event.username = p.username;
 
-        var evt = {
+        let evt = {
             mission_id: objectid(p.mission_id),
             event_time: event.event_time,
             discovery_time: event.discovery_time,
@@ -2082,7 +2101,7 @@ async function insertEvent(p, event) {
             evt.assigned_user_id = objectid(event.assigned_user_id);
         }
 
-        var res = await mdb.collection('events').insertOne(evt);
+        let res = await mdb.collection('events').insertOne(evt);
         event._id = evt._id;
         return event;
 
@@ -2100,7 +2119,7 @@ async function updateEvent(p, event) {
         event.source_port = xssFilters.inHTMLData(event.source_port);
         event.dest_port = xssFilters.inHTMLData(event.dest_port);
 
-        var new_values = {
+        let new_values = {
             $set: {
                 event_time: event.event_time,
                 discovery_time: event.discovery_time,
@@ -2121,7 +2140,7 @@ async function updateEvent(p, event) {
         if (event.assigned_user_id && objectid.isValid(event.assigned_user_id))
             new_values.$set.assigned_user_id = objectid(event.assigned_user_id);
 
-        var res = await mdb.collection('events').updateOne({
+        let res = await mdb.collection('events').updateOne({
             _id: objectid(event._id)
         }, new_values);
         if (res.result.ok === 1) {
@@ -2142,7 +2161,7 @@ async function updateEvent(p, event) {
 // delete event
 async function deleteEvent(p, event) {
     try {
-        var res = await mdb.collection('events').updateOne({
+        let res = await mdb.collection('events').updateOne({
             _id: objectid(event._id)
         }, {
             $set: {
@@ -2267,7 +2286,7 @@ function sharedbOnMessage(msg, flags) {
                 this.off('message', sharedbOnMessage)
 
                 // start sharedb connection
-                var stream = new wsjsonstream(this);
+                let stream = new wsjsonstream(this);
                 backend.listen(stream, { mission_id: msg.arg.mission_id, user_id: this.user_id, username: this.username });
                 break;
         }
@@ -2306,7 +2325,7 @@ async function setupGraphSocket(socket) {
         try {
             // cleanup closed sockets from rooms
             if (socket.rooms) {
-                for (var i = 0; i < socket.rooms.length; i++) {
+                for (let i = 0; i < socket.rooms.length; i++) {
                     if (rooms.get(socket.rooms[i])) {
                         rooms.get(socket.rooms[i]).sockets.delete(socket);
 
@@ -2347,7 +2366,7 @@ async function setupGraphSocket(socket) {
         if (msg.act && socket.loggedin) {
             switch (msg.act) {
                 case 'stream':
-                    var stream = new wsjsonstream(socket);
+                    let stream = new wsjsonstream(socket);
                     socket.type = 'sharedb';
                     backend.listen(stream);
                     break;
@@ -2380,7 +2399,7 @@ async function setupGraphSocket(socket) {
                         socket.type = 'graph';
 
                         // add user to graph
-                        var graph = graphs.get(socket.mission_id);
+                        let graph = graphs.get(socket.mission_id);
 
                         // mission socket room
                         if (!rooms.get(socket.mission_id)) {
@@ -2409,8 +2428,8 @@ async function setupGraphSocket(socket) {
                         // join personal room
                         rooms.get(socket.user_id).sockets.add(socket);
 
-                        var resp = [];
-                        var tusers = [];
+                        let resp = [];
+                        let tusers = [];
 
                         resp.push({ act: 'get_graph', arg: JSON.stringify(graph) });
                         
@@ -2426,10 +2445,10 @@ async function setupGraphSocket(socket) {
                         resp.push({ act: 'get_presence', arg: await getPresence(socket) });
 
                         // get mission channels
-                        var channels = await getChatChannels(socket.mission_id, socket.user_id);
+                        let channels = await getChatChannels(socket.mission_id, socket.user_id);
 
                         // join mission channels
-                        for (var i = 0; i < channels.length; i++) {
+                        for (let i = 0; i < channels.length; i++) {
                             if (channels[i].type === 'channel') {
                                 if (!rooms.get(channels[i]._id.toString())) {
                                     rooms.set(channels[i]._id.toString(), { type: 'channel', sockets: new Set() });
@@ -2474,9 +2493,9 @@ async function setupGraphSocket(socket) {
                     */
 
                 case 'update_graph':
-                    var results = [];
+                    let results = [];
 
-                    var graph = graphs.get(socket.mission_id);
+                    let graph = graphs.get(socket.mission_id);
 
                     if (!graph) {
                         socket.send(JSON.stringify({
@@ -2486,9 +2505,9 @@ async function setupGraphSocket(socket) {
                         return;
                     }
 
-                    for (var i = 0; i < msg.arg.length; i++) {
-                        var type = msg.arg[i].type;
-                        var res = { type: type };
+                    for (let i = 0; i < msg.arg.length; i++) {
+                        let type = msg.arg[i].type;
+                        let res = { type: type };
                         
                         switch(type) {
                             case 'mxChildChange':
@@ -2528,7 +2547,7 @@ async function setupGraphSocket(socket) {
                         if (messageHandlers[msg.act].checks(socket, messageHandlers[msg.act].permission) && ajv.validate(validators[msg.act], msg.arg)) {
                             try {
 
-                                var data = await messageHandlers[msg.act].function(socket, msg.arg);
+                                let data = await messageHandlers[msg.act].function(socket, msg.arg);
                                 if (data) {
                                     socket.send(JSON.stringify({
                                         act: msg.act,
@@ -2578,7 +2597,7 @@ app.get('/logout', function (req, res) {
 });
 
 app.post('/api/alert', function (req, res) {
-    var msg = {};
+    let msg = {};
     if (!req.body.mission_id || !objectid.isValid(req.body.mission_id) || !req.body.api || !req.body.channel || !req.body.text) {
         res.end('ERR');
         return;
@@ -2649,7 +2668,7 @@ app.post('/api/:table', async function (req, res) {
     });
     // change password
     if (req.params.table !== undefined && req.params.table === 'change_password') {
-        var hash = await bcrypt.hash(req.body.newpass, 10);
+        let hash = await bcrypt.hash(req.body.newpass, 10);
         mdb.collection('users').updateOne({
             _id: objectid(req.session.user_id)
         }, {
@@ -2671,7 +2690,7 @@ app.post('/api/:table', async function (req, res) {
 
 app.get('/config', function (req, res) {
     if (req.session.loggedin) {
-        var profile = {};
+        let profile = {};
         profile.username = req.session.username;
         profile.name = req.session.name;
         profile.user_id = req.session.user_id;
@@ -2701,7 +2720,7 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            var mission_name = row[0].name;
+                            let mission_name = row[0].name;
                             req.session.mission_permissions[req.query.mission] = {
                                 manage_users: true,
                                 write_access: true,
@@ -2745,7 +2764,7 @@ app.get('/cop', function (req, res) {
                         }
                     }]).toArray(function (err, row) {
                         if (row && row.length > 0) {
-                            var mission_name = row[0].name;
+                            let mission_name = row[0].name;
                             req.session.mission_permissions[req.query.mission] = row[0].permissions;
 
                             if (req.session.mission_permissions[req.query.mission]) { // always let admin in
@@ -2779,49 +2798,146 @@ app.get('/cop', function (req, res) {
     }
 });
 
-app.post('/login', function (req, res) {
-    if (req.body.username !== undefined && req.body.username !== '' && req.body.password !== undefined && req.body.password !== '') {
+async function handleLdap(req, res) {
+    let options = {
+        ldapOpts: {
+            url: ldapServer,
+        },
+        adminDn: ldapAdminDn,
+        adminPassword: ldapAdminPassword,
+        username: req.body.username,
+        userPassword: req.body.password,
+        userSearchBase: ldapSearchBase,
+        usernameAttribute: ldapUsernameAttribute
+    };
+
+    let user = null;
+    try {
+        user = await ldapAuth.authenticate(options);
+    } catch (err) {
+        logger.error(err);
+        res.render('login', {
+            title: 'cop',
+            message: 'Invalid username or password.'
+        });
+
+        return;
+    }
+ 
+    if (user) {
         mdb.collection('users').findOne({
             username: {
                 $eq: req.body.username
             }
-        }, function (err, row) {
+        }, async function (err, row) {
+            // user already exists
             if (row) {
-                bcrypt.compare(req.body.password, row.password, function (err, bres) {
-                    if (bres) {
-                        req.session.user_id = row._id;
-                        req.session.name = row.name;
-                        req.session.username = row.username;
-                        req.session.loggedin = true;
-                        req.session.is_admin = row.is_admin;
-                        req.session.api = row.api;
-                        req.session.mission_permissions = {};
-                        res.redirect('login');
-                    } else {
-                        res.render('login', {
-                            title: 'cop',
-                            message: 'Invalid username or password.'
-                        });
-                    }
-                });
+                req.session.user_id = row._id;
+                req.session.name = row.name;
+                req.session.username = row.username;
+                req.session.loggedin = true;
+                req.session.is_admin = row.is_admin;
+                req.session.api = row.api;
+                req.session.mission_permissions = {};
+                res.redirect('login');
+
+            // ldap user doesn't exist
             } else {
-                if (err) {
-                    logger.error(err);
+                let new_user = {
+                    name: '',
+                    username: req.body.username,
+                    password: crypto.randomBytes(64).toString('hex'), // set a random unused pass
+                    is_admin: false
+                };
+
+                // add the user to the db
+                new_user = await insertUser(null, new_user, true);
+
+                // log the ldap user in
+                if (new_user) {
+                    req.session.user_id = new_user._id;
+                    req.session.name = new_user.name;
+                    req.session.username = new_user.username;
+                    req.session.loggedin = true;
+                    req.session.is_admin = new_user.is_admin;
+                    req.session.api = new_user.api;
+                    req.session.mission_permissions = {};
+                    res.redirect('login');
+                } else {
+                    res.render('login', {
+                        title: 'cop',
+                        message: 'Invalid username or password.'
+                    });
                 }
-                res.render('login', {
-                    title: 'cop',
-                    message: 'Invalid username or password.'
-                });
             }
         });
+    // no such user
     } else {
         res.render('login', {
             title: 'cop',
             message: 'Invalid username or password.'
         });
     }
-});
+}
 
+function handleBcrypt(req, res) {
+    // default
+    mdb.collection('users').findOne({
+        username: {
+            $eq: req.body.username
+        }
+    }, function (err, row) {
+        if (row) {
+            bcrypt.compare(req.body.password, row.password, function (err, bres) {
+                if (bres) {
+                    req.session.user_id = row._id;
+                    req.session.name = row.name;
+                    req.session.username = row.username;
+                    req.session.loggedin = true;
+                    req.session.is_admin = row.is_admin;
+                    req.session.api = row.api;
+                    req.session.mission_permissions = {};
+                    res.redirect('login');
+                } else {
+                    res.render('login', {
+                        title: 'cop',
+                        message: 'Invalid username or password.'
+                    });
+                }
+            });
+        } else {
+            if (err) {
+                logger.error(err);
+            }
+            res.render('login', {
+                title: 'cop',
+                message: 'Invalid username or password.'
+            });
+        }
+    });
+}
+
+app.post('/login', function (req, res) {
+    try {
+        if (req.body.username !== undefined && req.body.username !== '' && req.body.password !== undefined && req.body.password !== '') {
+            req.body.username = xssFilters.inHTMLData(req.body.username);
+            req.body.password = xssFilters.inHTMLData(req.body.password);
+            if (authType == 'ldap' && req.body.username != 'admin') {
+                handleLdap(req, res);
+            } else {
+                handleBcrypt(req, res);
+            }
+        } else {
+            throw('Missing username / password.');
+        }
+    } catch (err) {
+        logger.error(err);
+        res.render('login', {
+            title: 'cop',
+            message: 'Invalid username or password.'
+        });
+    }
+});
 
 app.get('/login', function (req, res) {
     if (req.session.loggedin) {
@@ -2838,7 +2954,7 @@ app.get('/login', function (req, res) {
 app.use('/download', async function(req, res) {
     try {
         if (req.session.loggedin && (req.session.is_admin || req.session.mission_permissions[req.query.mission_id])) {
-            var file = await mdb.collection('missions').aggregate([{
+            let file = await mdb.collection('missions').aggregate([{
                 $match: {
                     _id: objectid(req.query.mission_id),
                     deleted: {
@@ -2865,7 +2981,7 @@ app.use('/download', async function(req, res) {
             }]).toArray();
 
             if (file.length === 1) {
-                var base = path.join(__dirname, '/mission_files');
+                let base = path.join(__dirname, '/mission_files');
                 res.download(base + '/' + file[0].realName, file[0].name);
             }
 
@@ -2883,7 +2999,7 @@ app.use('/render', express.static('mission_files'));
 
 function findUserSocket(user_id, mission_id) {
     if (rooms.get(mission_id)) {
-        for (var i = rooms.get(mission_id).sockets.values(), socket = null; socket = i.next().value; ) {
+        for (let i = rooms.get(mission_id).sockets.values(), socket = null; socket = i.next().value; ) {
             if (socket.readyState === socket.OPEN && socket.mission_id === mission_id && socket.user_id === user_id) {
                 return socket;
             }
@@ -2899,32 +3015,32 @@ app.post('/upload', upload.any(), function (req, res) {
         }
 
         if ((req.body.channel_id !== undefined || req.body.parent_id !== undefined || req.body.position !== undefined) && req.body.mission_id) {
-            //var wwwdir = path.join('/mission-' + req.body.mission_id + '/');
-            var base = path.join(__dirname, '/mission_files');
+            //let wwwdir = path.join('/mission-' + req.body.mission_id + '/');
+            let base = path.join(__dirname, '/mission_files');
 
-            var s = findUserSocket(req.session.user_id, req.body.mission_id);
+            let s = findUserSocket(req.session.user_id, req.body.mission_id);
             if (!s) {
                 throw('app.post /upload Can\'t find user\'s socket.');
             }
 
             // making sure base directory exists
             try {
-                var dirstat = fs.statSync(base);
+                let dirstat = fs.statSync(base);
             } catch (err) {
                 if (err.code == 'ENOENT') {
                     fs.mkdirSync(base, { recursive: true });
-                    dirstat = fs.statSync(base);
+                    let dirstat = fs.statSync(base);
                 } else {
                     throw (err);
                 }
             }
 
             async.each(req.files, function (file, callback) {
-                var newFile = {};
+                let newFile = {};
 
                 // check if we already have this file saved, if so don't save another copy
                 fs.createReadStream(file.path).pipe(crypto.createHash('sha1').setEncoding('hex')).on('finish', async function() {
-                    var hash = this.read();
+                    let hash = this.read();
                     try {
                         fs.statSync(base + '/' + hash);
                     } catch (err) {
@@ -2941,13 +3057,13 @@ app.post('/upload', upload.any(), function (req, res) {
                     // file upload
                     if (req.body.parent_id) {
                         newFile.parent_id = req.body.parent_id;
-                        var res = await insertFile(s, newFile); 
+                        let res = await insertFile(s, newFile); 
                         sendToRoom(s.mission_id, JSON.stringify({ act: 'insert_file', arg: res }));
                         callback();                       
                     }
                     // chat upload
                     else if (req.body.channel_id || req.body.position) {
-                        var res = await mdb.collection('missions').findOne({
+                        let res = await mdb.collection('missions').findOne({
                             _id: objectid(req.body.mission_id),
                             deleted: {
                                 $ne: true
@@ -2960,11 +3076,11 @@ app.post('/upload', upload.any(), function (req, res) {
                         });
                         newFile.name = file.originalname;
 
-                        var buffer = readChunk.sync(base + '/' + hash, 0, fileType.minimumBytes);
-                        var filetype = fileType(buffer);
-                        var mimetype = mime.lookup(file.originalname);
-                        var extension = 'unk';
-                        var mimestr = 'unknown file type';
+                        let buffer = readChunk.sync(base + '/' + hash, 0, fileType.minimumBytes);
+                        let filetype = fileType(buffer);
+                        let mimetype = mime.lookup(file.originalname);
+                        let extension = 'unk';
+                        let mimestr = 'unknown file type';
                         if (filetype) {
                             extension = filetype.ext;
                             mimestr = filetype.mime;
@@ -2975,7 +3091,7 @@ app.post('/upload', upload.any(), function (req, res) {
 
                         if (req.body.channel_id) {
                             newFile.parent_id = res.chat_files_root;
-                            var fileRow = await insertFile(s, newFile, true);
+                            let fileRow = await insertFile(s, newFile, true);
                             
                             if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
                                 insertChat(s, { text: '<img class="chatImage" src="/render/' + hash + '">', channel_id: req.body.channel_id, type: req.body.type, editable: false }, false);
@@ -2988,10 +3104,10 @@ app.post('/upload', upload.any(), function (req, res) {
                             newFile.parent_id = res.graph_files_root;
                             fileRow = await insertFile(s, newFile, true);
 
-                            var position = JSON.parse(req.body.position);
-                            var url = '<a href="/download?file_id=' + fileRow._id + '&mission_id=' + req.body.mission_id + '">' + file.originalname + '</a>';
-                            var change = [{ type: 'mxChildChange', mxChildChange: { parent: 1, mxCell: { id: objectid(null).toString(), mxGeometry: { x: position.x, y: position.y, width: 30, height: 30 }, parent: '1', style: 'editable=0;html=1;shape=image;image=/images/file_types/' + extension + '.svg', filename: fileRow.name, value: url, vertex: true }}}]
-                            var graph = graphs.get(s.mission_id);
+                            let position = JSON.parse(req.body.position);
+                            let url = '<a href="/download?file_id=' + fileRow._id + '&mission_id=' + req.body.mission_id + '">' + file.originalname + '</a>';
+                            let change = [{ type: 'mxChildChange', mxChildChange: { parent: 1, mxCell: { id: objectid(null).toString(), mxGeometry: { x: position.x, y: position.y, width: 30, height: 30 }, parent: '1', style: 'editable=0;html=1;shape=image;image=/images/file_types/' + extension + '.svg', filename: fileRow.name, value: url, vertex: true }}}]
+                            let graph = graphs.get(s.mission_id);
                             if (graph) {
                                 mxChildChange(change[0].mxChildChange, graph, s.mission_id);
                                 sendToRoom(s.mission_id, JSON.stringify({ act: 'update_graph', arg: change }));
@@ -3024,7 +3140,7 @@ app.post('/avatar', upload.any(), function (req, res) {
     }
     
     if (req.body.id) {
-        var dir = path.join(__dirname + '/public/images/avatars/');
+        let dir = path.join(__dirname + '/public/images/avatars/');
         async.each(req.files, function (file, callback) {
             fs.rename(file.path, dir + '/' + req.body.id + '.png', function (err) {
                 if (err) {
