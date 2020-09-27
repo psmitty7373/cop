@@ -2,12 +2,14 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const MongoClient = require('mongodb').MongoClient;
 const objectid = require('mongodb').ObjectID;
+const dockerHost = process.env.MONGOHOST || 'localhost';
+
 var mc;
 var mdb;
 
 (async function() {
     try {
-        mc = await MongoClient.connect('mongodb://localhost/cop', {
+        mc = await MongoClient.connect('mongodb://' + dockerHost + '/cop', {
             useNewUrlParser: true,
             useUnifiedTopology: true
         });

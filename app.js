@@ -3064,13 +3064,13 @@ app.post('/upload', upload.any(), function (req, res) {
                     // file upload
                     if (req.body.parent_id) {
                         newFile.parent_id = req.body.parent_id;
-                        res = await insertFile(s, newFile); 
-                        sendToRoom(s.mission_id, JSON.stringify({ act: 'insert_file', arg: res }));
+                        let res2 = await insertFile(s, newFile); 
+                        sendToRoom(s.mission_id, JSON.stringify({ act: 'insert_file', arg: res2 }));
                         callback();                       
                     }
                     // chat upload
                     else if (req.body.channel_id || req.body.position) {
-                        res = await mdb.collection('missions').findOne({
+                        let res2 = await mdb.collection('missions').findOne({
                             _id: objectid(req.body.mission_id),
                             deleted: {
                                 $ne: true
@@ -3097,7 +3097,7 @@ app.post('/upload', upload.any(), function (req, res) {
                         }                            
 
                         if (req.body.channel_id) {
-                            newFile.parent_id = res.chat_files_root;
+                            newFile.parent_id = res2.chat_files_root;
                             let fileRow = await insertFile(s, newFile, true);
                             
                             if (filetype && (filetype.mime === 'image/png' || filetype.mime === 'image/jpg' || filetype.mime === 'image/gif')) {
@@ -3108,7 +3108,7 @@ app.post('/upload', upload.any(), function (req, res) {
 
                         // file upload to graph
                         } else {
-                            newFile.parent_id = res.graph_files_root;
+                            newFile.parent_id = res2.graph_files_root;
                             fileRow = await insertFile(s, newFile, true);
 
                             let position = JSON.parse(req.body.position);
@@ -3129,6 +3129,9 @@ app.post('/upload', upload.any(), function (req, res) {
                 });
                 
             }, function (err) {
+                if (err) {
+                    logger.error(err);
+                }
                 res.send('{}');
             });
         } else {
